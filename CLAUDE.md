@@ -16,13 +16,12 @@ Zephyr/Xray/TestRail are mirrors, never the source of truth.
 
 ## Commands
 
-Not available yet (no workspace scaffold). Planned:
-
-- Install: `pnpm install`
-- Build: `pnpm build`
-- Test: `pnpm test`
-- Lint/format: `pnpm lint` (Biome)
-- CLI from source: `pnpm casefile <command>`
+- Install: `pnpm install` (CI: `--frozen-lockfile`)
+- Build: `pnpm build` (Turborepo → `tsc` per workspace)
+- Typecheck: `pnpm typecheck`
+- Test: `pnpm test` · coverage: `pnpm coverage`
+- Lint: `pnpm lint` (Biome + app boundary check) · fix: `pnpm format`
+- CLI from source (after build): `pnpm casefile <command>`
 
 ## Standing rules
 
