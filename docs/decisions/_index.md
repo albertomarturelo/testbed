@@ -19,3 +19,4 @@
 | [2026-10-15-org-commons-via-extension](2026-10-15-org-commons-via-extension.md) | Org-level commons are shipped by an extension package | Accepted | 2026-10-15 |
 | [2026-10-15-specs-ship-with-operations](2026-10-15-specs-ship-with-operations.md) | Operation SPECs ship with the operation and are read through the CLI | Accepted | 2026-10-15 |
 | [2026-10-15-build-and-test-tooling](2026-10-15-build-and-test-tooling.md) | Build and test tooling for the monorepo | Accepted | 2026-10-15 |
+| [2026-10-15-schemas-generated-from-zod](2026-10-15-schemas-generated-from-zod.md) | JSON Schemas are generated from Zod and committed | Accepted | 2026-10-15 |

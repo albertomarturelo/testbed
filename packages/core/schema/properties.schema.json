@@ -1,0 +1,227 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "casefile _properties.yaml",
+  "type": "object",
+  "properties": {
+    "properties": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_]*$"
+      },
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "string"
+              },
+              "default": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "mirror": {
+                "type": "object",
+                "properties": {
+                  "zephyr": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "xray": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "testrail": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "number"
+              },
+              "default": {
+                "type": "number"
+              },
+              "description": {
+                "type": "string"
+              },
+              "mirror": {
+                "type": "object",
+                "properties": {
+                  "zephyr": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "xray": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "testrail": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "boolean"
+              },
+              "default": {
+                "type": "boolean"
+              },
+              "description": {
+                "type": "string"
+              },
+              "mirror": {
+                "type": "object",
+                "properties": {
+                  "zephyr": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "xray": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "testrail": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "enum"
+              },
+              "values": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "default": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "mirror": {
+                "type": "object",
+                "properties": {
+                  "zephyr": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "xray": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "testrail": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "type",
+              "values"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "list"
+              },
+              "values": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "default": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "description": {
+                "type": "string"
+              },
+              "mirror": {
+                "type": "object",
+                "properties": {
+                  "zephyr": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "xray": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "testrail": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    }
+  },
+  "required": [
+    "properties"
+  ],
+  "additionalProperties": false
+}

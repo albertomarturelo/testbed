@@ -1,2 +1,2 @@
-// Public API of @casefile/core. Schemas land with #5; see docs/ARCHITECTURE.md.
-export {};
+// Public API of @casefile/core. See docs/ARCHITECTURE.md.
+export * from "./schema/index.js";

@@ -5,9 +5,11 @@ Corrections are appended here in the same change that fixes the code.
 
 1. **ESM + strict TypeScript everywhere.** `"type": "module"`, `strict: true`, no
    default exports in library code. (confirmed 2026-10-15)
-2. **Schema-first.** Every file format has a JSON Schema (2020-12) in
-   `packages/core/schema/` and an equivalent Zod schema in
-   `packages/core/src/schema/`; a test asserts the two agree on the demo fixture. (confirmed 2026-10-15)
+2. **Schema-first.** Every file format is a Zod schema in `packages/core/src/schema/`;
+   its JSON Schema (2020-12) in `packages/core/schema/` is generated and committed, and
+   a parity test runs valid/invalid samples through both. Schemas are structural only;
+   cross-field rules live in the validator. (confirmed 2026-10-15; revised by ADR
+   schemas-generated-from-zod)
 3. **Files are the only state.** No hidden caches that outlive the process; anything
    derived (index, gate results) must be recomputable from the repo. (confirmed 2026-10-15)
 4. **`core` is pure where possible.** Parsing, resolving, DSL evaluation and gate

@@ -15,6 +15,13 @@ Upgrades are deliberate PRs that update this table.
 | Coverage | `@vitest/coverage-v8` | 5.0.3 |
 | Lint / format | `@biomejs/biome` | 2.5.15 |
 
+## Installed (workspace dependencies)
+
+| Workspace | Package | Kind | Version | Why |
+|---|---|---|---|---|
+| `@casefile/core` | `zod` | runtime | 4.6.5 | Schemas; source of the generated JSON Schemas |
+| `@casefile/core` | `ajv` | dev | 8.20.0 | Parity test of committed JSON Schemas (draft 2020-12) |
+
 ## Platform
 
 | Area | Choice |
@@ -29,7 +36,6 @@ Upgrades are deliberate PRs that update this table.
 
 | Area | Choice | Lands with |
 |---|---|---|
-| Schemas | JSON Schema 2020-12 + Zod | #5 |
 | Markdown frontmatter | gray-matter | #7 |
 | YAML | `yaml` | #7 |
 | File watching | chokidar | #9 |

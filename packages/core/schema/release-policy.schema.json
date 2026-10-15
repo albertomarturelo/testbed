@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "casefile releases/policy.yaml",
+  "type": "object",
+  "properties": {
+    "gates": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "scope": {
+            "type": "string",
+            "minLength": 1
+          },
+          "require": {
+            "type": "object",
+            "properties": {
+              "executed": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "passed": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "failures": {
+                "type": "string",
+                "enum": [
+                  "none",
+                  "triaged"
+                ]
+              },
+              "executor": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "human",
+                    "agent",
+                    "ci"
+                  ]
+                }
+              },
+              "build": {
+                "type": "string",
+                "enum": [
+                  "current",
+                  "any"
+                ]
+              },
+              "source": {
+                "type": "string",
+                "enum": [
+                  "automated",
+                  "manual",
+                  "any"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "name",
+          "scope",
+          "require"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "sign_off": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "minLength": 1
+          },
+          "people": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[^@\\s]+@[^@\\s]+$"
+            }
+          }
+        },
+        "required": [
+          "role",
+          "people"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "gates"
+  ],
+  "additionalProperties": false
+}

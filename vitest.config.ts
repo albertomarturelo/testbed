@@ -7,7 +7,7 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       include: ["packages/*/src/**", "apps/*/src/**"],
-      exclude: ["**/*.test.ts"],
+      exclude: ["**/*.test.ts", "**/*.fixture.ts"],
     },
   },
 });

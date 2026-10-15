@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted — 2026-10-15. Module map amended by [apps-vs-packages](2026-10-15-apps-vs-packages.md).
+Accepted — 2026-10-15. Module map amended by [apps-vs-packages](2026-10-15-apps-vs-packages.md);
+schema authoring superseded by [schemas-generated-from-zod](2026-10-15-schemas-generated-from-zod.md).
 
 ## Context
 
