@@ -29,8 +29,8 @@ catalog ADRs `agent-skills-as-procedures`, `distribute-commands-as-plugin`,
    `CURRENT_STATUS.md` + the ADR index; the `PreToolUse` commit guard is
    installed but dormant while `CURRENT_STATUS.md` is untracked (team mode).
 4. **CI** `context-freshness.yml`: `adr-slug-unique` blocks duplicate ADR slugs
-   on PRs **and on push to `main`** (local adaptation: work currently lands on
-   `main` directly); the status-freshness job runs on PRs only and skips itself
+   on PRs **and on push to `main`** (local adaptation, kept as a post-merge
+   check; see [branch-per-issue-pr](2026-10-15-branch-per-issue-pr.md)); the status-freshness job runs on PRs only and skips itself
    in team mode.
 5. **Upgrades** re-copy from a newer upstream commit in one PR, re-apply the
    listed adaptations, and update the commit id here and in `docs/STACK.md`.

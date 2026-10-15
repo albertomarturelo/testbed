@@ -6,7 +6,7 @@ metadata:
   token-budget: "scales with the team's checklist depth, typically 3k–15k"
 ---
 
-<!-- casefile adaptation (ADR 2026-10-15-cfd-workflow-tooling): step 4 checklist filled with this repo's ADRs and CONVENTIONS; upstream @bf55ab8ddc65 ships placeholders. -->
+<!-- casefile adaptation (ADR 2026-10-15-cfd-workflow-tooling): step 4 checklist filled with this repo's ADRs and CONVENTIONS (incl. branch-per-issue-pr); upstream @bf55ab8ddc65 ships placeholders. -->
 
 The user passes a PR number. If not provided, infer from the current
 branch:
@@ -64,13 +64,16 @@ when a new ADR or convention lands.
 ```
 ### Workflow
 
-- Commit / PR body references the issue (`Closes #<n>`) (CONVENTIONS 11).
+- Branch is `<issue>-<short-slug>`, based on `main`, one issue only
+  (ADR branch-per-issue-pr, CONVENTIONS 12).
+- Commit subjects and PR title are Conventional Commits, ≤72 chars
+  (ADR branch-per-issue-pr).
+- PR body follows `.github/PULL_REQUEST_TEMPLATE.md`: `Closes #<n>`,
+  summary, AC checklist copied verbatim from the issue (CONVENTIONS 12).
 - Code, commits, PR text and docs/ are English (CLAUDE.md standing rule).
 - New significant decision → ADR written first and listed in
   docs/decisions/_index.md (CLAUDE.md standing rule).
 - docs/CURRENT_STATUS.md is NOT committed (gitignored, CONVENTIONS 11).
-- No branch/PR naming rule exists yet: report "missing convention" if
-  the diff needs one rather than inventing it.
 
 ### Architecture
 
