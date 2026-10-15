@@ -20,4 +20,4 @@ Only the agent writes files under `context/tests/`, operating through scoped ski
 ## Consequences
 
 - Every change is attributable to an intent.
-- Open conflict: CI writing `.runs/` and the system flipping `automation.status` (see #1).
+- Scope clarified by [write-ownership](2026-10-15-write-ownership.md): sole writer of case and commons files; runs and inbox have their own writers.

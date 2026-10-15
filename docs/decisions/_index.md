@@ -10,3 +10,6 @@
 | [2026-10-15-feature-tree-not-calendar](2026-10-15-feature-tree-not-calendar.md) | Feature tree, not calendar | Accepted | 2026-10-15 |
 | [2026-10-15-single-query-dsl](2026-10-15-single-query-dsl.md) | Single query DSL | Accepted | 2026-10-15 |
 | [2026-10-15-mit-license](2026-10-15-mit-license.md) | MIT license | Accepted | 2026-10-15 |
+| [2026-10-15-apps-vs-packages](2026-10-15-apps-vs-packages.md) | Apps are independent hosts over core | Accepted | 2026-10-15 |
+| [2026-10-15-extension-model](2026-10-15-extension-model.md) | Extension model: operations as the unit of extension | Accepted | 2026-10-15 |
+| [2026-10-15-write-ownership](2026-10-15-write-ownership.md) | Write ownership under context/ | Accepted | 2026-10-15 |

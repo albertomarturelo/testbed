@@ -25,31 +25,38 @@ orchestrates from a local UI without touching files.
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│ Surfaces:  cli  ·  mcp  ·  ui (F1)  ·  skills/ (markdown)     │
+│ apps (generic hosts):  cli  ·  mcp  ·  web (F1)              │
+│   + skills/ (markdown, run by the user's agent)              │
 ├──────────────────────────────────────────────────────────────┤
-│ Mirrors:   bridge-zephyr · bridge-xray (F2)                  │
+│ extensions (built-in or npm): operations · ingesters ·       │
+│   bridges · validators   — all registered through core's API │
 ├──────────────────────────────────────────────────────────────┤
 │ core:  schema · loader · resolver · dsl · index · validator  │
-│        ids · git · gates                                     │
+│        ids · git · gates · operation registry (only writer)  │
 ├──────────────────────────────────────────────────────────────┤
 │ Data:  files in the user's repo (the only source of truth)   │
 └──────────────────────────────────────────────────────────────┘
 ```
 
-Dependency direction: surfaces and bridges depend on `core`; `core` depends on
-no other workspace package (inferred — confirm).
+Dependency direction: apps depend on `packages/*` only and never on each other;
+they coordinate through files and Git. Operations are declared once in the
+registry (`actor`, `writes`, `input`, `output`, `spec`, `run`) and every app
+renders the registry: CLI commands, MCP tools, inbox `kind`s, web screens. See
+[apps-vs-packages](decisions/2026-10-15-apps-vs-packages.md),
+[extension-model](decisions/2026-10-15-extension-model.md) and
+[write-ownership](decisions/2026-10-15-write-ownership.md).
 
 ## Module map (planned)
 
 | Path | Responsibility | Phase |
 |---|---|---|
-| `packages/core` | Schemas (JSON Schema 2020-12 + Zod), file loader (gray-matter + yaml), inheritance resolver, query DSL (parser + evaluator), in-memory index with watcher, validator, id generator, Git utilities, gate evaluation | F0 |
-| `packages/cli` | `init`, `validate`, `resolve`, `query`, `id next`, `gates` working; other commands are stubs that print the SPEC path | F0 |
-| `packages/mcp` | MCP server (stdio + Streamable HTTP), token scopes; `cases.search`, `coverage.query` real, the rest typed stubs | F0 skeleton / F2 full |
-| `packages/ui` | README only: Inbox, Explorer, Release screens + `.inbox` contract | F1 |
+| `packages/core` | Schemas (JSON Schema 2020-12 + Zod), file loader (gray-matter + yaml), inheritance resolver, query DSL (parser + evaluator), in-memory index with watcher, validator, id generator, Git utilities, gate evaluation, operation/extension registry, built-in operations and ingesters | F0 |
+| `apps/cli` | Generic host: renders the registry as commands; `init`, `validate`, `resolve`, `query`, `id next`, `gates` working in F0; published to npm as `casefile` (includes `casefile mcp`) | F0 |
+| `apps/mcp` | Generic host: MCP server (stdio + Streamable HTTP), token scopes; `cases.search`, `coverage.query` real, the rest typed stubs | F0 skeleton / F2 full |
+| `apps/web` | README only: Inbox, Explorer, Release screens + `.inbox` contract | F1 |
 | `packages/bridge-*` | README only: field mapping + `Bridge { push, pull, import(dryRun) }` | F2 |
 | `skills/` | `SKILL.md` per skill, installable into `.claude/skills/` and `.agents/skills/` | F0 |
-| `specs/` | One SPEC per operation; skills cite them (location inferred — confirm) | F0 |
+| `specs/` | One SPEC per operation; skills cite them (location pending #3) | F0 |
 | `examples/demo-repo` | Fixture repo used by core tests and as the user-facing demo | F0 |
 
 ## Data layout in a user repo (product data model)
@@ -68,7 +75,9 @@ casefile.workspace.yaml         # optional multi-repo release aggregation
 ```
 
 Inheritance resolution: org → root → ancestors → case. Scalars override,
-`preconditions` are prepended, `labels`/`data` are merged.
+`preconditions` are prepended, `labels`/`data` are merged. `automation.status`
+values `automated`/`flaky` are **derived** on the resolved case from `.runs`
+events whose `automation_ref` matches; they are never stored in the file.
 
 ## Data flow
 
@@ -79,8 +88,9 @@ Inheritance resolution: org → root → ancestors → case. Scalars override,
 3. **Commit**: the agent commits as `casefile-agent` with trailers
    `Requested-by:`, `Inbox-Id:`, `Agent:`; the case's `history` mirrors the essentials;
    the inbox item moves to `done` / `failed` with `result`.
-4. **Results**: CI ingests JUnit / CTRF / Allure into `.runs/*.jsonl`; a matching
-   `automation.ref` is what flips `automation.status` to `automated`.
+4. **Results**: CI runs an ingester (JUnit / CTRF / Allure) that **appends** events
+   to `.runs/*.jsonl` and never touches a case file; a matching `automation.ref`
+   is what makes the resolver report `automated`.
 5. **Gates**: `casefile gates <release>` evaluates `policy.yaml` scopes (DSL) against
    resolved cases + runs.
 6. **Mirrors**: bridges push/pull to Zephyr/Xray; `mirror.hash` detects drift.

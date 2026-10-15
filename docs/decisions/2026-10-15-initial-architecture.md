@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted — 2026-10-15
+Accepted — 2026-10-15. Module map amended by [apps-vs-packages](2026-10-15-apps-vs-packages.md).
 
 ## Context
 
