@@ -14,6 +14,14 @@ Zephyr/Xray/TestRail are mirrors, never the source of truth.
 - [Architecture](docs/ARCHITECTURE.md)
 - [Stack](docs/STACK.md)
 
+## Workflow skills
+
+Vendored CFD procedures in `.agents/skills/` (`.claude/skills` is a symlink;
+Codex uses `$name`). See [cfd-workflow-tooling](docs/decisions/2026-10-15-cfd-workflow-tooling.md).
+
+- Every session: `/session-start` → `/issue-start <n>` → work → `/review-pr` (solo review) → `/session-close`
+- On demand: `/issue-new`, `/new-decision`, `/validate-context`
+
 ## Commands
 
 - Install: `pnpm install` (CI: `--frozen-lockfile`)

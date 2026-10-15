@@ -1,0 +1,48 @@
+---
+name: project-init
+description: "One-time bootstrap of CFD in an existing project: infer architecture/stack/conventions from structure and dependency files, then scaffold docs/ and CLAUDE.md without reading source. Invoke explicitly once, when adopting CFD in an existing project."
+disable-model-invocation: true
+metadata:
+  token-budget: "<10,000 total (hard cap)"
+---
+
+<!-- casefile adaptation (ADR 2026-10-15-cfd-workflow-tooling): catalog paths point to upstream @bf55ab8ddc65. -->
+
+Implement Context-First Development (CFD) in this project. Do NOT read
+individual source files. Instead, analyze ONLY:
+
+- The root directory structure (`ls`, `tree -L 2`).
+- Dependency files: `package.json`, `pyproject.toml`, `Cargo.toml`,
+  `go.mod`, `Gemfile`, etc.
+- The README, if any.
+
+Then create these files, following the shapes described below (they mirror
+the CFD [`templates/docs/`](https://github.com/albertomarturelo/context-first-development/blob/bf55ab8ddc65/templates/docs) set; if that directory is available locally, use
+it as the base):
+
+1. `docs/ARCHITECTURE.md` — inferred from directory structure and
+   dependencies. Mark each inference as "(inferred — confirm)".
+2. `docs/STACK.md` — list all detected technologies with their versions
+   pulled from dependency files.
+3. `docs/CONVENTIONS.md` — infer 5–10 likely conventions from directory
+   layout and dependency choices. Mark each as "(inferred — confirm)".
+4. `docs/CURRENT_STATUS.md` — initialize with:
+   "Project initialized with CFD on `<today>`. No work in progress yet."
+5. `docs/decisions/_index.md` — empty index header only.
+6. `docs/decisions/<today>-initial-architecture.md` — document the current
+   architecture as the first ADR. Status: `Accepted`. Reference
+   `docs/ARCHITECTURE.md` in the Decision section.
+7. `CLAUDE.md` — fill in the template, referencing the docs created
+   above. Project name and 2–3 sentence description pulled from the
+   README; if no README, ask the user. Then create `AGENTS.md` as a
+   symlink to it (`ln -s CLAUDE.md AGENTS.md`), never a copy, so any
+   agent finds the same index.
+
+Stop after these files are written. Output a summary listing what was
+created and ask the user to review the inferred conventions and the
+`initial-architecture` ADR before continuing.
+
+Hard rule: if you find yourself reading source code to "figure out the
+architecture", stop. The directory layout and dependency files are
+sufficient for a first pass. Refinement comes from `/new-decision`
+conversations as real work surfaces it.

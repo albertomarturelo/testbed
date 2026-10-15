@@ -33,6 +33,13 @@ Upgrades are deliberate PRs that update this table.
 | CI | GitHub Actions: `actions/checkout@v7`, `pnpm/action-setup@v6`, `actions/setup-node@v7` |
 | License | MIT |
 
+## Workflow tooling
+
+| Area | Choice | Version |
+|---|---|---|
+| CFD skills, hooks, context CI | Vendored from `albertomarturelo/context-first-development` | `bf55ab8ddc65` |
+| Hook dependency | `jq` (commit guard fails open without it) | system |
+
 ## Planned (added only when first used)
 
 | Area | Choice | Lands with |

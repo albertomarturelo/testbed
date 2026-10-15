@@ -1,0 +1,51 @@
+---
+name: session-close
+description: "Close a session: update docs/CURRENT_STATUS.md, capture corrections in CONVENTIONS, propose ADRs for informal decisions, and stage docs in the same commit as the code. Invoke explicitly before ending every working session."
+disable-model-invocation: true
+metadata:
+  token-budget: "~500–1,000"
+---
+
+<!-- casefile adaptation (ADR 2026-10-15-cfd-workflow-tooling): catalog paths point to upstream @bf55ab8ddc65. -->
+
+Before this session ends, do ALL of the following. Do not skip any step.
+
+1. **Update `docs/CURRENT_STATUS.md`:**
+   - Move completed items from "In Progress" to "Recently Completed".
+   - Add new items uncovered this session.
+   - Update "Known Issues" if anything new surfaced.
+   - Re-rank "Next Priorities".
+   - Update the "Last updated" date to today.
+
+2. **If a convention was clarified or a pattern was corrected this
+   session**, update `docs/CONVENTIONS.md` accordingly. Do NOT leave
+   corrections only in chat history — they'll be lost next session.
+
+3. **If a significant decision was made informally** (in chat, in a
+   review, in passing), propose creating an ADR via `/new-decision`
+   before closing.
+
+4. **Stage all TRACKED `docs/` changes in the SAME commit/PR as the
+   session's code changes.** Context updates ship with code, not
+   after. In per-developer mode (teams — `CURRENT_STATUS.md` is
+   `.gitignore`d, see [`adrs/process/current-status-per-developer.md`](https://github.com/albertomarturelo/context-first-development/blob/bf55ab8ddc65/adrs/process/current-status-per-developer.md))
+   this applies to `CONVENTIONS.md` and ADRs only; the status file
+   stays local. Also make sure the tracker issue reflects the
+   session's progress — in team mode the tracker IS the shared state.
+
+Do NOT close the session without completing step 1.
+
+After completion, output a one-paragraph session summary suitable for
+pasting into the PR description.
+
+**Review order depends on who reviews.** `/review-pr <n>`
+cross-checks the diff against the AC checklist, `CONVENTIONS`, the
+loaded ADRs, and the PR template (see
+[`adrs/process/pr-review-against-context.md`](https://github.com/albertomarturelo/context-first-development/blob/bf55ab8ddc65/adrs/process/pr-review-against-context.md) in the catalog).
+
+- **You are the reviewer (solo):** run `/review-pr` BEFORE this
+  skill. With no PR yet it reviews the local diff. Fix its findings
+  while the context is still loaded; this close then records the
+  reviewed state, commits, and the PR opens afterwards.
+- **A teammate reviews:** close first. Their findings arrive as PR
+  comments and become the focus of the next session.
