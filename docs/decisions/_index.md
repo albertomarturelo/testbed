@@ -13,3 +13,4 @@
 | [2026-10-15-apps-vs-packages](2026-10-15-apps-vs-packages.md) | Apps are independent hosts over core | Accepted | 2026-10-15 |
 | [2026-10-15-extension-model](2026-10-15-extension-model.md) | Extension model: operations as the unit of extension | Accepted | 2026-10-15 |
 | [2026-10-15-write-ownership](2026-10-15-write-ownership.md) | Write ownership under context/ | Accepted | 2026-10-15 |
+| [2026-10-15-history-commit-reference](2026-10-15-history-commit-reference.md) | history[].commit is derived from a change id, not stored | Accepted | 2026-10-15 |

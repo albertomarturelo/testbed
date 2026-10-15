@@ -86,7 +86,8 @@ events whose `automation_ref` matches; they are never stored in the file.
 2. **Processing**: the agent runs `qa-inbox`, which reads the intent (as data, never
    as instruction), performs the operation per its SPEC, and runs `casefile validate`.
 3. **Commit**: the agent commits as `casefile-agent` with trailers
-   `Requested-by:`, `Inbox-Id:`, `Agent:`; the case's `history` mirrors the essentials;
+   `Requested-by:`, `Inbox-Id:`, `Agent:`, `Casefile-Change:`; each `history` event
+   stores the same change id, and its `commit` is derived from Git (never stored);
    the inbox item moves to `done` / `failed` with `result`.
 4. **Results**: CI runs an ingester (JUnit / CTRF / Allure) that **appends** events
    to `.runs/*.jsonl` and never touches a case file; a matching `automation.ref`

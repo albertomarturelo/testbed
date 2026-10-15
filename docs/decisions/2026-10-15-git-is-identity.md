@@ -10,7 +10,7 @@ casefile needs authorship and accountability without running an auth service.
 
 ## Decision
 
-No login. A human is their `git config user.email`. Intents are committed with the human as author; agent changes are committed as `casefile-agent` with trailers `Requested-by:`, `Inbox-Id:`, `Agent:`. `casefile init` recommends SSH commit signing; signing is mandatory only for `release sign`.
+No login. A human is their `git config user.email`. Intents are committed with the human as author; agent changes are committed as `casefile-agent` with trailers `Requested-by:`, `Inbox-Id:`, `Agent:` (plus `Casefile-Change:`, added by [history-commit-reference](2026-10-15-history-commit-reference.md)). `casefile init` recommends SSH commit signing; signing is mandatory only for `release sign`.
 
 ## Alternatives Considered
 
@@ -20,4 +20,4 @@ No login. A human is their `git config user.email`. Intents are committed with t
 ## Consequences
 
 - Unsigned identity is spoofable; trust-critical actions (release sign-off) require signatures.
-- Open question: how `history[].commit` references a commit that contains it (see #2).
+- `history[]` events link to commits through a `Casefile-Change:` trailer; `commit` is derived, not stored — see [history-commit-reference](2026-10-15-history-commit-reference.md).
