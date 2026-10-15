@@ -50,7 +50,7 @@ renders the registry: CLI commands, MCP tools, inbox `kind`s, web screens. See
 
 | Path | Responsibility | Phase |
 |---|---|---|
-| `packages/core` | Schemas (JSON Schema 2020-12 + Zod), file loader (gray-matter + yaml), inheritance resolver, query DSL (parser + evaluator), in-memory index with watcher, validator, id generator, Git utilities, gate evaluation, operation/extension registry, built-in operations and ingesters | F0 |
+| `packages/core` | Schemas (JSON Schema 2020-12 + Zod), file loader (`yaml` + frontmatter splitter in core), inheritance resolver, query DSL (parser + evaluator), in-memory index with watcher, validator, id generator, Git utilities, gate evaluation, operation/extension registry, built-in operations and ingesters | F0 |
 | `apps/cli` | Generic host: renders the registry as commands; `init`, `validate`, `resolve`, `query`, `id next`, `gates` working in F0; published to npm as `casefile` (includes `casefile mcp`) | F0 |
 | `apps/mcp` | Generic host: MCP server (stdio + Streamable HTTP), token scopes; `cases.search`, `coverage.query` real, the rest typed stubs | F0 skeleton / F2 full |
 | `apps/web` | README only: Inbox, Explorer, Release screens + `.inbox` contract | F1 |
