@@ -56,7 +56,7 @@ renders the registry: CLI commands, MCP tools, inbox `kind`s, web screens. See
 | `apps/web` | README only: Inbox, Explorer, Release screens + `.inbox` contract | F1 |
 | `packages/bridge-*` | README only: field mapping + `Bridge { push, pull, import(dryRun) }` | F2 |
 | `skills/` | `SKILL.md` per skill, installable into `.claude/skills/` and `.agents/skills/` | F0 |
-| `specs/` | One SPEC per operation; skills cite them (location pending #3) | F0 |
+| `packages/core/specs/` | One SPEC per built-in operation, shipped in the package; read with `casefile spec <op>` ([specs-ship-with-operations](decisions/2026-10-15-specs-ship-with-operations.md)) | F0 |
 | `examples/demo-repo` | Fixture repo used by core tests and as the user-facing demo | F0 |
 
 ## Data layout in a user repo (product data model)
@@ -69,12 +69,15 @@ context/
     <feature>/_common.yaml      # subtree commons (inherited)
     <feature>/TC-NNNN.md        # one case, one file, one home
     .runs/<run-id>.jsonl        # append-only run events
-    .inbox/<email-hash>/<id>.yaml  # human intents → agent work queue
+    .inbox/<email-hash>/<id>.yaml  # human intents → agent work queue; hash = sha256(lower(email))[0:12]
   releases/policy.yaml          # release gates + sign-off
+casefile.yaml                   # repo root marker + config (extensions, …)
 casefile.workspace.yaml         # optional multi-repo release aggregation
 ```
 
-Inheritance resolution: org → root → ancestors → case. Scalars override,
+Inheritance resolution: org → root → ancestors → case, where the org level is the
+`commons` of extension packages listed in `casefile.yaml`
+([org-commons-via-extension](decisions/2026-10-15-org-commons-via-extension.md)). Scalars override,
 `preconditions` are prepended, `labels`/`data` are merged. `automation.status`
 values `automated`/`flaky` are **derived** on the resolved case from `.runs`
 events whose `automation_ref` matches; they are never stored in the file.

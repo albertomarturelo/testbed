@@ -14,3 +14,7 @@
 | [2026-10-15-extension-model](2026-10-15-extension-model.md) | Extension model: operations as the unit of extension | Accepted | 2026-10-15 |
 | [2026-10-15-write-ownership](2026-10-15-write-ownership.md) | Write ownership under context/ | Accepted | 2026-10-15 |
 | [2026-10-15-history-commit-reference](2026-10-15-history-commit-reference.md) | history[].commit is derived from a change id, not stored | Accepted | 2026-10-15 |
+| [2026-10-15-inbox-path-hash](2026-10-15-inbox-path-hash.md) | Inbox directory name: truncated SHA-256 of the normalized email | Accepted | 2026-10-15 |
+| [2026-10-15-cli-repo-location](2026-10-15-cli-repo-location.md) | CLI locates the repo with --cwd, positionals are the subject | Accepted | 2026-10-15 |
+| [2026-10-15-org-commons-via-extension](2026-10-15-org-commons-via-extension.md) | Org-level commons are shipped by an extension package | Accepted | 2026-10-15 |
+| [2026-10-15-specs-ship-with-operations](2026-10-15-specs-ship-with-operations.md) | Operation SPECs ship with the operation and are read through the CLI | Accepted | 2026-10-15 |
