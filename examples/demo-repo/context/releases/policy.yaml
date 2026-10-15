@@ -1,0 +1,21 @@
+gates:
+  - name: smoke
+    scope: labels.smoke = true AND state = active
+    require:
+      executed: 100
+      failures: none
+      executor: [ci]
+  - name: payments-regression
+    scope: labels.risk = payments AND state = active
+    require:
+      executed: 100
+      failures: triaged
+      build: current
+  - name: auth
+    scope: labels.risk = auth AND state = active
+    require:
+      executed: 100
+      failures: triaged
+sign_off:
+  - role: qa-lead
+    people: [lead@acme.example]

@@ -1,0 +1,6 @@
+labels:
+  owner_team: checkout
+preconditions:
+  - A signed-in customer has at least one item in the cart
+context_refs:
+  - context/checkout.md

@@ -1,0 +1,15 @@
+properties:
+  risk:
+    type: enum
+    values: [payments, auth, data, low]
+    default: low
+    description: Business risk area, used by release gates.
+    mirror:
+      zephyr: customfield_risk
+  owner_team:
+    type: string
+    description: Team that owns the feature under test.
+  smoke:
+    type: boolean
+    default: false
+    description: Part of the smoke suite.

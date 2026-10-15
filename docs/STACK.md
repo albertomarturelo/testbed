@@ -21,6 +21,7 @@ Upgrades are deliberate PRs that update this table.
 |---|---|---|---|---|
 | `@casefile/core` | `zod` | runtime | 4.6.5 | Schemas; source of the generated JSON Schemas |
 | `@casefile/core` | `ajv` | dev | 8.20.0 | Parity test of committed JSON Schemas (draft 2020-12) |
+| `@casefile/core` | `yaml` | dev | 2.9.1 | Demo fixture test; becomes runtime with the loader (#7) |
 
 ## Platform
 
@@ -37,7 +38,6 @@ Upgrades are deliberate PRs that update this table.
 | Area | Choice | Lands with |
 |---|---|---|
 | Markdown frontmatter | gray-matter | #7 |
-| YAML | `yaml` | #7 |
 | File watching | chokidar | #9 |
 | MCP | Official MCP TypeScript SDK (stdio + Streamable HTTP) | #15 |
 

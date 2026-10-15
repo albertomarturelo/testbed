@@ -1,0 +1,13 @@
+priority: P1
+automation:
+  eligible: true
+labels:
+  risk: payments
+preconditions:
+  - The payment provider sandbox is enabled
+data:
+  card: "4111 1111 1111 1111"
+review:
+  mode: required
+  reviewers: [lead@acme.example, payments-lead@acme.example]
+  max_batch: 3

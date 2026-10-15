@@ -1,0 +1,15 @@
+surfaces: [web]
+layer: e2e
+priority: P2
+automation:
+  eligible: false
+labels:
+  owner_team: qa
+preconditions:
+  - The Acme Shop staging environment is reachable
+data:
+  base_url: https://staging.acme.example
+review:
+  mode: required
+  reviewers: [lead@acme.example]
+  max_batch: 5

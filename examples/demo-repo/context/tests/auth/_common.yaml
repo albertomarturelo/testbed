@@ -1,0 +1,5 @@
+labels:
+  risk: auth
+  owner_team: identity
+data:
+  user: qa+auth@acme.example

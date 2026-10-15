@@ -1,0 +1,9 @@
+id: in-0001
+kind: cover
+target: checkout/payments
+payload:
+  acceptance_ref: ACME-202#AC-3
+  note: Cover partial refunds.
+by: qa@acme.example
+at: "2026-10-14T11:00:00Z"
+status: pending

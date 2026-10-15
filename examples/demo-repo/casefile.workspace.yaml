@@ -1,0 +1,4 @@
+# A real workspace would also list e.g. mobile and backend checkouts.
+repos:
+  - name: web
+    path: .
