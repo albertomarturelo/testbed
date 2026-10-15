@@ -1,0 +1,9 @@
+node_modules/
+dist/
+coverage/
+.turbo/
+*.log
+.DS_Store
+
+# CFD: per-session memory (team of 2+); shared in-flight state lives in GitHub Issues
+docs/CURRENT_STATUS.md
