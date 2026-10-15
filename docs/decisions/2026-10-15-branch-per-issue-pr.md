@@ -59,5 +59,8 @@ and parallel agents in worktrees have nothing to rebase onto but each other.
 - Squash merges fold commit messages into one body. Same constraint as
   [history-commit-reference](2026-10-15-history-commit-reference.md) for user
   repos: messages must be kept, not hand-trimmed.
-- Branch protection on `main` (require PR + green checks) is the mechanical
-  backstop; until it is enabled, this ADR is enforced by review only.
+- Branch protection on `main` is the mechanical backstop (enabled 2026-10-15):
+  PR required with 0 mandatory approvals (so the solo path works), required
+  checks `check (22)`, `check (24)` and `adr-slug-unique`, branch up to date
+  before merge, enforced for admins; merged branches are deleted automatically.
+  A new required check must be added there when a workflow job is added.
