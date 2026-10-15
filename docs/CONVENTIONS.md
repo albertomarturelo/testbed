@@ -31,3 +31,7 @@ Corrections are appended here in the same change that fixes the code.
     `albertomarturelo/testbed` using the CFD session template
     (`.github/ISSUE_TEMPLATE/session.md`). `docs/CURRENT_STATUS.md` is gitignored
     per-session memory; never put shared state there.
+12. **Branches, commits and PRs (confirmed 2026-10-15).** One issue → branch
+    `<issue>-<short-slug>` → PR into `main` with `Closes #<n>` and the issue's AC
+    checklist; Conventional Commits subjects; squash merge on green CI; no
+    direct commits to `main`. See ADR branch-per-issue-pr.

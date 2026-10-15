@@ -19,7 +19,9 @@ Zephyr/Xray/TestRail are mirrors, never the source of truth.
 Vendored CFD procedures in `.agents/skills/` (`.claude/skills` is a symlink;
 Codex uses `$name`). See [cfd-workflow-tooling](docs/decisions/2026-10-15-cfd-workflow-tooling.md).
 
-- Every session: `/session-start` → `/issue-start <n>` → work → `/review-pr` (solo review) → `/session-close`
+- Every session: `/session-start` → `/issue-start <n>` → branch `<n>-<slug>` → work →
+  `/review-pr` (solo review) → `/session-close` → PR `Closes #<n>`, squash on green CI
+  ([branch-per-issue-pr](docs/decisions/2026-10-15-branch-per-issue-pr.md))
 - On demand: `/issue-new`, `/new-decision`, `/validate-context`
 
 ## Commands
