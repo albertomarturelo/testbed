@@ -1,6 +1,7 @@
 # Architecture — casefile
 
-> In progress: `packages/core` has schemas, loader, resolver and id generator; the
+> In progress: `packages/core` has schemas, loader, resolver, id generator, the
+> operation/extension registry and the built-in operations `init` and `project-add`; the
 > rest is the **target** architecture taken from the founding brief. Anything not stated in the brief is marked
 > "(inferred — confirm)". Decisions are recorded in [decisions/](decisions/_index.md).
 
