@@ -23,3 +23,5 @@
 | [2026-10-15-cfd-workflow-tooling](2026-10-15-cfd-workflow-tooling.md) | CFD workflow tooling: vendored skills, hooks and CI checks | Accepted | 2026-10-15 |
 | [2026-10-15-branch-per-issue-pr](2026-10-15-branch-per-issue-pr.md) | Branch per issue, merged into main through a pull request | Accepted | 2026-10-15 |
 | [2026-10-15-frontmatter-without-gray-matter](2026-10-15-frontmatter-without-gray-matter.md) | Case frontmatter is split in core and parsed with `yaml` | Accepted | 2026-10-15 |
+| [2026-10-15-workspace-and-projects](2026-10-15-workspace-and-projects.md) | casefile always runs in a workspace of one or more projects | Accepted | 2026-10-15 |
+| [2026-10-15-agent-driven-setup](2026-10-15-agent-driven-setup.md) | Setup is driven by the agent; the library scaffolds and validates | Accepted | 2026-10-15 |

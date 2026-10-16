@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted — 2026-10-15 (#3)
+Accepted — 2026-10-15 (#3). Resolution order amended by
+[workspace-and-projects](2026-10-15-workspace-and-projects.md): a workspace `commons`
+level sits between extension commons and the project root.
 
 ## Context
 

@@ -4,7 +4,9 @@
 
 Accepted — 2026-10-15 (#5). Supersedes the "defined twice" point of
 [initial-architecture](2026-10-15-initial-architecture.md), which rejected
-generation "for F0, may revisit".
+generation "for F0, may revisit". `casefile.workspace.yaml` removed by
+[workspace-and-projects](2026-10-15-workspace-and-projects.md); `casefile.yaml` gains
+`projects` and `commons`.
 
 ## Context
 

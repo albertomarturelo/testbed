@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted — 2026-10-15 (#3)
+Accepted — 2026-10-15 (#3). Extended by
+[agent-driven-setup](2026-10-15-agent-driven-setup.md): core also ships topic SPECs
+(`setup`, `commons`, `errors`), read with the same `casefile spec <topic>`.
 
 ## Context
 
