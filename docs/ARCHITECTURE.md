@@ -1,7 +1,7 @@
 # Architecture — casefile
 
-> Greenfield: no code exists yet. This describes the **target** architecture taken
-> from the founding brief. Anything not stated in the brief is marked
+> In progress: `packages/core` has schemas, loader, resolver and id generator; the
+> rest is the **target** architecture taken from the founding brief. Anything not stated in the brief is marked
 > "(inferred — confirm)". Decisions are recorded in [decisions/](decisions/_index.md).
 
 ## Thesis
@@ -16,8 +16,8 @@ orchestrates from a local UI without touching files.
 
 | Actor | Writes | Through |
 |---|---|---|
-| Agent (Claude Code, Codex) | Files under `context/tests/` (sole writer) | Skills with limited scope, MCP |
-| Human QA | Intents only (`.inbox/`) | Local UI (`casefile ui`) |
+| Agent (Claude Code, Codex) | Files under `context/tests/` (sole writer); `projects` and `commons` in `casefile.yaml` | Skills with limited scope, MCP, `casefile project add` |
+| Human QA | Intents (`.inbox/`); `casefile.yaml` `version`/`extensions` | Local UI (`casefile ui`), `casefile init` |
 | CI | Run results, validation verdicts | `casefile` CLI |
 | Release manager | Sign-offs | Readiness reports, `release sign` |
 

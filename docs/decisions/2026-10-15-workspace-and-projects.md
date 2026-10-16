@@ -46,8 +46,10 @@ as few files and rules as possible.
 6. **Location** (replaces the root search of cli-repo-location): from `--cwd`
    walk up to the first `casefile.yaml`; that is the workspace. The current
    project is the one whose path contains `--cwd`; `--project <name>` selects one
-   explicitly; with neither, commands act on all projects. The fallback "first
-   directory containing `context/tests/`" is removed.
+   explicitly; with neither, commands act on all projects. A bare id that
+   matches cases in several projects is an error asking for `<project>/TC-NNNN`
+   or `--project`. The fallback "first directory containing `context/tests/`"
+   is removed.
 7. **Paths in errors, origins and output are workspace-relative**, so they stay
    unique across projects.
 8. **`casefile.workspace.yaml` and its schema are removed.** Multi-repo (F3)
@@ -78,3 +80,5 @@ The format is unreleased, so `version` stays `1`.
 - `examples/demo-repo` becomes a one-project workspace; a two-project
   `examples/demo-monorepo` fixture is added for workspace tests.
 - Ingest, gates, query and validate take `--project` or infer it from the cwd.
+- Open: installing and pinning casefile and its extensions in a workspace with
+  no `package.json` (the lockfile assumption of org-commons-via-extension) — #29.

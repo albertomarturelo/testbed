@@ -39,18 +39,23 @@ and must report problems precisely enough for a model to fix them on its own.
    - `validate --json`: the oracle (point 5).
 4. **Pending markers instead of defaults.** Scaffolded fields that need a
    decision hold the literal `TODO`, with a comment listing the allowed values.
-   `validate` reports each as `scaffold.todo` (and not also as a schema error), so
-   its output is the agent's task list. No default can slip in undecided.
+   A marker is a YAML scalar exactly equal to `TODO` in `casefile.yaml`, commons
+   or case frontmatter; text that merely contains "TODO" is not one. `validate`
+   reports each as `scaffold.todo` (and not also as a schema error), so its
+   output is the agent's task list. No default can slip in undecided.
 5. **Error contract.** Every finding has `code` (stable, documented in
    `casefile spec errors`), `severity`, workspace-relative `path`, `line` and
    `field` when known, `message`, and `expected`, `hint`, `spec` when useful.
    Checks run in levels — workspace → file schemas → cross-file → resolution →
    environment — and a failing level stops the later ones for that scope, so a
    broken `casefile.yaml` yields one finding, not hundreds. Output order is
-   deterministic. Exit: 0 clean, 1 findings, 2 no workspace.
-6. **Ownership.** `casefile.yaml` is written by `init` (human) and by `project
-   add` (agent); everything under `context/tests/` keeps its owner from
-   write-ownership — the scaffold is written by an agent operation.
+   deterministic. Exit: 0 no errors (warnings allowed), 1 errors, 2 no
+   workspace — so warnings never block the setup loop.
+6. **Ownership of `casefile.yaml`, per field:** `version` and `extensions` —
+   human (`init` or by hand); `projects` — agent, through `project add`;
+   `commons` — agent only, like any `_common.yaml` (write-ownership). Everything
+   under `context/tests/` keeps its owner from write-ownership; the scaffold is
+   written by an agent operation.
 
 ## Alternatives Considered
 
@@ -70,5 +75,7 @@ and must report problems precisely enough for a model to fix them on its own.
   broken-workspace fixtures asserting exact codes.
 - First real operations in the registry: `init` and `project add`.
 - New SPEC `setup` and skill `casefile-setup`; `qa-bootstrap` runs per project.
+- The published `casefile` package bundles the repo's `skills/` so `init` can
+  offer them; `project add` edits `casefile.yaml` keeping comments and key order.
 - The deterministic parts are fully testable; the skill's "done" is objective
   (`validate` exits 0).
