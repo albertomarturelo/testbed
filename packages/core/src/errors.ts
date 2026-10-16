@@ -4,7 +4,11 @@
  */
 export type CasefileError = {
   code: string;
-  /** Workspace-relative path (POSIX separators) of the file the error is about. */
+  /**
+   * Workspace-relative path (POSIX separators) of the file the error is about.
+   * Exception: `workspace.missing` has no workspace, so it carries the directory
+   * the caller searched from, as given.
+   */
   path: string;
   message: string;
   /** 1-based line in the file, when known. */

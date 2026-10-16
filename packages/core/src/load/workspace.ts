@@ -9,7 +9,7 @@ import {
   parseConfigFile,
   parseRunFile,
 } from "./parse.js";
-import { CONFIG_FILE, TESTS_DIR } from "./paths.js";
+import { CONFIG_FILE, normalizeProjectPath, TESTS_DIR } from "./paths.js";
 
 // Paths in loaded data are workspace-relative and POSIX (ADR workspace-and-projects).
 
@@ -62,7 +62,7 @@ export async function loadWorkspace(root: string): Promise<LoadedWorkspace> {
 
   for (const [index, entry] of config.value.projects.entries()) {
     const field = `projects.${index}.path`;
-    const path = posix.normalize(entry.path);
+    const path = normalizeProjectPath(entry.path);
     if (isAbsolute(entry.path) || path === ".." || path.startsWith("../")) {
       workspace.errors.push({
         code: "project.outside_workspace",
@@ -88,14 +88,15 @@ export async function loadWorkspace(root: string): Promise<LoadedWorkspace> {
   return workspace;
 }
 
-/** Reads one project; errors are returned next to whatever loaded. */
+/** Reads one project; errors are returned next to whatever loaded. `entry.path` is normalized. */
 export async function loadProject(
   root: string,
   entry: ProjectEntry,
 ): Promise<{ value: LoadedProject; errors: CasefileError[] }> {
+  const projectPath = normalizeProjectPath(entry.path);
   const project: LoadedProject = {
     name: entry.name,
-    path: entry.path,
+    path: projectPath,
     commons: new Map(),
     cases: [],
     runs: [],
@@ -106,7 +107,7 @@ export async function loadProject(
     else errors.push(...result.errors);
   };
 
-  const testsDir = posix.join(entry.path, TESTS_DIR);
+  const testsDir = posix.join(projectPath, TESTS_DIR);
   for (const rel of await listFiles(join(root, testsDir))) {
     if (rel.startsWith(".inbox/")) continue;
     const isCommon = rel === "_common.yaml" || rel.endsWith("/_common.yaml");
@@ -155,7 +156,7 @@ export function projectAt(
   if (rel === ".." || rel.startsWith("../") || isAbsolute(rel)) return null;
   let found: { name: string; depth: number } | null = null;
   for (const { name, path } of projects) {
-    const dir = posix.normalize(path);
+    const dir = normalizeProjectPath(path);
     const contains = dir === "." || rel === dir || rel.startsWith(`${dir}/`);
     const depth = dir === "." ? 0 : dir.split("/").length;
     if (contains && (found === null || depth > found.depth)) found = { name, depth };
