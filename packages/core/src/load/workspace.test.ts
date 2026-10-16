@@ -8,7 +8,7 @@ import {
   DEMO_MONOREPO_ROOT,
   DEMO_ROOT,
 } from "../demo.fixture.js";
-import { findWorkspaceRoot, loadWorkspace, projectAt } from "./workspace.js";
+import { findWorkspaceRoot, loadProject, loadWorkspace, projectAt } from "./workspace.js";
 
 describe("loadWorkspace on examples/demo-repo (one project at `.`)", async () => {
   const workspace = await loadWorkspace(DEMO_ROOT);
@@ -154,6 +154,43 @@ describe("loadWorkspace on broken workspaces", () => {
   });
 });
 
+describe("project paths as an agent may write them", () => {
+  let root = "";
+  const put = async (path: string, text: string) => {
+    await mkdir(dirname(join(root, path)), { recursive: true });
+    await writeFile(join(root, path), text);
+  };
+  afterEach(() => rm(root, { recursive: true, force: true }));
+
+  it("loads `apps/web/` and `./services//api` with normalized paths", async () => {
+    root = await mkdtemp(join(tmpdir(), "casefile-"));
+    await put(
+      "casefile.yaml",
+      "version: 1\nprojects:\n  - { name: web, path: apps/web/ }\n  - { name: api, path: ./services//api }\n",
+    );
+    await put("apps/web/context/tests/_common.yaml", "layer: e2e\n");
+    await put("services/api/context/tests/_common.yaml", "layer: api\n");
+    const workspace = await loadWorkspace(root);
+    expect(workspace.errors).toEqual([]);
+    expect(workspace.projects.map((p) => [p.name, p.path, [...p.commons.keys()]])).toEqual([
+      ["web", "apps/web", ["apps/web/context/tests/_common.yaml"]],
+      ["api", "services/api", ["services/api/context/tests/_common.yaml"]],
+    ]);
+    const entries = workspace.config?.projects ?? [];
+    expect(projectAt(entries, root, join(root, "apps/web/src"))).toBe("web");
+    expect(projectAt(entries, root, join(root, "services/api"))).toBe("api");
+  });
+
+  it("stores the normalized path when loadProject is called directly", async () => {
+    root = await mkdtemp(join(tmpdir(), "casefile-"));
+    await put("apps/web/context/tests/_common.yaml", "layer: e2e\n");
+    const { value, errors } = await loadProject(root, { name: "web", path: "./apps/web/" });
+    expect(errors).toEqual([]);
+    expect(value.path).toBe("apps/web");
+    expect([...value.commons.keys()]).toEqual(["apps/web/context/tests/_common.yaml"]);
+  });
+});
+
 describe("findWorkspaceRoot", () => {
   it("walks up from inside a project to the workspace root", async () => {
     const cwd = join(DEMO_MONOREPO_ROOT, "apps/web/context/tests/login");
@@ -201,6 +238,11 @@ describe("projectAt", () => {
   it("matches a single project at `.` from anywhere in the workspace", () => {
     expect(projectAt([{ name: "app", path: "." }], root, "/ws")).toBe("app");
     expect(projectAt([{ name: "app", path: "." }], root, "/ws/src/deep")).toBe("app");
+  });
+
+  it("matches project paths written with a trailing slash", () => {
+    expect(projectAt([{ name: "web", path: "apps/web/" }], root, "/ws/apps/web/src")).toBe("web");
+    expect(projectAt([{ name: "web", path: "apps/web/" }], root, "/ws/apps/web")).toBe("web");
   });
 
   it("prefers the most specific project", () => {
