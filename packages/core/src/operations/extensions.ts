@@ -114,7 +114,10 @@ export async function loadToolchain(
   const dir = join(root, TOOLCHAIN_DIR);
   let declared: Toolchain["declared"] = null;
   const text = await readFile(join(dir, "package.json"), "utf8").catch((error: unknown) => {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "ENOENT") return null;
+    // A directory in its place is unreadable, like invalid JSON: it pins nothing.
+    if (code === "EISDIR") return "";
     throw error;
   });
   if (text !== null) {

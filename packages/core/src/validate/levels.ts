@@ -1,6 +1,6 @@
 import { posix } from "node:path";
 import { CONFIG_FILE, normalizeProjectPath, pathContains, TESTS_DIR } from "../load/paths.js";
-import { CASEFILE_PACKAGE, TOOLCHAIN_DIR } from "../operations/extensions.js";
+import { CASEFILE_PACKAGE, TOOLCHAIN_DIR, type Toolchain } from "../operations/extensions.js";
 import { commonsChain, resolveCase, workspaceLayer } from "../resolve/resolve.js";
 import { ExactVersion } from "../schema/index.js";
 import { type Finding, finding, fromError } from "./finding.js";
@@ -190,21 +190,39 @@ const TOOLCHAIN_PACKAGE = `${TOOLCHAIN_DIR}/package.json`;
 const NPM_INSTALL = `npm install --prefix ${TOOLCHAIN_DIR} --ignore-scripts`;
 
 /**
+ * Why `name` is not usable as declared, or `null`: not installed at all, or a
+ * version other than its exact pin in `.casefile/package.json` (a stale install).
+ */
+function notInstalled(toolchain: Toolchain, name: string): string | null {
+  const installed = Object.hasOwn(toolchain.installed, name)
+    ? toolchain.installed[name]
+    : undefined;
+  if (installed === undefined) return `${name} is not installed in ${TOOLCHAIN_DIR}/node_modules`;
+  const pin = toolchain.declared?.[name];
+  if (pin !== undefined && ExactVersion.safeParse(pin).success && installed !== pin) {
+    return `${name} ${pin} is pinned in ${TOOLCHAIN_PACKAGE} but ${installed} is installed`;
+  }
+  return null;
+}
+
+/**
  * What must be installed for the workspace to run (ADR casefile-toolchain-dir):
- * every listed extension, and casefile when `.casefile/package.json` declares it.
- * Without that file there is nothing declared to check.
+ * every listed extension, and casefile when `.casefile/package.json` declares it,
+ * at their exact pins when they have one. Without that file only extensions are
+ * checked: nothing else is declared.
  */
 export const environmentLevel: Level = {
   name: "environment",
   workspace({ workspace: { config }, toolchain }) {
     const found: Finding[] = [];
     for (const [index, name] of (config?.extensions ?? []).entries()) {
-      if (Object.hasOwn(toolchain.installed, name)) continue;
+      const message = notInstalled(toolchain, name);
+      if (message === null) continue;
       found.push(
         finding("extension.not_installed", {
           path: CONFIG_FILE,
           field: `extensions.${index}`,
-          message: `extension ${name} is not installed in ${TOOLCHAIN_DIR}/node_modules`,
+          message,
           hint: `${NPM_INSTALL} --save-exact ${name}`,
         }),
       );
@@ -224,14 +242,8 @@ export const environmentLevel: Level = {
         }),
       );
     }
-    if (pin !== undefined && !Object.hasOwn(toolchain.installed, CASEFILE_PACKAGE)) {
-      found.push(
-        finding("toolchain.not_installed", {
-          ...at,
-          message: `${CASEFILE_PACKAGE} ${pin} is declared in ${TOOLCHAIN_PACKAGE} but not installed`,
-        }),
-      );
-    }
+    const message = pin === undefined ? null : notInstalled(toolchain, CASEFILE_PACKAGE);
+    if (message !== null) found.push(finding("toolchain.not_installed", { ...at, message }));
     return found;
   },
 };

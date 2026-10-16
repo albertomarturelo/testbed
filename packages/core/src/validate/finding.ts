@@ -123,11 +123,12 @@ export const FINDING_CODES = {
   "extension.not_installed": {
     severity: "error",
     description:
-      "An extension listed in `casefile.yaml` is not installed in `.casefile/node_modules`",
+      "An extension listed in `casefile.yaml` is not installed in `.casefile/node_modules`, or not at its pinned version",
   },
   "toolchain.not_installed": {
     severity: "error",
-    description: "`.casefile/package.json` declares casefile but it is not installed",
+    description:
+      "`.casefile/package.json` declares casefile but it is not installed, or not at its pinned version",
     hint: "npm install --prefix .casefile --ignore-scripts (in CI: npm ci --prefix .casefile --ignore-scripts)",
   },
   "toolchain.unpinned": {

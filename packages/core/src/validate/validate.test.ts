@@ -167,6 +167,35 @@ describe("environment level", () => {
     withWorkspace(async (root) => {
       await put(root, ".casefile/package.json", "{ not json");
       expect((await validateAt(root)).map((f) => f.code)).toEqual(["toolchain.unpinned"]);
+      await rm(join(root, ".casefile/package.json"));
+      await mkdir(join(root, ".casefile/package.json"));
+      expect((await validateAt(root)).map((f) => f.code)).toEqual(["toolchain.unpinned"]);
+    }));
+
+  it("reports an install that differs from its exact pin", () =>
+    withWorkspace(async (root) => {
+      await put(
+        root,
+        "casefile.yaml",
+        "version: 1\nprojects: [{ name: web, path: . }]\nextensions: ['@acme/commons']\n",
+      );
+      await put(
+        root,
+        ".casefile/package.json",
+        JSON.stringify({ dependencies: { casefile: "0.4.1", "@acme/commons": "1.0.0" } }),
+      );
+      await fakeInstall(root, "casefile", "0.4.2");
+      await fakeInstall(root, "@acme/commons", "0.9.0");
+      expect((await validateAt(root)).map((f) => [f.code, f.message])).toEqual([
+        [
+          "toolchain.not_installed",
+          "casefile 0.4.1 is pinned in .casefile/package.json but 0.4.2 is installed",
+        ],
+        [
+          "extension.not_installed",
+          "@acme/commons 1.0.0 is pinned in .casefile/package.json but 0.9.0 is installed",
+        ],
+      ]);
     }));
 
   it("gives the install command for a missing extension", () =>
