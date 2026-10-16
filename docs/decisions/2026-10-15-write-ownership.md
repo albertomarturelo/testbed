@@ -3,7 +3,8 @@
 ## Status
 
 Accepted — 2026-10-15. Resolves the conflict noted in
-[agent-is-sole-writer](2026-10-15-agent-is-sole-writer.md) (#1).
+[agent-is-sole-writer](2026-10-15-agent-is-sole-writer.md) (#1). `casefile.yaml` ownership
+stated in [agent-driven-setup](2026-10-15-agent-driven-setup.md).
 
 ## Context
 

@@ -51,36 +51,57 @@ renders the registry: CLI commands, MCP tools, inbox `kind`s, web screens. See
 | Path | Responsibility | Phase |
 |---|---|---|
 | `packages/core` | Schemas (JSON Schema 2020-12 + Zod), file loader (`yaml` + frontmatter splitter in core), inheritance resolver, query DSL (parser + evaluator), in-memory index with watcher, validator, id generator, Git utilities, gate evaluation, operation/extension registry, built-in operations and ingesters | F0 |
-| `apps/cli` | Generic host: renders the registry as commands; `init`, `validate`, `resolve`, `query`, `id next`, `gates` working in F0; published to npm as `casefile` (includes `casefile mcp`) | F0 |
+| `apps/cli` | Generic host: renders the registry as commands; `init`, `project add`, `validate --json`, `resolve`, `query`, `id next`, `gates`, `spec` working in F0; published to npm as `casefile` (includes `casefile mcp`) | F0 |
 | `apps/mcp` | Generic host: MCP server (stdio + Streamable HTTP), token scopes; `cases.search`, `coverage.query` real, the rest typed stubs | F0 skeleton / F2 full |
 | `apps/web` | README only: Inbox, Explorer, Release screens + `.inbox` contract | F1 |
 | `packages/bridge-*` | README only: field mapping + `Bridge { push, pull, import(dryRun) }` | F2 |
 | `skills/` | `SKILL.md` per skill, installable into `.claude/skills/` and `.agents/skills/` | F0 |
-| `packages/core/specs/` | One SPEC per built-in operation, shipped in the package; read with `casefile spec <op>` ([specs-ship-with-operations](decisions/2026-10-15-specs-ship-with-operations.md)) | F0 |
-| `examples/demo-repo` | Fixture repo used by core tests and as the user-facing demo | F0 |
+| `packages/core/specs/` | One SPEC per built-in operation plus topic SPECs (`setup`, `commons`, `errors`), shipped in the package; read with `casefile spec <name>` ([specs-ship-with-operations](decisions/2026-10-15-specs-ship-with-operations.md)) | F0 |
+| `examples/demo-repo` | One-project workspace: fixture for core tests and the user-facing demo | F0 |
+| `examples/demo-monorepo` | Two-project workspace fixture for workspace tests (planned) | F0 |
 
-## Data layout in a user repo (product data model)
+## Data layout in a user workspace (product data model)
+
+casefile always runs in a workspace: one `casefile.yaml` at its root listing one
+project (single repo, `path: .`) or several (monorepo)
+([workspace-and-projects](decisions/2026-10-15-workspace-and-projects.md)).
 
 ```
-context/
-  tests/
-    _properties.yaml            # custom property declarations + mirror mapping
-    _common.yaml                # root commons
-    <feature>/_common.yaml      # subtree commons (inherited)
-    <feature>/TC-NNNN.md        # one case, one file, one home
-    .runs/<run-id>.jsonl        # append-only run events
-    .inbox/<email-hash>/<id>.yaml  # human intents → agent work queue; hash = sha256(lower(email))[0:12]
-  releases/policy.yaml          # release gates + sign-off
-casefile.yaml                   # repo root marker + config (extensions, …)
-casefile.workspace.yaml         # optional multi-repo release aggregation
+casefile.yaml                   # workspace root + config: projects, extensions, commons
+apps/web/                       # a project = a directory with context/tests/
+  context/
+    tests/
+      _properties.yaml          # custom property declarations + mirror mapping
+      _common.yaml              # project root commons
+      <feature>/_common.yaml    # subtree commons (inherited)
+      <feature>/TC-NNNN.md      # one case, one file, one home; ids unique per project
+      .runs/<run-id>.jsonl      # append-only run events
+      .inbox/<email-hash>/<id>.yaml  # human intents → agent work queue; hash = sha256(lower(email))[0:12]
+    releases/policy.yaml        # release gates + sign-off
+apps/mobile/
+  context/…
 ```
 
-Inheritance resolution: org → root → ancestors → case, where the org level is the
-`commons` of extension packages listed in `casefile.yaml`
-([org-commons-via-extension](decisions/2026-10-15-org-commons-via-extension.md)). Scalars override,
+Inheritance resolution: extension commons → workspace `commons` (in
+`casefile.yaml`) → project root → ancestors → case. Extension commons are the
+org level ([org-commons-via-extension](decisions/2026-10-15-org-commons-via-extension.md)). Scalars override,
 `preconditions` are prepended, `labels`/`data` are merged. `automation.status`
 values `automated`/`flaky` are **derived** on the resolved case from `.runs`
 events whose `automation_ref` matches; they are never stored in the file.
+Cross-project references are qualified: `web/TC-0003`.
+
+## Setup flow
+
+Setup is done by the user's agent; the library scaffolds and validates
+([agent-driven-setup](decisions/2026-10-15-agent-driven-setup.md)).
+
+1. Human: `npx casefile init` → `casefile.yaml` (no projects yet) + skills offered.
+2. Agent, `/casefile-setup`: reads `casefile spec setup`, explores the repo, confirms
+   the plan with the human once, runs `casefile project add <name> <path>` per project.
+3. The scaffold leaves `TODO` markers; `casefile validate --json` lists them as
+   `scaffold.todo` with hints. The agent fixes and re-validates until exit 0.
+4. Agent, `qa-bootstrap` per project: feature tree, commons, existing tests mapped
+   to cases with `automation.ref`, all as `draft`.
 
 ## Data flow
 

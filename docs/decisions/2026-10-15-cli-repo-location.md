@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted — 2026-10-15 (#3)
+Accepted — 2026-10-15 (#3). Root search amended by
+[workspace-and-projects](2026-10-15-workspace-and-projects.md): walk up to `casefile.yaml`
+(the workspace) only; the project comes from the path or `--project`.
 
 ## Context
 
