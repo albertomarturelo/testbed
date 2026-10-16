@@ -11,17 +11,20 @@ export type LoadedCase = { path: string; file: TestCaseFile; body: string };
 
 /** YAML 1.2, core schema: no timestamp tag, so dates stay strings (ADR frontmatter-without-gray-matter). */
 export function parseYaml(path: string, text: string, lineOffset = 1): Result<unknown> {
+  const invalid = (message: string, line?: number): CasefileError => ({
+    code: "yaml.invalid",
+    path,
+    message: message.split("\n")[0] ?? message,
+    ...(line === undefined ? {} : { line: line + lineOffset - 1 }),
+  });
   try {
     return ok(parse(text, { schema: "core" }));
   } catch (error) {
-    if (!(error instanceof YAMLParseError)) throw error;
-    const line = error.linePos?.[0].line;
-    return fail({
-      code: "yaml.invalid",
-      path,
-      message: error.message.split("\n")[0] ?? error.message,
-      ...(line === undefined ? {} : { line: line + lineOffset - 1 }),
-    });
+    if (error instanceof YAMLParseError)
+      return fail(invalid(error.message, error.linePos?.[0].line));
+    // Building the value throws plain errors too, e.g. for an alias with no anchor.
+    if (error instanceof Error) return fail(invalid(error.message));
+    throw error;
   }
 }
 
@@ -69,10 +72,15 @@ export function parseConfigFile(path: string, text: string): Result<Config> {
   return parseYamlFile(Config, path, text);
 }
 
-/** `.runs/<run-id>.jsonl`: one event per non-blank line; every bad line is reported. */
-export function parseRunFile(path: string, text: string): Result<RunEvent[]> {
-  const events: RunEvent[] = [];
-  const errors: CasefileError[] = [];
+/** Valid events of a run file plus one error per bad line. */
+export type ParsedRunFile = { events: RunEvent[]; errors: CasefileError[] };
+
+/**
+ * `.runs/<run-id>.jsonl`: one event per non-blank line. A bad line does not hide
+ * the valid ones: the file is append-only, so earlier events stay usable.
+ */
+export function parseRunFile(path: string, text: string): ParsedRunFile {
+  const parsed: ParsedRunFile = { events: [], errors: [] };
   text.split(/\r?\n/).forEach((raw, i) => {
     if (raw.trim() === "") return;
     const line = i + 1;
@@ -80,12 +88,12 @@ export function parseRunFile(path: string, text: string): Result<RunEvent[]> {
     try {
       value = JSON.parse(raw);
     } catch (error) {
-      errors.push({ code: "json.invalid", path, line, message: (error as Error).message });
+      parsed.errors.push({ code: "json.invalid", path, line, message: (error as Error).message });
       return;
     }
     const event = validate(RunEvent, path, value, line);
-    if (event.ok) events.push(event.value);
-    else errors.push(...event.errors);
+    if (event.ok) parsed.events.push(event.value);
+    else parsed.errors.push(...event.errors);
   });
-  return errors.length === 0 ? ok(events) : fail(...errors);
+  return parsed;
 }

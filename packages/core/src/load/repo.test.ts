@@ -46,13 +46,21 @@ describe("loadRepo on broken repos", () => {
     await put("casefile.yaml", "version: 2\n");
     await put("context/tests/_common.yaml", "layer: [\n");
     await put("context/tests/a/TC-0001.md", "no frontmatter\n");
-    await put("context/tests/.runs/r.jsonl", "{}\n");
+    const run = {
+      run_id: "r",
+      case_id: "TC-0001",
+      status: "passed",
+      executor: "ci:x",
+      at: "2026-10-15T12:00:00Z",
+    };
+    await put("context/tests/.runs/r.jsonl", `${JSON.stringify(run)}\n{}\n`);
     await put("context/tests/a/_common.yaml", "layer: e2e\n");
     await put("context/tests/.inbox/abc/in-1.yaml", "ignored: [\n");
     await put("context/tests/a/notes.md", "ignored\n");
     const repo = await loadRepo(root);
     expect(repo.config).toBeNull();
     expect([...repo.commons.keys()]).toEqual(["context/tests/a/_common.yaml"]);
+    expect(repo.runs.map((r) => r.run_id)).toEqual(["r"]);
     expect(new Set(repo.errors.map((e) => `${e.path} ${e.code}`))).toEqual(
       new Set([
         "casefile.yaml schema.invalid",

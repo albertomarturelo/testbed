@@ -96,11 +96,11 @@ export function resolveCase(loaded: LoadedCase, context: ResolveContext): Result
       origins["automation.eligible"] = origin;
     }
     for (const [key, value] of Object.entries(commons.labels ?? {})) {
-      merged.labels[key] = value;
+      merged.labels[key] = structuredClone(value);
       origins[`labels.${key}`] = origin;
     }
     for (const [key, value] of Object.entries(commons.data ?? {})) {
-      merged.data[key] = value;
+      merged.data[key] = structuredClone(value);
       origins[`data.${key}`] = origin;
     }
     for (const precondition of commons.preconditions ?? []) {

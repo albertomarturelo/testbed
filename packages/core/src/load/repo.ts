@@ -1,5 +1,5 @@
 import { readdir, readFile } from "node:fs/promises";
-import { join, posix, sep } from "node:path";
+import { join, posix, relative, sep } from "node:path";
 import type { CasefileError, Result } from "../errors.js";
 import type { CommonFile, Config, RunEvent } from "../schema/index.js";
 import {
@@ -65,8 +65,11 @@ export async function loadRepo(root: string): Promise<LoadedRepo> {
     const text = await readText(root, path);
     if (text === null) continue;
     if (isCommon) collect(parseCommonFile(path, text), (c) => repo.commons.set(path, c));
-    else if (RUN_FILE.test(rel)) collect(parseRunFile(path, text), (e) => repo.runs.push(...e));
-    else collect(parseCaseFile(path, text), (c) => repo.cases.push(c));
+    else if (RUN_FILE.test(rel)) {
+      const { events, errors } = parseRunFile(path, text);
+      repo.runs.push(...events);
+      repo.errors.push(...errors);
+    } else collect(parseCaseFile(path, text), (c) => repo.cases.push(c));
   }
   return repo;
 }
@@ -77,12 +80,7 @@ async function listFiles(dir: string): Promise<string[]> {
     const entries = await readdir(dir, { recursive: true, withFileTypes: true });
     return entries
       .filter((e) => e.isFile())
-      .map((e) =>
-        join(e.parentPath, e.name)
-          .slice(dir.length + 1)
-          .split(sep)
-          .join("/"),
-      )
+      .map((e) => relative(dir, join(e.parentPath, e.name)).split(sep).join("/"))
       .sort();
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];

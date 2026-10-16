@@ -135,14 +135,26 @@ describe("resolveCase: inheritance", () => {
   });
 
   it("does not mutate the commons it reads", () => {
-    const commons: CommonFile = { ...ROOT.commons, labels: { a: "1" }, preconditions: ["p"] };
+    const commons: CommonFile = {
+      ...ROOT.commons,
+      labels: { a: "1", tags: ["x"] },
+      data: { user: { name: "ana" } },
+      preconditions: ["p"],
+    };
     const c = resolved(
       { surfaces: ["api"], labels: { b: "2" } },
       { layers: [layer("root", commons)] },
     );
     c.labels.c = "3";
+    (c.labels.tags as string[]).push("y");
+    (c.data.user as { name: string }).name = "bob";
     c.preconditions.push("q");
-    expect(commons).toMatchObject({ surfaces: ["web"], labels: { a: "1" }, preconditions: ["p"] });
+    expect(commons).toMatchObject({
+      surfaces: ["web"],
+      labels: { a: "1", tags: ["x"] },
+      data: { user: { name: "ana" } },
+      preconditions: ["p"],
+    });
   });
 
   it("defaults labels, data and preconditions to empty", () => {

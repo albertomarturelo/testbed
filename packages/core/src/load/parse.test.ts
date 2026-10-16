@@ -50,6 +50,26 @@ describe("parseYaml", () => {
     expect(!result.ok && result.errors[0]?.line).toBeGreaterThanOrEqual(3);
   });
 
+  it("reports an alias with no anchor instead of throwing", () => {
+    expect(parseYaml("x.yaml", "a: *nope\n")).toEqual({
+      ok: false,
+      errors: [expect.objectContaining({ code: "yaml.invalid", path: "x.yaml" })],
+    });
+  });
+
+  it("leaves an explicit !!timestamp to the schema, which rejects it", () => {
+    const result = parseCommonFile("_common.yaml", "data:\n  at: !!timestamp 2026-10-15\n");
+    expect(result.ok).toBe(true);
+    const asCase = parseCaseFile(
+      "a.md",
+      CASE.replace("at: 2026-10-15T10:00:00Z", "at: !!timestamp 2026-10-15T10:00:00Z"),
+    );
+    expect(asCase.ok || asCase.errors[0]).toMatchObject({
+      code: "schema.invalid",
+      field: "history.0.at",
+    });
+  });
+
   it("rejects duplicate keys", () => {
     expect(parseYaml("x.yaml", "a: 1\na: 2\n").ok).toBe(false);
   });
@@ -107,15 +127,17 @@ describe("parseRunFile", () => {
   it("parses one event per non-blank line", () => {
     const text = `${JSON.stringify(RUN)}\r\n\n${JSON.stringify({ ...RUN, case_id: "TC-0002" })}\n`;
     const result = parseRunFile("r1.jsonl", text);
-    expect(result.ok && result.value.map((e) => e.case_id)).toEqual(["TC-0001", "TC-0002"]);
+    expect(result.events.map((e) => e.case_id)).toEqual(["TC-0001", "TC-0002"]);
+    expect(result.errors).toEqual([]);
   });
 
-  it("reports every bad line with its number", () => {
+  it("reports every bad line with its number and keeps the valid ones", () => {
     const text = [JSON.stringify(RUN), "{not json", JSON.stringify({ ...RUN, status: "ok" })].join(
       "\n",
     );
     const result = parseRunFile("r1.jsonl", text);
-    expect(result.ok || result.errors).toEqual([
+    expect(result.events).toEqual([RUN]);
+    expect(result.errors).toEqual([
       expect.objectContaining({ code: "json.invalid", line: 2 }),
       expect.objectContaining({ code: "schema.invalid", line: 3, field: "status" }),
     ]);
