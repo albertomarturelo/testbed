@@ -5,7 +5,8 @@
 Accepted — 2026-10-15 (#23). Amends [cli-repo-location](2026-10-15-cli-repo-location.md),
 [org-commons-via-extension](2026-10-15-org-commons-via-extension.md),
 [schemas-generated-from-zod](2026-10-15-schemas-generated-from-zod.md) and the F3
-"multi-repo workspace" of [initial-architecture](2026-10-15-initial-architecture.md).
+"multi-repo workspace" of [initial-architecture](2026-10-15-initial-architecture.md). Pinning question
+resolved by [casefile-toolchain-dir](2026-10-15-casefile-toolchain-dir.md).
 
 ## Context
 
@@ -80,5 +81,6 @@ The format is unreleased, so `version` stays `1`.
 - `examples/demo-repo` becomes a one-project workspace; a two-project
   `examples/demo-monorepo` fixture is added for workspace tests.
 - Ingest, gates, query and validate take `--project` or infer it from the cwd.
-- Open: installing and pinning casefile and its extensions in a workspace with
-  no `package.json` (the lockfile assumption of org-commons-via-extension) — #29.
+- Installing and pinning casefile and its extensions without relying on the
+  product's `package.json`: resolved by
+  [casefile-toolchain-dir](2026-10-15-casefile-toolchain-dir.md) (`.casefile/`).

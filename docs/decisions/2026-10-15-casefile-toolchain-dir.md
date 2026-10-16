@@ -25,9 +25,10 @@ itself is always required; the open question is only where exact versions live.
    `package.json`, if any, is never created or edited.
 2. **`init` creates `.casefile/`** (if absent) with `casefile` pinned to the
    version running `init`. Installing, which writes the lockfile, is
-   `npm install --prefix .casefile`, run by the setup skill or CI. Adding an
-   extension is `npm install --prefix .casefile --save-exact <pkg>` plus its
-   entry in `casefile.yaml`.
+   `npm install --prefix .casefile --ignore-scripts`, run by the setup skill.
+   Adding an extension is the same command with `--save-exact <pkg>`, plus its
+   entry in `casefile.yaml`. casefile and its extensions must not rely on
+   install scripts, so they never run with the product's CI secrets.
 3. **Extensions resolve from `.casefile/node_modules` only.** A package found
    further up (e.g. in the product's root `node_modules`) does not count, so
    the product's dependencies cannot change what casefile loads. The version
@@ -38,8 +39,9 @@ itself is always required; the open question is only where exact versions live.
    environment flag prevents loops). Declared but not installed →
    `toolchain.not_installed` with the install command as hint. `init` never
    delegates: it must work before anything is installed.
-5. **CI** runs `npm ci --prefix .casefile`, then
-   `npm exec --prefix .casefile -- casefile <command>`.
+5. **CI** runs `npm ci --prefix .casefile --ignore-scripts`, then the installed
+   binary directly from the workspace root:
+   `.casefile/node_modules/.bin/casefile <command>`.
 6. **Ownership:** `.casefile/` follows `extensions` in `casefile.yaml` — the
    human (via `init` or by hand); the setup skill may run the install that writes
    the lockfile.
