@@ -90,7 +90,10 @@ export const initOperation = defineOperation({
       for (const file of input.skills) await write(`${target}/${file.path}`, file.text);
     }
 
-    const names = [...new Set(input.skills.map((file) => file.path.split("/")[0] ?? file.path))];
+    // A skill is a top-level directory of the bundle; loose files are not offered.
+    const names = [
+      ...new Set(input.skills.flatMap((file) => /^([^/]+)\//.exec(file.path)?.slice(1) ?? [])),
+    ];
     return ok({
       created,
       kept,

@@ -5,8 +5,9 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { z } from "zod";
 import type { Result } from "../errors.js";
 import { loadWorkspace } from "../load/workspace.js";
+import { Layer, Priority, ReviewMode, Surface } from "../schema/index.js";
 import { builtinOperations } from "./builtins.js";
-import type { projectAddOperation } from "./project-add.js";
+import { COMMON_SCAFFOLD, type projectAddOperation } from "./project-add.js";
 import { createRegistry } from "./registry.js";
 
 let root = "";
@@ -61,6 +62,12 @@ describe("init → project add → load", () => {
       expect(errors.map((e) => e.field).sort()).toEqual(TODO_FIELDS);
     }
     expect(workspace.errors).toHaveLength(TODO_FIELDS.length * 2);
+  });
+
+  it("lists each enum's allowed values from the schema", () => {
+    for (const options of [Surface.options, Layer.options, Priority.options, ReviewMode.options]) {
+      expect(COMMON_SCAFFOLD).toContain(options.join(", "));
+    }
   });
 
   it("scaffolds a single-project repo at `.`", async () => {

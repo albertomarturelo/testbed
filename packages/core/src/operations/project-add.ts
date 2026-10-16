@@ -4,7 +4,7 @@ import { z } from "zod";
 import { type CasefileError, fail, ok } from "../errors.js";
 import { validate } from "../load/parse.js";
 import { CONFIG_FILE, normalizeProjectPath, TESTS_DIR } from "../load/paths.js";
-import { ProjectEntry } from "../schema/index.js";
+import { Layer, Priority, ProjectEntry, ReviewMode, Surface } from "../schema/index.js";
 import { defineOperation } from "./operation.js";
 import { writeIfAbsent } from "./write-if-absent.js";
 
@@ -24,22 +24,24 @@ const ProjectAddOutput = z.strictObject({
  */
 const ConfigProjects = z.object({ version: z.literal(1), projects: z.array(ProjectEntry) });
 
+const allowed = (options: readonly string[]) => options.join(", ");
+
 /**
  * Every field needs a decision, so each holds the `TODO` marker with its allowed
- * values (ADR agent-driven-setup, point 4). Keep in sync with `CommonFile` and
- * `specs/project-add.md`.
+ * values (ADR agent-driven-setup, point 4), taken from the schema enums so the
+ * comments cannot drift. The field list is in `specs/project-add.md`.
  */
 export const COMMON_SCAFFOLD = `# Project-wide defaults for every case under this directory (\`casefile spec commons\`).
 # Replace each TODO with a decision; \`casefile validate\` lists the ones left.
 
 # Surfaces the product runs on, a non-empty list of:
-#   web, mobile-ios, mobile-android, backend, api, cli, desktop
+#   ${allowed(Surface.options)}
 surfaces: TODO
 
-# Default test layer: e2e, integration, api, ui, unit, manual-exploratory
+# Default test layer: ${allowed(Layer.options)}
 layer: TODO
 
-# Default priority: P0, P1, P2, P3
+# Default priority: ${allowed(Priority.options)}
 priority: TODO
 
 automation:
@@ -47,7 +49,7 @@ automation:
   eligible: TODO
 
 review:
-  # How proposed cases are reviewed: required, post_hoc, auto
+  # How proposed cases are reviewed: ${allowed(ReviewMode.options)}
   mode: TODO
 `;
 

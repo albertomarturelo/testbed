@@ -77,7 +77,7 @@ describe("init", () => {
   });
 
   it("only offers the skills when no target is chosen", async () => {
-    const result = await init({ skills: SKILLS });
+    const result = await init({ skills: [...SKILLS, { path: "README.md", text: "# skills\n" }] });
     expect(result.ok && result.value.skillsOffered).toEqual(["casefile-setup", "qa-bootstrap"]);
     await expect(read(".claude/skills/casefile-setup/SKILL.md")).rejects.toThrow();
     await expect(read(".agents/skills/casefile-setup/SKILL.md")).rejects.toThrow();
