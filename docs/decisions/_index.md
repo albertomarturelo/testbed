@@ -22,3 +22,4 @@
 | [2026-10-15-schemas-generated-from-zod](2026-10-15-schemas-generated-from-zod.md) | JSON Schemas are generated from Zod and committed | Accepted | 2026-10-15 |
 | [2026-10-15-cfd-workflow-tooling](2026-10-15-cfd-workflow-tooling.md) | CFD workflow tooling: vendored skills, hooks and CI checks | Accepted | 2026-10-15 |
 | [2026-10-15-branch-per-issue-pr](2026-10-15-branch-per-issue-pr.md) | Branch per issue, merged into main through a pull request | Accepted | 2026-10-15 |
+| [2026-10-15-frontmatter-without-gray-matter](2026-10-15-frontmatter-without-gray-matter.md) | Case frontmatter is split in core and parsed with `yaml` | Accepted | 2026-10-15 |

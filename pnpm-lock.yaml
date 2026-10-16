@@ -33,6 +33,9 @@ importers:
 
   packages/core:
     dependencies:
+      yaml:
+        specifier: 2.9.1
+        version: 2.9.1
       zod:
         specifier: 4.6.5
         version: 4.6.5
@@ -40,9 +43,6 @@ importers:
       ajv:
         specifier: 8.20.0
         version: 8.20.0
-      yaml:
-        specifier: 2.9.1
-        version: 2.9.1
 
 packages:
 
