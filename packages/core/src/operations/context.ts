@@ -4,8 +4,8 @@ import { matchesGlob } from "./glob.js";
 import type { Actor, OperationContext } from "./operation.js";
 
 /**
- * Thrown by a guarded access; `invoke` turns it into an error value with `code`:
- * `path.outside_workspace` or `write.not_allowed`.
+ * Thrown by a guarded access. The context also records it, so `invoke` fails even
+ * when the operation catches the throw and carries on.
  */
 export class PathRefused extends Error {
   constructor(
@@ -21,12 +21,22 @@ export class PathRefused extends Error {
 /**
  * Filesystem adapter for one invocation. Paths are checked lexically: they must
  * stay inside the workspace and, for writes, match one of `writes`.
+ *
+ * It guards well-behaved code; it is not a sandbox (ADR extension-model): an
+ * operation that imports `node:fs` itself is not stopped. Invocations are not
+ * transactional either — files written before a refusal stay on disk; hosts run
+ * inside Git, where the change can be discarded.
  */
 export function createContext(
   root: string,
   actor: Actor,
   writes: readonly string[],
-): OperationContext {
+): { context: OperationContext; refusals: PathRefused[] } {
+  const refusals: PathRefused[] = [];
+  const refuse = (error: PathRefused): never => {
+    refusals.push(error);
+    throw error;
+  };
   const inside = (path: string): string => {
     const normalized = posix.normalize(path).replace(/\/+$/, "");
     if (
@@ -35,7 +45,9 @@ export function createContext(
       normalized === ".." ||
       normalized.startsWith("../")
     ) {
-      throw new PathRefused("path.outside_workspace", path, `${path} is not inside the workspace`);
+      refuse(
+        new PathRefused("path.outside_workspace", path, `${path} is not inside the workspace`),
+      );
     }
     return normalized;
   };
@@ -44,29 +56,33 @@ export function createContext(
     // A directory may be created when something below it could be written.
     const probe = isDirectory ? `${normalized}/_` : normalized;
     if (!writes.some((pattern) => matchesGlob(probe, pattern))) {
-      throw new PathRefused(
-        "write.not_allowed",
-        normalized,
-        `${normalized} is outside this operation's writes`,
+      refuse(
+        new PathRefused(
+          "write.not_allowed",
+          normalized,
+          `${normalized} is outside this operation's writes`,
+        ),
       );
     }
     return normalized;
   };
 
-  return {
+  const context: OperationContext = {
     root,
     actor,
     async readText(path) {
+      const target = join(root, inside(path));
       try {
-        return await readFile(join(root, inside(path)), "utf8");
+        return await readFile(target, "utf8");
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
         throw error;
       }
     },
     async exists(path) {
+      const target = join(root, inside(path));
       try {
-        await stat(join(root, inside(path)));
+        await stat(target);
         return true;
       } catch {
         return false;
@@ -81,4 +97,5 @@ export function createContext(
       await mkdir(join(root, guard(path, true)), { recursive: true });
     },
   };
+  return { context, refusals };
 }

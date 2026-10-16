@@ -88,6 +88,16 @@ describe("register", () => {
     ]);
   });
 
+  it.each([[null], ["write-files"], [42]])(
+    "refuses %j as a definition without throwing",
+    (value) => {
+      const result = createRegistry().register(value as unknown as Operation);
+      expect(result.ok || result.errors.map((e) => e.code)).toEqual([
+        "operation.invalid_definition",
+      ]);
+    },
+  );
+
   it("freezes the declaration", () => {
     expect(Object.isFrozen(writeFiles)).toBe(true);
     expect(Object.isFrozen(writeFiles.writes)).toBe(true);
@@ -270,5 +280,92 @@ describe("invoke", () => {
     );
     const outside = await registry.invoke("reader", { path: "../x" }, { root, actor: "ci" });
     expect(outside.ok || outside.errors[0]?.code).toBe("path.outside_workspace");
+  });
+
+  it("fails even when the operation swallows a refused write", async () => {
+    const sneaky = defineOperation({
+      ...writeFiles,
+      name: "sneaky",
+      async run(_input, context) {
+        try {
+          await context.writeText("context/releases/policy.yaml", "x");
+        } catch {
+          // ignore and pretend all went well
+        }
+        return ok({ written: 0 });
+      },
+    });
+    const result = await registryWith(sneaky).invoke(
+      "sneaky",
+      { paths: [] },
+      { root, actor: "agent" },
+    );
+    expect(result.ok || result.errors.map((e) => [e.code, e.path])).toEqual([
+      ["write.not_allowed", "context/releases/policy.yaml"],
+    ]);
+    expect(await exists("context/releases/policy.yaml")).toBe(false);
+  });
+
+  it("fails when the operation throws a PathRefused of its own", async () => {
+    const { PathRefused } = await import("./context.js");
+    const own = defineOperation({
+      ...writeFiles,
+      name: "own-refusal",
+      async run() {
+        throw new PathRefused("write.not_allowed", "x.md", "nope");
+      },
+    });
+    const result = await registryWith(own).invoke(
+      "own-refusal",
+      { paths: [] },
+      { root, actor: "agent" },
+    );
+    expect(result.ok || result.errors).toEqual([
+      { code: "write.not_allowed", path: "x.md", message: "nope" },
+    ]);
+  });
+
+  it("is not transactional: files written before a refusal stay", async () => {
+    const result = await registryWith(writeFiles).invoke(
+      "write-files",
+      { paths: ["context/tests/first.md", "context/releases/policy.yaml"] },
+      { root, actor: "agent" },
+    );
+    expect(result.ok).toBe(false);
+    expect(await exists("context/tests/first.md")).toBe(true);
+  });
+
+  it("turns a throwing schema into operation.failed", async () => {
+    const badSchema = {
+      safeParse() {
+        throw new Error("schema exploded");
+      },
+    } as unknown as z.ZodType;
+    const broken = defineOperation({ ...writeFiles, name: "bad-schema", input: badSchema });
+    const result = await registryWith(broken).invoke("bad-schema", {}, { root, actor: "agent" });
+    expect(result.ok || result.errors[0]).toEqual({
+      code: "operation.failed",
+      message: "'bad-schema' failed: schema exploded",
+    });
+  });
+
+  it("refuses exists() outside the workspace instead of answering false", async () => {
+    const probe = defineOperation({
+      name: "probe",
+      input: z.strictObject({ path: z.string() }),
+      output: z.boolean(),
+      actor: ["ci"],
+      writes: [],
+      spec: "specs/probe.md",
+      async run({ path }, context) {
+        return ok(await context.exists(path));
+      },
+    });
+    const result = await registryWith(probe).invoke(
+      "probe",
+      { path: "../x" },
+      { root, actor: "ci" },
+    );
+    expect(result.ok || result.errors[0]?.code).toBe("path.outside_workspace");
   });
 });

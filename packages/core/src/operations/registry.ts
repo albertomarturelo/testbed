@@ -2,7 +2,7 @@ import type { z } from "zod";
 import { type CasefileError, fail, ok, type Result } from "../errors.js";
 import { Slug } from "../schema/index.js";
 import { createContext, PathRefused } from "./context.js";
-import type { Actor, Operation } from "./operation.js";
+import type { Actor, Operation, OperationContext } from "./operation.js";
 
 const ACTORS: readonly Actor[] = ["human", "agent", "ci"];
 
@@ -63,38 +63,57 @@ export function createRegistry(): Registry {
           message: `'${name}' may be invoked by ${operation.actor.join(", ")}, not ${actor}`,
         });
       }
-      const parsedInput = operation.input.safeParse(input);
-      if (!parsedInput.success) {
-        return fail(...issues("operation.invalid_input", parsedInput.error.issues));
-      }
-
+      const { context, refusals } = createContext(root, actor, operation.writes);
       let result: Result<unknown>;
       try {
-        result = await operation.run(
-          parsedInput.data,
-          createContext(root, actor, operation.writes),
-        );
+        result = await execute(operation, input, context);
       } catch (error) {
-        if (error instanceof PathRefused) {
-          return fail({ code: error.code, path: error.path, message: error.message });
+        if (!(error instanceof PathRefused)) {
+          return fail({
+            code: "operation.failed",
+            message: `'${name}' failed: ${error instanceof Error ? error.message : String(error)}`,
+          });
         }
-        return fail({
-          code: "operation.failed",
-          message: `'${name}' failed: ${error instanceof Error ? error.message : String(error)}`,
-        });
+        // Thrown by the context (already recorded) or by the operation itself.
+        if (!refusals.includes(error)) refusals.push(error);
+        result = ok(undefined);
       }
-      if (!result.ok) return result;
-
-      const parsedOutput = operation.output.safeParse(result.value);
-      if (!parsedOutput.success) {
-        return fail(...issues("operation.invalid_output", parsedOutput.error.issues));
+      // Authoritative even when the operation caught the refusal and carried on.
+      if (refusals.length > 0) {
+        return fail(
+          ...refusals.map(
+            (r): CasefileError => ({ code: r.code, path: r.path, message: r.message }),
+          ),
+        );
       }
-      return ok(parsedOutput.data);
+      return result;
     },
   };
 }
 
+/** Validates input, runs, validates output; throws are handled by the caller. */
+async function execute(
+  operation: Operation,
+  input: unknown,
+  context: OperationContext,
+): Promise<Result<unknown>> {
+  const parsedInput = operation.input.safeParse(input);
+  if (!parsedInput.success) {
+    return fail(...issues("operation.invalid_input", parsedInput.error.issues));
+  }
+  const result = await operation.run(parsedInput.data, context);
+  if (!result.ok) return result;
+  const parsedOutput = operation.output.safeParse(result.value);
+  if (!parsedOutput.success) {
+    return fail(...issues("operation.invalid_output", parsedOutput.error.issues));
+  }
+  return ok(parsedOutput.data);
+}
+
 function definitionProblems(operation: Operation): string[] {
+  if (operation === null || typeof operation !== "object") {
+    return [`${JSON.stringify(operation)} is not an operation object`];
+  }
   const problems: string[] = [];
   const name = typeof operation.name === "string" ? operation.name : String(operation.name);
   if (!Slug.safeParse(operation.name).success) problems.push(`name '${name}' is not a slug`);

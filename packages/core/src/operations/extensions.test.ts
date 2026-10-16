@@ -167,4 +167,28 @@ describe("registerExtensions / extensionLayers", () => {
       },
     ]);
   });
+
+  it("does not crash on non-object operations in a manifest", async () => {
+    await install(
+      ".casefile/node_modules",
+      "junk-ops",
+      "1.0.0",
+      "export const manifest = { operations: [null, 'x'] };",
+    );
+    const { extensions } = await loadExtensions(root, ["junk-ops"]);
+    expect(registerExtensions(createRegistry(), extensions).map((e) => e.code)).toEqual([
+      "operation.invalid_definition",
+      "operation.invalid_definition",
+    ]);
+  });
+
+  it("reports an unknown version when the package declares none", async () => {
+    await put(".casefile/node_modules/no-version/package.json", JSON.stringify({ type: "module" }));
+    await put(
+      ".casefile/node_modules/no-version/index.js",
+      "export const manifest = { commons: { layer: 'e2e' } };",
+    );
+    const { extensions } = await loadExtensions(root, ["no-version"]);
+    expect(extensionLayers(extensions).map((l) => l.origin)).toEqual(["ext:no-version@unknown"]);
+  });
 });

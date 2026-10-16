@@ -86,7 +86,7 @@ export async function loadExtensions(
       errors.push(...manifest.errors.map((e) => ({ ...e, ...at })));
       continue;
     }
-    const version = typeof pkg.version === "string" ? pkg.version : "0.0.0";
+    const version = typeof pkg.version === "string" ? pkg.version : "unknown";
     extensions.push({ name, version, manifest: manifest.value });
   }
   return { extensions, errors };
