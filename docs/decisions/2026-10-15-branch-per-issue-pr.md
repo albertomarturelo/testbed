@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted — 2026-10-15 (#18)
+Accepted — 2026-10-15 (#18). Protection moved to rulesets with one required
+approval and an admin bypass for PR merges (#33).
 
 ## Context
 
@@ -30,7 +31,9 @@ and parallel agents in worktrees have nothing to rebase onto but each other.
    - A teammate is available → they review the PR; their findings open the next
      session (CFD standing rule).
    - Solo → `/review-pr` on the local diff before `/session-close`, findings fixed
-     in the same session, then the author merges.
+     in the same session, then the author merges with the admin bypass
+     (`gh pr merge --squash --admin`): GitHub does not let authors approve their
+     own PR.
 6. **Merge** with **squash**, only when CI (`CI` and `Context freshness`) is
    green; the branch is deleted on merge. The squash commit keeps the PR title as
    subject and the commit trailers in its body.
@@ -59,8 +62,15 @@ and parallel agents in worktrees have nothing to rebase onto but each other.
 - Squash merges fold commit messages into one body. Same constraint as
   [history-commit-reference](2026-10-15-history-commit-reference.md) for user
   repos: messages must be kept, not hand-trimmed.
-- Branch protection on `main` is the mechanical backstop (enabled 2026-10-15):
-  PR required with 0 mandatory approvals (so the solo path works), required
-  checks `check (22)`, `check (24)` and `adr-slug-unique`, branch up to date
-  before merge, enforced for admins; merged branches are deleted automatically.
-  A new required check must be added there when a workflow job is added.
+- Repository rulesets on `main` are the mechanical backstop (#33):
+  - `main: baseline`, no bypass for anyone: PR required, required checks
+    `check (22)`, `check (24)` and `adr-slug-unique`, branch up to date before
+    merge, no force push, no deletion.
+  - `main: approval`: one approving review, stale approvals dismissed on push;
+    repository admins may bypass it **only when merging a PR** (bypass mode
+    `pull_request`), never by pushing directly.
+
+  Rulesets replace classic branch protection, which can only exempt admins from
+  every rule at once (direct pushes included) or from none. Merged branches are
+  deleted automatically. A new required check is added to `main: baseline` when
+  a workflow job is added.
