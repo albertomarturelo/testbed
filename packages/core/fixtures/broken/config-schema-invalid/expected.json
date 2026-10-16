@@ -1,0 +1,7 @@
+[
+  {
+    "code": "schema.invalid",
+    "path": "casefile.yaml",
+    "field": "version"
+  }
+]

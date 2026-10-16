@@ -15,3 +15,8 @@ export function normalizeProjectPath(path: string): string {
   const normalized = posix.normalize(path);
   return normalized.length > 1 ? normalized.replace(/\/+$/, "") : normalized;
 }
+
+/** Whether normalized project path `inner` lies inside `outer` (`.` contains every path). */
+export function pathContains(outer: string, inner: string): boolean {
+  return outer === "." || inner.startsWith(`${outer}/`);
+}

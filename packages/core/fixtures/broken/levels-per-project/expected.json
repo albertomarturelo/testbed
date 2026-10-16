@@ -1,0 +1,11 @@
+[
+  {
+    "code": "project.missing",
+    "path": "casefile.yaml",
+    "field": "projects.0.path"
+  },
+  {
+    "code": "yaml.invalid",
+    "path": "apps/web/context/tests/_common.yaml"
+  }
+]

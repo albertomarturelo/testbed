@@ -49,9 +49,51 @@ export function validate<S extends z.ZodType>(
   );
 }
 
+/** The pending marker the scaffold leaves in fields that need a decision. */
+const TODO_MARKER = "TODO";
+
+/**
+ * `validate` for YAML files (ADR agent-driven-setup, point 4): each scalar exactly
+ * equal to `TODO` is reported as `scaffold.todo` instead of the schema errors on
+ * or under its field. A file with a marker never loads, so no undecided value
+ * slips in, even where `TODO` would pass the schema (a `title`).
+ */
+function validateYaml<S extends z.ZodType>(
+  schema: S,
+  path: string,
+  value: unknown,
+): Result<z.infer<S>> {
+  const result = validate(schema, path, value);
+  const markers = todoMarkers(value, []);
+  if (markers.length === 0) return result;
+  const pending = (field: string | undefined) =>
+    field !== undefined && markers.some((m) => field === m || field.startsWith(`${m}.`));
+  return fail(
+    ...markers.map(
+      (field): CasefileError => ({
+        code: "scaffold.todo",
+        path,
+        message: `\`${field || "(file)"}\` is still ${TODO_MARKER}: replace it with a decision`,
+        ...(field === "" ? {} : { field }),
+      }),
+    ),
+    ...(result.ok ? [] : result.errors.filter((e) => !pending(e.field))),
+  );
+}
+
+/** Dotted fields holding the marker, in file order; `""` when the whole file is one. */
+function todoMarkers(value: unknown, at: readonly string[]): string[] {
+  if (value === TODO_MARKER) return [at.join(".")];
+  if (Array.isArray(value)) return value.flatMap((v, i) => todoMarkers(v, [...at, String(i)]));
+  if (value !== null && typeof value === "object") {
+    return Object.entries(value).flatMap(([key, v]) => todoMarkers(v, [...at, key]));
+  }
+  return [];
+}
+
 function parseYamlFile<S extends z.ZodType>(schema: S, path: string, text: string) {
   const yaml = parseYaml(path, text);
-  return yaml.ok ? validate(schema, path, yaml.value) : yaml;
+  return yaml.ok ? validateYaml(schema, path, yaml.value) : yaml;
 }
 
 export function parseCaseFile(path: string, text: string): Result<LoadedCase> {
@@ -60,7 +102,7 @@ export function parseCaseFile(path: string, text: string): Result<LoadedCase> {
   const { frontmatter, body, frontmatterLine } = split.value;
   const yaml = parseYaml(path, frontmatter, frontmatterLine);
   if (!yaml.ok) return yaml;
-  const file = validate(TestCaseFile, path, yaml.value);
+  const file = validateYaml(TestCaseFile, path, yaml.value);
   return file.ok ? ok({ path, file: file.value, body }) : file;
 }
 

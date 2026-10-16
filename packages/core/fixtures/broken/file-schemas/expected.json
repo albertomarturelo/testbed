@@ -1,0 +1,23 @@
+[
+  {
+    "code": "json.invalid",
+    "path": "context/tests/.runs/r.jsonl"
+  },
+  {
+    "code": "yaml.invalid",
+    "path": "context/tests/_common.yaml"
+  },
+  {
+    "code": "frontmatter.missing",
+    "path": "context/tests/a/TC-0001.md"
+  },
+  {
+    "code": "frontmatter.unclosed",
+    "path": "context/tests/a/TC-0002.md"
+  },
+  {
+    "code": "schema.invalid",
+    "path": "context/tests/a/TC-0003.md",
+    "field": "state"
+  }
+]

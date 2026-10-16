@@ -22,13 +22,19 @@ export type LoadedProject = {
   commons: Map<string, CommonFile>;
   cases: LoadedCase[];
   runs: RunEvent[];
+  /** Whether `<path>/context/tests/` is a directory; the validator requires it. */
+  hasTestsDir: boolean;
 };
 
 export type LoadedWorkspace = {
   /** Absolute path of the directory holding `casefile.yaml`. */
   root: string;
   config: Config | null;
-  /** In `casefile.yaml` order; projects whose directory is missing are left out. */
+  /**
+   * In `casefile.yaml` order. Projects whose directory is missing or outside the
+   * workspace are left out, and so is an entry repeating an earlier path (the
+   * validator reports it as `project.duplicate_path`).
+   */
   projects: LoadedProject[];
   /** Unreadable or invalid files; the rest of the workspace still loads. */
   errors: CasefileError[];
@@ -81,6 +87,7 @@ export async function loadWorkspace(root: string): Promise<LoadedWorkspace> {
       });
       continue;
     }
+    if (workspace.projects.some((p) => p.path === path)) continue;
     const project = await loadProject(root, { name: entry.name, path });
     workspace.projects.push(project.value);
     workspace.errors.push(...project.errors);
@@ -104,6 +111,7 @@ export async function loadProject(
     commons: new Map(),
     cases: [],
     runs: [],
+    hasTestsDir: false,
   };
   const errors: CasefileError[] = [];
   const collect = <T>(result: Result<T>, use: (value: T) => void) => {
@@ -112,6 +120,7 @@ export async function loadProject(
   };
 
   const testsDir = posix.join(projectPath, TESTS_DIR);
+  project.hasTestsDir = await isDirectory(join(root, testsDir));
   for (const rel of await listFiles(join(root, testsDir))) {
     if (rel.startsWith(".inbox/")) continue;
     const isCommon = rel === "_common.yaml" || rel.endsWith("/_common.yaml");

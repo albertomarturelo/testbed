@@ -1,0 +1,7 @@
+[
+  {
+    "code": "project.duplicate_name",
+    "path": "casefile.yaml",
+    "field": "projects.1.name"
+  }
+]

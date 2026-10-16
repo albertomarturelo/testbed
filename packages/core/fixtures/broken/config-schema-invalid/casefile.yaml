@@ -1,0 +1,3 @@
+version: 2
+projects:
+  - { name: web, path: apps/gone }

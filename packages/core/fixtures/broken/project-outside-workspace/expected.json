@@ -1,0 +1,12 @@
+[
+  {
+    "code": "project.outside_workspace",
+    "path": "casefile.yaml",
+    "field": "projects.0.path"
+  },
+  {
+    "code": "project.outside_workspace",
+    "path": "casefile.yaml",
+    "field": "projects.1.path"
+  }
+]

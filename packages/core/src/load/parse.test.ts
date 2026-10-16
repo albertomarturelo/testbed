@@ -125,6 +125,50 @@ describe("parseCommonFile / parseConfigFile", () => {
   });
 });
 
+describe("TODO markers (ADR agent-driven-setup)", () => {
+  const codes = (result: { ok: boolean; errors?: { code: string; field?: string }[] }) =>
+    result.ok ? [] : (result.errors ?? []).map((e) => [e.code, e.field]);
+
+  it("reports a marker as scaffold.todo instead of the schema error it causes", () => {
+    const result = parseCommonFile(
+      "_common.yaml",
+      "surfaces: [TODO]\nlayer: TODO\nautomation:\n  eligible: TODO\n",
+    );
+    expect(codes(result)).toEqual([
+      ["scaffold.todo", "surfaces.0"],
+      ["scaffold.todo", "layer"],
+      ["scaffold.todo", "automation.eligible"],
+    ]);
+  });
+
+  it("keeps the schema errors of other fields", () => {
+    expect(codes(parseCommonFile("_common.yaml", "layer: TODO\npriority: nope\n"))).toEqual([
+      ["scaffold.todo", "layer"],
+      ["schema.invalid", "priority"],
+    ]);
+  });
+
+  it("rejects a marker where the schema would accept the string", () => {
+    expect(codes(parseCaseFile("a.md", CASE.replace("title: Sign in", "title: TODO")))).toEqual([
+      ["scaffold.todo", "title"],
+    ]);
+  });
+
+  it("treats only a scalar exactly equal to TODO as a marker", () => {
+    expect(parseCaseFile("a.md", CASE.replace("title: Sign in", "title: TODO sign in")).ok).toBe(
+      true,
+    );
+    expect(parseCommonFile("_common.yaml", "labels:\n  note: todo\n").ok).toBe(true);
+  });
+
+  it("finds markers in casefile.yaml too", () => {
+    const text = "version: 1\nprojects: []\ncommons:\n  layer: TODO\n";
+    expect(codes(parseConfigFile("casefile.yaml", text))).toEqual([
+      ["scaffold.todo", "commons.layer"],
+    ]);
+  });
+});
+
 describe("parseRunFile", () => {
   it("parses one event per non-blank line", () => {
     const text = `${JSON.stringify(RUN)}\r\n\n${JSON.stringify({ ...RUN, case_id: "TC-0002" })}\n`;
