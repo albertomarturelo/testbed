@@ -1,0 +1,9 @@
+surfaces: [api]
+layer: api
+priority: P1
+automation:
+  eligible: true
+preconditions:
+  - The orders service is seeded with the demo catalog
+data:
+  base_url: https://api.staging.acme.example

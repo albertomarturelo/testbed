@@ -12,10 +12,9 @@ import {
   ReleasePolicy,
   RunEvent,
   TestCaseFile,
-  Workspace,
 } from "./schema/index.js";
 
-// Fixture integrity only. The real loader (#7) and validator (#9) replace this parsing.
+// Fixture integrity only. The validator (#9) replaces this parsing.
 
 function* walk(dir: string): Generator<string> {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -40,7 +39,6 @@ function classify(file: string): Entry[] | "doc" {
   const text = readFileSync(file, "utf8");
   const one = (schema: z.ZodType, value: unknown): Entry[] => [{ file: rel, schema, value }];
   if (rel === "casefile.yaml") return one(Config, parse(text));
-  if (rel === "casefile.workspace.yaml") return one(Workspace, parse(text));
   if (rel === "context/releases/policy.yaml") return one(ReleasePolicy, parse(text));
   if (rel === "context/tests/_properties.yaml") return one(PropertiesFile, parse(text));
   if (rel.startsWith("context/tests/")) {

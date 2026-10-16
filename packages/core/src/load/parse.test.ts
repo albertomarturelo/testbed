@@ -116,10 +116,12 @@ describe("parseCommonFile / parseConfigFile", () => {
   });
 
   it("validates casefile.yaml", () => {
-    expect(parseConfigFile("casefile.yaml", "version: 1\n")).toEqual({
+    const text = "version: 1\nprojects:\n  - name: web\n    path: .\n";
+    expect(parseConfigFile("casefile.yaml", text)).toEqual({
       ok: true,
-      value: { version: 1 },
+      value: { version: 1, projects: [{ name: "web", path: "." }] },
     });
+    expect(parseConfigFile("casefile.yaml", "version: 1\n").ok).toBe(false);
   });
 });
 

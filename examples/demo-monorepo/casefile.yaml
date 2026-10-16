@@ -1,0 +1,15 @@
+# Workspace root (ADR workspace-and-projects): a monorepo with two projects.
+version: 1
+projects:
+  - name: web
+    path: apps/web
+  - name: api
+    path: services/api
+# Workspace commons: inherited by every project, before each project's own commons.
+commons:
+  labels:
+    owner_team: platform
+  preconditions:
+    - The Acme staging environment is reachable
+  data:
+    base_url: https://staging.acme.example

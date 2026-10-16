@@ -4,7 +4,7 @@
  */
 export type CasefileError = {
   code: string;
-  /** Repo-relative path (POSIX separators) of the file the error is about. */
+  /** Workspace-relative path (POSIX separators) of the file the error is about. */
   path: string;
   message: string;
   /** 1-based line in the file, when known. */

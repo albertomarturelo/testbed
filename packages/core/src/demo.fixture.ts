@@ -9,6 +9,8 @@ export const DEMO_ROOT = fileURLToPath(new URL("../../../examples/demo-repo/", i
  * Keep in sync with examples/demo-repo/README.md.
  */
 export const DEMO_EXPECTED = {
+  /** The single project of the workspace, at `.`. */
+  project: "web",
   caseIds: ["TC-0001", "TC-0002", "TC-0003", "TC-0004", "TC-0005", "TC-0006", "TC-0007", "TC-0008"],
   states: { draft: 1, in_review: 1, active: 5, retired: 1 },
   topLevelFeatures: ["auth", "catalog", "checkout"],
@@ -27,4 +29,19 @@ export const DEMO_EXPECTED = {
   gates: { smoke: "red", "payments-regression": "green", auth: "green" },
   runFiles: 2,
   inboxItems: 1,
+} as const;
+
+/** Absolute path of `examples/demo-monorepo`, the two-project workspace fixture. */
+export const DEMO_MONOREPO_ROOT = fileURLToPath(
+  new URL("../../../examples/demo-monorepo/", import.meta.url),
+);
+
+/** What the monorepo demo is designed to produce. Keep in sync with its README. */
+export const DEMO_MONOREPO_EXPECTED = {
+  /** Project name → workspace-relative path, in `casefile.yaml` order. */
+  projects: { web: "apps/web", api: "services/api" },
+  caseRefs: ["api/TC-0001", "web/TC-0001", "web/TC-0002"],
+  derivedAutomated: ["api/TC-0001", "web/TC-0001"],
+  /** Commons `web/TC-0001` inherits from, outermost first. */
+  webTc0001CommonsChain: ["casefile.yaml", "apps/web/context/tests/_common.yaml"],
 } as const;

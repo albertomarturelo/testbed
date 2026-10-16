@@ -3,13 +3,13 @@
 Acme Shop is a **fictional** web store. Nothing here describes a real product,
 company, release or test result; domains use the reserved `.example` TLD. The repo
 exists to show casefile's file layout and to serve as the fixture for
-`@casefile/core` tests.
+`@casefile/core` tests. It is a single-project workspace; see
+[`../demo-monorepo`](../demo-monorepo/README.md) for several projects.
 
 ## Layout
 
 ```
-casefile.yaml                  repo root marker
-casefile.workspace.yaml        repos aggregated by a release (just this one)
+casefile.yaml                  workspace root: one project, `web`, at `.`
 context/                       CFD context of the (fictional) product
   tests/
     _properties.yaml           custom properties: risk, owner_team, smoke

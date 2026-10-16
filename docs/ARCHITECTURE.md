@@ -58,7 +58,7 @@ renders the registry: CLI commands, MCP tools, inbox `kind`s, web screens. See
 | `skills/` | `SKILL.md` per skill, installable into `.claude/skills/` and `.agents/skills/` | F0 |
 | `packages/core/specs/` | One SPEC per built-in operation plus topic SPECs (`setup`, `commons`, `errors`), shipped in the package; read with `casefile spec <name>` ([specs-ship-with-operations](decisions/2026-10-15-specs-ship-with-operations.md)) | F0 |
 | `examples/demo-repo` | One-project workspace: fixture for core tests and the user-facing demo | F0 |
-| `examples/demo-monorepo` | Two-project workspace fixture for workspace tests (planned) | F0 |
+| `examples/demo-monorepo` | Two-project workspace fixture for workspace tests | F0 |
 
 ## Data layout in a user workspace (product data model)
 

@@ -4,6 +4,6 @@ export * from "./ids.js";
 export * from "./load/frontmatter.js";
 export * from "./load/parse.js";
 export * from "./load/paths.js";
-export * from "./load/repo.js";
+export * from "./load/workspace.js";
 export * from "./resolve/resolve.js";
 export * from "./schema/index.js";

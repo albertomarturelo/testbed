@@ -1,11 +1,32 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "casefile.yaml",
+  "title": "casefile.yaml (workspace root)",
   "type": "object",
   "properties": {
     "version": {
       "type": "number",
       "const": 1
+    },
+    "projects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "name",
+          "path"
+        ],
+        "additionalProperties": false
+      }
     },
     "extensions": {
       "type": "array",
@@ -13,10 +34,139 @@
         "type": "string",
         "pattern": "^(?:@[a-z0-9][a-z0-9._-]*\\/)?[a-z0-9][a-z0-9._-]*$"
       }
+    },
+    "commons": {
+      "type": "object",
+      "properties": {
+        "surfaces": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "web",
+              "mobile-ios",
+              "mobile-android",
+              "backend",
+              "api",
+              "cli",
+              "desktop"
+            ]
+          }
+        },
+        "layer": {
+          "type": "string",
+          "enum": [
+            "e2e",
+            "integration",
+            "api",
+            "ui",
+            "unit",
+            "manual-exploratory"
+          ]
+        },
+        "priority": {
+          "type": "string",
+          "enum": [
+            "P0",
+            "P1",
+            "P2",
+            "P3"
+          ]
+        },
+        "automation": {
+          "type": "object",
+          "properties": {
+            "eligible": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "labels": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ]
+          }
+        },
+        "preconditions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "data": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "additionalProperties": {}
+        },
+        "review": {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": [
+                "required",
+                "post_hoc",
+                "auto"
+              ]
+            },
+            "reviewers": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[^@\\s]+@[^@\\s]+$"
+              }
+            },
+            "max_batch": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "mode"
+          ],
+          "additionalProperties": false
+        },
+        "context_refs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "additionalProperties": false
     }
   },
   "required": [
-    "version"
+    "version",
+    "projects"
   ],
   "additionalProperties": false
 }
