@@ -3,7 +3,7 @@ import { CommonFile } from "./common.js";
 import { Slug } from "./primitives.js";
 
 /** npm package name, optionally scoped. */
-const PackageName = z.string().regex(/^(?:@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/);
+export const PackageName = z.string().regex(/^(?:@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/);
 
 /** A project of the workspace: a directory holding `context/tests/` (ADR workspace-and-projects). */
 export const ProjectEntry = z.strictObject({
