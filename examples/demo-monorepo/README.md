@@ -9,8 +9,8 @@ reserved `.example` TLD. For a single-project repo see
 
 ```
 casefile.yaml                  workspace root: projects `web` and `api` + workspace commons
-apps/web/context/tests/        project `web`: _common.yaml, login/ (TC-0001, TC-0002), .runs/
-services/api/context/tests/    project `api`: _common.yaml, orders/ (TC-0001), .runs/
+apps/web/context/tests/        project `web`: _common.yaml, _properties.yaml, login/ (TC-0001, TC-0002), .runs/
+services/api/context/tests/    project `api`: _common.yaml, _properties.yaml, orders/ (TC-0001), .runs/
 ```
 
 ## What it is designed to show
@@ -19,4 +19,5 @@ services/api/context/tests/    project `api`: _common.yaml, orders/ (TC-0001), .
 |---|---|
 | Resolve `web/TC-0001` | Inherits from `casefile.yaml` commons, then `apps/web/context/tests/_common.yaml`; `owner_team` is `storefront` (project overrides workspace) |
 | Resolve `api/TC-0001` | A different case with the same id: ids are unique per project |
+| `casefile validate` | No findings. The workspace label `owner_team` is declared in each project's `_properties.yaml` |
 | `automation.status = automated` | `web/TC-0001`, `api/TC-0001`: each matched by a CI run in its own project's `.runs/` |

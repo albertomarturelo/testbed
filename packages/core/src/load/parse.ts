@@ -1,7 +1,7 @@
 import { parse, YAMLParseError } from "yaml";
 import type { z } from "zod";
 import { type CasefileError, fail, ok, type Result } from "../errors.js";
-import { CommonFile, Config, RunEvent, TestCaseFile } from "../schema/index.js";
+import { CommonFile, Config, PropertiesFile, RunEvent, TestCaseFile } from "../schema/index.js";
 import { splitFrontmatter } from "./frontmatter.js";
 
 // Pure parsers: file text in, typed value or located errors out (CONVENTIONS #4, #7).
@@ -114,15 +114,22 @@ export function parseConfigFile(path: string, text: string): Result<Config> {
   return parseYamlFile(Config, path, text);
 }
 
+export function parsePropertiesFile(path: string, text: string): Result<PropertiesFile> {
+  return parseYamlFile(PropertiesFile, path, text);
+}
+
+/** A run event and where it is stored, so findings can point at its line. */
+export type LoadedRun = { path: string; line: number; event: RunEvent };
+
 /** Valid events of a run file plus one error per bad line. */
-export type ParsedRunFile = { events: RunEvent[]; errors: CasefileError[] };
+export type ParsedRunFile = { runs: LoadedRun[]; errors: CasefileError[] };
 
 /**
  * `.runs/<run-id>.jsonl`: one event per non-blank line. A bad line does not hide
  * the valid ones: the file is append-only, so earlier events stay usable.
  */
 export function parseRunFile(path: string, text: string): ParsedRunFile {
-  const parsed: ParsedRunFile = { events: [], errors: [] };
+  const parsed: ParsedRunFile = { runs: [], errors: [] };
   text.split(/\r?\n/).forEach((raw, i) => {
     if (raw.trim() === "") return;
     const line = i + 1;
@@ -134,7 +141,7 @@ export function parseRunFile(path: string, text: string): ParsedRunFile {
       return;
     }
     const event = validate(RunEvent, path, value, line);
-    if (event.ok) parsed.events.push(event.value);
+    if (event.ok) parsed.runs.push({ path, line, event: event.value });
     else parsed.errors.push(...event.errors);
   });
   return parsed;

@@ -1,0 +1,7 @@
+[
+  {
+    "code": "toolchain.unpinned",
+    "path": ".casefile/package.json",
+    "field": "dependencies.casefile"
+  }
+]

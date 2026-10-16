@@ -92,6 +92,54 @@ export async function loadExtensions(
   return { extensions, errors };
 }
 
+/** The npm package casefile is published as; `.casefile/package.json` pins it. */
+export const CASEFILE_PACKAGE = "casefile";
+
+/** What `.casefile/` declares and holds, for the validator's environment level. */
+export type Toolchain = {
+  /** `dependencies` of `.casefile/package.json`; `{}` if unreadable, `null` if absent. */
+  declared: Record<string, string> | null;
+  /** Installed version of casefile and of each listed extension found in `.casefile/node_modules`. */
+  installed: Record<string, string>;
+};
+
+/**
+ * Filesystem adapter: reads `.casefile/package.json` and which of casefile and
+ * `extensions` are installed. Nothing is imported, unlike `loadExtensions`.
+ */
+export async function loadToolchain(
+  root: string,
+  extensions: readonly string[],
+): Promise<Toolchain> {
+  const dir = join(root, TOOLCHAIN_DIR);
+  let declared: Toolchain["declared"] = null;
+  const text = await readFile(join(dir, "package.json"), "utf8").catch((error: unknown) => {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw error;
+  });
+  if (text !== null) {
+    let dependencies: unknown;
+    try {
+      dependencies = (JSON.parse(text) as { dependencies?: unknown })?.dependencies;
+    } catch {
+      dependencies = undefined;
+    }
+    declared = {};
+    if (dependencies !== null && typeof dependencies === "object") {
+      for (const [name, version] of Object.entries(dependencies)) {
+        if (typeof version === "string") declared[name] = version;
+      }
+    }
+  }
+  const installed: Toolchain["installed"] = {};
+  for (const name of new Set([CASEFILE_PACKAGE, ...extensions])) {
+    if (!PackageName.safeParse(name).success) continue;
+    const pkg = await readPackageJson(join(dir, "node_modules", name, "package.json"));
+    if (pkg !== null) installed[name] = typeof pkg.version === "string" ? pkg.version : "unknown";
+  }
+  return { declared, installed };
+}
+
 /** Registers every extension operation through the public registry API. */
 export function registerExtensions(
   registry: Registry,

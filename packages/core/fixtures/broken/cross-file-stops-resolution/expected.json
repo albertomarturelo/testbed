@@ -1,0 +1,7 @@
+[
+  {
+    "code": "case.feature_mismatch",
+    "path": "context/tests/a/TC-0001.md",
+    "field": "feature"
+  }
+]

@@ -26,6 +26,11 @@ export const ChangeId = z.uuid();
 /** Safe for file names: run ids, inbox ids. */
 export const FileSafeId = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]*$/);
 
+/** Exact semver: `.casefile/package.json` pins, never ranges (ADR casefile-toolchain-dir). */
+export const ExactVersion = z
+  .string()
+  .regex(/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/, "an exact semver version");
+
 /** Lowercase slug for open vocabularies such as inbox kinds. */
 export const Slug = z.string().regex(/^[a-z][a-z0-9-]*$/);
 

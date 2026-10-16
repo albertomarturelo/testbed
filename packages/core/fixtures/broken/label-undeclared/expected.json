@@ -1,0 +1,17 @@
+[
+  {
+    "code": "label.undeclared",
+    "path": "casefile.yaml",
+    "field": "commons.labels.org"
+  },
+  {
+    "code": "label.undeclared",
+    "path": "context/tests/_common.yaml",
+    "field": "labels.team"
+  },
+  {
+    "code": "label.undeclared",
+    "path": "context/tests/a/TC-0001.md",
+    "field": "labels.owner"
+  }
+]

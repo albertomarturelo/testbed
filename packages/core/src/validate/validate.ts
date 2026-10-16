@@ -1,8 +1,26 @@
-import { posix } from "node:path";
-import { CONFIG_FILE, normalizeProjectPath, pathContains, TESTS_DIR } from "../load/paths.js";
+import { normalizeProjectPath } from "../load/paths.js";
 import type { LoadedProject, LoadedWorkspace } from "../load/workspace.js";
+import type { Toolchain } from "../operations/extensions.js";
+import type { CommonsLayer } from "../resolve/resolve.js";
 import type { ProjectEntry } from "../schema/index.js";
-import { type Finding, finding, fromError } from "./finding.js";
+import type { Finding } from "./finding.js";
+import {
+  crossFileLevel,
+  environmentLevel,
+  resolutionLevel,
+  schemaLevel,
+  workspaceLevel,
+} from "./levels.js";
+
+/** What `validate` checks; each part comes from its filesystem adapter. */
+export type ValidationInput = {
+  /** From `loadWorkspace`. */
+  workspace: LoadedWorkspace;
+  /** From `loadToolchain`. */
+  toolchain: Toolchain;
+  /** Commons of the installed extensions (`extensionLayers`); resolution needs them. */
+  extensionLayers?: readonly CommonsLayer[];
+};
 
 /** One `projects` entry of `casefile.yaml` and what the loader read for it. */
 export type ProjectScope = {
@@ -20,110 +38,38 @@ export type ProjectScope = {
  */
 export type Level = {
   name: string;
-  workspace?: (workspace: LoadedWorkspace) => Finding[];
-  project?: (scope: ProjectScope, workspace: LoadedWorkspace) => Finding[];
+  workspace?: (input: ValidationInput) => Finding[];
+  project?: (scope: ProjectScope, input: ValidationInput) => Finding[];
 };
 
-/** `casefile.yaml` and the projects it lists. */
-export const workspaceLevel: Level = {
-  name: "workspace",
-  workspace({ config, errors }) {
-    // Without a config the loader stopped: its errors are all about casefile.yaml.
-    if (config === null) return errors.map(fromError);
-    if (config.projects.length > 0) return [];
-    return [
-      finding("workspace.no_projects", {
-        path: CONFIG_FILE,
-        field: "projects",
-        message: "casefile.yaml lists no projects; a workspace needs at least one",
-      }),
-    ];
-  },
-  project({ index, entry, loaded }, { config, errors }) {
-    const field = `projects.${index}`;
-    const found = errors
-      .filter((e) => e.path === CONFIG_FILE && e.field?.startsWith(`${field}.`))
-      .map(fromError);
-    const path = normalizeProjectPath(entry.path);
-    const earlier = (config?.projects ?? []).slice(0, index);
-    const sameName = earlier.find((p) => p.name === entry.name);
-    if (sameName !== undefined) {
-      found.push(
-        finding("project.duplicate_name", {
-          path: CONFIG_FILE,
-          field: `${field}.name`,
-          message: `project name '${entry.name}' is already used by projects.${earlier.indexOf(sameName)}`,
-        }),
-      );
-    }
-    const samePath = earlier.find((p) => normalizeProjectPath(p.path) === path);
-    if (samePath !== undefined) {
-      found.push(
-        finding("project.duplicate_path", {
-          path: CONFIG_FILE,
-          field: `${field}.path`,
-          message: `${entry.path} is the directory of project '${samePath.name}' (${samePath.path})`,
-        }),
-      );
-    }
-    const nesting = earlier.find((p) => {
-      const other = normalizeProjectPath(p.path);
-      return other !== path && (pathContains(other, path) || pathContains(path, other));
-    });
-    if (nesting !== undefined) {
-      found.push(
-        finding("project.nested", {
-          path: CONFIG_FILE,
-          field: `${field}.path`,
-          message: `project '${entry.name}' at ${path} and project '${nesting.name}' at ${normalizeProjectPath(nesting.path)} nest`,
-        }),
-      );
-    }
-    if (loaded !== undefined && !loaded.hasTestsDir) {
-      found.push(
-        finding("project.tests_missing", {
-          path: CONFIG_FILE,
-          field: `${field}.path`,
-          message: `project '${entry.name}' has no ${posix.join(path, TESTS_DIR)}/ directory`,
-        }),
-      );
-    }
-    return found;
-  },
-};
-
-/** Every file the loader read in a project parses and matches its schema. */
-export const schemaLevel: Level = {
-  name: "schema",
-  project({ loaded }, { errors }) {
-    if (loaded === undefined) return [];
-    const prefix = `${posix.join(loaded.path, TESTS_DIR)}/`;
-    return errors.filter((e) => e.path?.startsWith(prefix)).map(fromError);
-  },
-};
-
-/** The levels in order; cross-file, resolution and environment follow (#40). */
-export const LEVELS: readonly Level[] = [workspaceLevel, schemaLevel];
+/** workspace → file schemas → cross-file → resolution → environment. */
+export const LEVELS: readonly Level[] = [
+  workspaceLevel,
+  schemaLevel,
+  crossFileLevel,
+  resolutionLevel,
+  environmentLevel,
+];
 
 /**
- * Runs the levels over a loaded workspace. Pure: `loadWorkspace` is the adapter.
+ * Runs the levels over a loaded workspace. Pure: the adapters build the input.
  * Findings come level by level, each level sorted by path, line, field and code,
  * so the output is deterministic.
  */
 export function validateWorkspace(
-  workspace: LoadedWorkspace,
+  input: ValidationInput,
   levels: readonly Level[] = LEVELS,
 ): Finding[] {
   const findings: Finding[] = [];
-  let open = scopes(workspace);
+  let open = scopes(input.workspace);
   for (const level of levels) {
-    const global = level.workspace?.(workspace) ?? [];
+    const global = level.workspace?.(input) ?? [];
     const found = [...global];
     const stopped = hasError(global);
     if (!stopped && level.project !== undefined) {
       const check = level.project;
       open = open.filter((scope) => {
-        const own = check(scope, workspace);
+        const own = check(scope, input);
         found.push(...own);
         return !hasError(own);
       });

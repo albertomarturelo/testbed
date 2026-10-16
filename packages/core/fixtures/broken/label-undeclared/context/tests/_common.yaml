@@ -1,0 +1,7 @@
+surfaces: [web]
+layer: e2e
+priority: P2
+automation:
+  eligible: true
+labels:
+  team: storefront

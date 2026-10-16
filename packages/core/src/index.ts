@@ -16,4 +16,5 @@ export * from "./operations/registry.js";
 export * from "./resolve/resolve.js";
 export * from "./schema/index.js";
 export * from "./validate/finding.js";
+export * from "./validate/levels.js";
 export * from "./validate/validate.js";

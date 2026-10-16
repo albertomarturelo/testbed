@@ -1,0 +1,6 @@
+{
+  "private": true,
+  "dependencies": {
+    "casefile": "0.4.1"
+  }
+}

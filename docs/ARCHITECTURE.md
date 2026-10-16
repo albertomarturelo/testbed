@@ -2,8 +2,9 @@
 
 > In progress: `packages/core` has schemas, loader, resolver, id generator, the
 > operation/extension registry, the built-in operations `init` and `project-add`, and the
-> validator (finding contract, code catalogue, level runner; levels workspace and file
-> schemas, the rest in #40); the
+> validator (finding contract, code catalogue, level runner; levels workspace → file
+> schemas → cross-file → resolution → environment, fed by `loadWorkspace` and
+> `loadToolchain`); the
 > rest is the **target** architecture taken from the founding brief. Anything not stated in the brief is marked
 > "(inferred — confirm)". Decisions are recorded in [decisions/](decisions/_index.md).
 

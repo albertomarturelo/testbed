@@ -4,6 +4,7 @@ import { join, relative, sep } from "node:path";
 import { z } from "zod";
 import { ok } from "../errors.js";
 import { CONFIG_FILE } from "../load/paths.js";
+import { ExactVersion } from "../schema/index.js";
 import { defineOperation } from "./operation.js";
 import { writeIfAbsent } from "./write-if-absent.js";
 
@@ -17,11 +18,6 @@ const SkillFile = z.strictObject({
     .regex(/^(?!\/)(?!.*(?:^|\/)\.\.?(?:\/|$)).+$/, "a relative path without . or .. segments"),
   text: z.string(),
 });
-
-/** Exact semver: `.casefile/package.json` pins, never ranges (ADR casefile-toolchain-dir). */
-const ExactVersion = z
-  .string()
-  .regex(/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/, "an exact semver version");
 
 const InitInput = z.strictObject({
   /** The casefile version running `init`; the host knows it, core does not look it up. */

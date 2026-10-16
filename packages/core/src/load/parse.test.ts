@@ -3,6 +3,7 @@ import {
   parseCaseFile,
   parseCommonFile,
   parseConfigFile,
+  parsePropertiesFile,
   parseRunFile,
   parseYaml,
 } from "./parse.js";
@@ -123,6 +124,15 @@ describe("parseCommonFile / parseConfigFile", () => {
     });
     expect(parseConfigFile("casefile.yaml", "version: 1\n").ok).toBe(false);
   });
+
+  it("validates _properties.yaml", () => {
+    const text = "properties:\n  risk:\n    type: enum\n    values: [low, high]\n";
+    expect(parsePropertiesFile("_properties.yaml", text)).toEqual({
+      ok: true,
+      value: { properties: { risk: { type: "enum", values: ["low", "high"] } } },
+    });
+    expect(parsePropertiesFile("_properties.yaml", "properties:\n  risk: {}\n").ok).toBe(false);
+  });
 });
 
 describe("TODO markers (ADR agent-driven-setup)", () => {
@@ -173,7 +183,10 @@ describe("parseRunFile", () => {
   it("parses one event per non-blank line", () => {
     const text = `${JSON.stringify(RUN)}\r\n\n${JSON.stringify({ ...RUN, case_id: "TC-0002" })}\n`;
     const result = parseRunFile("r1.jsonl", text);
-    expect(result.events.map((e) => e.case_id)).toEqual(["TC-0001", "TC-0002"]);
+    expect(result.runs.map((r) => [r.line, r.event.case_id])).toEqual([
+      [1, "TC-0001"],
+      [3, "TC-0002"],
+    ]);
     expect(result.errors).toEqual([]);
   });
 
@@ -182,7 +195,7 @@ describe("parseRunFile", () => {
       "\n",
     );
     const result = parseRunFile("r1.jsonl", text);
-    expect(result.events).toEqual([RUN]);
+    expect(result.runs).toEqual([{ path: "r1.jsonl", line: 1, event: RUN }]);
     expect(result.errors).toEqual([
       expect.objectContaining({ code: "json.invalid", line: 2 }),
       expect.objectContaining({ code: "schema.invalid", line: 3, field: "status" }),
