@@ -3,7 +3,9 @@
 ## Status
 
 Accepted — 2026-10-15 (#23). Amends [specs-ship-with-operations](2026-10-15-specs-ship-with-operations.md)
-(topic SPECs) and clarifies [write-ownership](2026-10-15-write-ownership.md) for `casefile.yaml`.
+(topic SPECs) and clarifies [write-ownership](2026-10-15-write-ownership.md) for `casefile.yaml`. `init` extended by
+[casefile-toolchain-dir](2026-10-15-casefile-toolchain-dir.md) (`init` also writes
+`.casefile/`).
 
 ## Context
 

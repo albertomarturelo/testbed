@@ -68,6 +68,7 @@ project (single repo, `path: .`) or several (monorepo)
 
 ```
 casefile.yaml                   # workspace root + config: projects, extensions, commons
+.casefile/package.json          # toolchain: pins casefile + extensions (+ lockfile); the product's package.json is never touched
 apps/web/                       # a project = a directory with context/tests/
   context/
     tests/
@@ -95,7 +96,9 @@ Cross-project references are qualified: `web/TC-0003`.
 Setup is done by the user's agent; the library scaffolds and validates
 ([agent-driven-setup](decisions/2026-10-15-agent-driven-setup.md)).
 
-1. Human: `npx casefile init` → `casefile.yaml` (no projects yet) + skills offered.
+1. Human: `npx casefile init` → `casefile.yaml` (no projects yet), `.casefile/` pinning
+   casefile, and skills offered
+   ([casefile-toolchain-dir](decisions/2026-10-15-casefile-toolchain-dir.md)).
 2. Agent, `/casefile-setup`: reads `casefile spec setup`, explores the repo, confirms
    the plan with the human once, runs `casefile project add <name> <path>` per project.
 3. The scaffold leaves `TODO` markers; `casefile validate --json` lists them as
