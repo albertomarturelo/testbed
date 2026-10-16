@@ -25,4 +25,4 @@
 | [2026-10-15-frontmatter-without-gray-matter](2026-10-15-frontmatter-without-gray-matter.md) | Case frontmatter is split in core and parsed with `yaml` | Accepted | 2026-10-15 |
 | [2026-10-15-workspace-and-projects](2026-10-15-workspace-and-projects.md) | casefile always runs in a workspace of one or more projects | Accepted | 2026-10-15 |
 | [2026-10-15-agent-driven-setup](2026-10-15-agent-driven-setup.md) | Setup is driven by the agent; the library scaffolds and validates | Accepted | 2026-10-15 |
-| [2026-10-15-casefile-toolchain-dir](2026-10-15-casefile-toolchain-dir.md) | casefile and its extensions are pinned in a toolchain package | Accepted | 2026-10-15 |
+| [2026-10-15-casefile-toolchain-dir](2026-10-15-casefile-toolchain-dir.md) | casefile and its extensions are pinned in `.casefile/` | Accepted | 2026-10-15 |

@@ -5,8 +5,8 @@
 Accepted — 2026-10-15 (#3). Resolution order amended by
 [workspace-and-projects](2026-10-15-workspace-and-projects.md): a workspace `commons`
 level sits between extension commons and the project root. Pinning amended by
-[casefile-toolchain-dir](2026-10-15-casefile-toolchain-dir.md): the lockfile is the
-toolchain package's — the root `package.json` or `.casefile/`.
+[casefile-toolchain-dir](2026-10-15-casefile-toolchain-dir.md): the lockfile is
+`.casefile/package-lock.json`, in every workspace.
 
 ## Context
 
