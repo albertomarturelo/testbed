@@ -1,0 +1,4 @@
+properties:
+  owner_team:
+    type: string
+    description: Team that owns the feature under test.

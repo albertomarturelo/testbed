@@ -1,12 +1,14 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import { dirname, isAbsolute, join, posix, relative, resolve, sep } from "node:path";
 import { type CasefileError, fail, ok, type Result } from "../errors.js";
-import type { CommonFile, Config, ProjectEntry, RunEvent } from "../schema/index.js";
+import type { CommonFile, Config, ProjectEntry, PropertiesFile } from "../schema/index.js";
 import {
   type LoadedCase,
+  type LoadedRun,
   parseCaseFile,
   parseCommonFile,
   parseConfigFile,
+  parsePropertiesFile,
   parseRunFile,
 } from "./parse.js";
 import { CONFIG_FILE, normalizeProjectPath, TESTS_DIR } from "./paths.js";
@@ -21,7 +23,9 @@ export type LoadedProject = {
   /** `_common.yaml` files keyed by path, e.g. `apps/web/context/tests/_common.yaml`. */
   commons: Map<string, CommonFile>;
   cases: LoadedCase[];
-  runs: RunEvent[];
+  runs: LoadedRun[];
+  /** `context/tests/_properties.yaml`; `null` when absent or invalid. */
+  properties: PropertiesFile | null;
   /** Whether `<path>/context/tests/` is a directory; the validator requires it. */
   hasTestsDir: boolean;
 };
@@ -42,10 +46,12 @@ export type LoadedWorkspace = {
 
 const CASE_FILE = /(?:^|\/)TC-[0-9]{4,}\.md$/;
 const RUN_FILE = /^\.runs\/[^/]+\.jsonl$/;
+/** Custom properties of a project; only at the root of its `context/tests/`. */
+const PROPERTIES_FILE = "_properties.yaml";
 
 /**
  * Filesystem adapter: reads `casefile.yaml` at `root`, then each project's
- * commons, cases and run events. `.inbox/` and `_properties.yaml` are not read here.
+ * commons, `_properties.yaml`, cases and run events. `.inbox/` is not read here.
  */
 export async function loadWorkspace(root: string): Promise<LoadedWorkspace> {
   const workspace: LoadedWorkspace = { root, config: null, projects: [], errors: [] };
@@ -111,6 +117,7 @@ export async function loadProject(
     commons: new Map(),
     cases: [],
     runs: [],
+    properties: null,
     hasTestsDir: false,
   };
   const errors: CasefileError[] = [];
@@ -124,15 +131,17 @@ export async function loadProject(
   for (const rel of await listFiles(join(root, testsDir))) {
     if (rel.startsWith(".inbox/")) continue;
     const isCommon = rel === "_common.yaml" || rel.endsWith("/_common.yaml");
+    const isProperties = rel === PROPERTIES_FILE;
     const isRun = RUN_FILE.test(rel);
-    if (!isCommon && !isRun && !CASE_FILE.test(rel)) continue;
+    if (!isCommon && !isProperties && !isRun && !CASE_FILE.test(rel)) continue;
     const path = posix.join(testsDir, rel);
     const text = await readText(join(root, path));
     if (text === null) continue;
-    if (isCommon) collect(parseCommonFile(path, text), (c) => project.commons.set(path, c));
+    if (isProperties) collect(parsePropertiesFile(path, text), (p) => (project.properties = p));
+    else if (isCommon) collect(parseCommonFile(path, text), (c) => project.commons.set(path, c));
     else if (isRun) {
       const parsed = parseRunFile(path, text);
-      project.runs.push(...parsed.events);
+      project.runs.push(...parsed.runs);
       errors.push(...parsed.errors);
     } else collect(parseCaseFile(path, text), (c) => project.cases.push(c));
   }

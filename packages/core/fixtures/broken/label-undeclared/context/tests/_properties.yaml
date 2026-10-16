@@ -1,0 +1,4 @@
+properties:
+  risk:
+    type: enum
+    values: [low, high]

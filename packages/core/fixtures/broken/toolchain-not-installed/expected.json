@@ -1,0 +1,7 @@
+[
+  {
+    "code": "toolchain.not_installed",
+    "path": ".casefile/package.json",
+    "field": "dependencies.casefile"
+  }
+]

@@ -1,0 +1,7 @@
+[
+  {
+    "code": "resolve.missing_field",
+    "path": "context/tests/a/TC-0001.md",
+    "field": "automation.eligible"
+  }
+]

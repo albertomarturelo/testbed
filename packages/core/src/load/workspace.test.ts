@@ -30,7 +30,12 @@ describe("loadWorkspace on examples/demo-repo (one project at `.`)", async () =>
     for (const path of DEMO_EXPECTED.tc0003CommonsChain) {
       expect(project?.commons.has(path)).toBe(true);
     }
-    expect(new Set(project?.runs.map((r) => r.run_id)).size).toBe(DEMO_EXPECTED.runFiles);
+    expect(new Set(project?.runs.map((r) => r.event.run_id)).size).toBe(DEMO_EXPECTED.runFiles);
+    expect(Object.keys(project?.properties?.properties ?? {})).toEqual([
+      "risk",
+      "owner_team",
+      "smoke",
+    ]);
   });
 });
 
@@ -56,7 +61,7 @@ describe("loadWorkspace on examples/demo-monorepo (two projects)", async () => {
 
   it("keeps run events in their own project", () => {
     const runs = Object.fromEntries(
-      workspace.projects.map((p) => [p.name, p.runs.map((r) => r.run_id)]),
+      workspace.projects.map((p) => [p.name, p.runs.map((r) => r.event.run_id)]),
     );
     expect(runs).toEqual({ web: ["2026-10-14-ci-web"], api: ["2026-10-14-ci-api"] });
   });
@@ -135,7 +140,9 @@ describe("loadWorkspace on broken workspaces", () => {
     const workspace = await loadWorkspace(root);
     const [project] = workspace.projects;
     expect([...(project?.commons.keys() ?? [])]).toEqual(["context/tests/a/_common.yaml"]);
-    expect(project?.runs.map((r) => r.run_id)).toEqual(["r"]);
+    expect(project?.runs.map((r) => [r.path, r.line, r.event.run_id])).toEqual([
+      ["context/tests/.runs/r.jsonl", 1, "r"],
+    ]);
     expect(new Set(workspace.errors.map((e) => `${e.path} ${e.code}`))).toEqual(
       new Set([
         "context/tests/_common.yaml yaml.invalid",

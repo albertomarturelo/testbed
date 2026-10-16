@@ -1,0 +1,12 @@
+[
+  {
+    "code": "case.feature_mismatch",
+    "path": "context/tests/TC-0003.md",
+    "field": "feature"
+  },
+  {
+    "code": "case.feature_mismatch",
+    "path": "context/tests/a/TC-0002.md",
+    "field": "feature"
+  }
+]

@@ -96,6 +96,46 @@ export const FINDING_CODES = {
     description: "A project has no `context/tests/` directory",
     hint: `${ADD_PROJECT} to scaffold it`,
   },
+  "case.feature_mismatch": {
+    severity: "error",
+    description: "A case's `feature` does not mirror its folder under `context/tests/`",
+    hint: "set `feature` to the folder path, or move the file to the feature's folder",
+  },
+  "case.duplicate_id": {
+    severity: "error",
+    description: "Two cases of one project share an id",
+    hint: "ids are unique per project; give one of them the next free id",
+  },
+  "label.undeclared": {
+    severity: "error",
+    description: "A label key is not declared in the project's `_properties.yaml`",
+  },
+  "run.unknown_case": {
+    severity: "error",
+    description: "A run event's `case_id` is not a case of its project",
+    hint: "run files are append-only: restore the case, or record the correction as a new event",
+  },
+  "resolve.missing_field": {
+    severity: "error",
+    description: "A required field is set neither in the case nor in any commons it inherits",
+    hint: "set it in the case or in a `_common.yaml` above it",
+  },
+  "extension.not_installed": {
+    severity: "error",
+    description:
+      "An extension listed in `casefile.yaml` is not installed in `.casefile/node_modules`, or not at its pinned version",
+  },
+  "toolchain.not_installed": {
+    severity: "error",
+    description:
+      "`.casefile/package.json` declares casefile but it is not installed, or not at its pinned version",
+    hint: "npm install --prefix .casefile --ignore-scripts (in CI: npm ci --prefix .casefile --ignore-scripts)",
+  },
+  "toolchain.unpinned": {
+    severity: "warning",
+    description: "`.casefile/package.json` does not pin casefile to an exact version",
+    hint: "set `dependencies.casefile` to an exact version, then reinstall",
+  },
 } as const satisfies Record<string, FindingCodeInfo>;
 
 export type FindingCode = keyof typeof FINDING_CODES;

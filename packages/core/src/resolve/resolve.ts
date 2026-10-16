@@ -229,7 +229,7 @@ export function resolveWorkspace(
       const result = resolveCase(loaded, {
         project: project.name,
         layers,
-        runs: project.runs,
+        runs: project.runs.map((r) => r.event),
         commitFor: options.commitFor,
       });
       if (result.ok) resolved.cases.push(result.value);

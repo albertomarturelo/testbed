@@ -1,0 +1,7 @@
+[
+  {
+    "code": "extension.not_installed",
+    "path": "casefile.yaml",
+    "field": "extensions.0"
+  }
+]
