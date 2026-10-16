@@ -1,0 +1,3 @@
+version: 1
+projects:
+  - { name: web, path: apps/web }

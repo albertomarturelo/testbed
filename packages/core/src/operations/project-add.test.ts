@@ -51,11 +51,10 @@ describe("init → project add → load", () => {
       { name: "api", path: "apps/api" },
     ]);
     expect(workspace.projects.map((p) => p.name)).toEqual(["web", "api"]);
-    // Until the validator (#9) reports them as `scaffold.todo`, each marker shows
-    // up as a schema error on its field, and nothing else does.
+    // Each marker is reported as `scaffold.todo` on its field, and nothing else is.
     for (const project of ["apps/web", "apps/api"]) {
       const errors = workspace.errors.filter((e) => e.path?.startsWith(`${project}/`));
-      expect(errors.every((e) => e.code === "schema.invalid")).toBe(true);
+      expect(errors.every((e) => e.code === "scaffold.todo")).toBe(true);
       expect(errors.map((e) => e.path)).toEqual(
         TODO_FIELDS.map(() => `${project}/context/tests/_common.yaml`),
       );

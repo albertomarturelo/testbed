@@ -3,7 +3,7 @@ import { parseDocument, type YAMLSeq } from "yaml";
 import { z } from "zod";
 import { type CasefileError, fail, ok } from "../errors.js";
 import { validate } from "../load/parse.js";
-import { CONFIG_FILE, normalizeProjectPath, TESTS_DIR } from "../load/paths.js";
+import { CONFIG_FILE, normalizeProjectPath, pathContains, TESTS_DIR } from "../load/paths.js";
 import { Layer, Priority, ProjectEntry, ReviewMode, Surface } from "../schema/index.js";
 import { defineOperation } from "./operation.js";
 import { writeIfAbsent } from "./write-if-absent.js";
@@ -164,7 +164,7 @@ function clashes(projects: readonly ProjectEntry[], name: string, path: string):
         ...at,
         message: `${path} is already registered as project '${project.name}'`,
       });
-    } else if (other !== path && (contains(other, path) || contains(path, other))) {
+    } else if (other !== path && (pathContains(other, path) || pathContains(path, other))) {
       errors.push({
         code: "project.nested",
         ...at,
@@ -173,8 +173,4 @@ function clashes(projects: readonly ProjectEntry[], name: string, path: string):
     }
   }
   return errors;
-}
-
-function contains(outer: string, inner: string): boolean {
-  return outer === "." || inner.startsWith(`${outer}/`);
 }

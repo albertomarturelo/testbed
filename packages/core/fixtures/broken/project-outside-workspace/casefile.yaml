@@ -1,0 +1,5 @@
+version: 1
+projects:
+  - { name: out, path: ../elsewhere }
+  - { name: abs, path: /tmp }
+  - { name: web, path: apps/web }

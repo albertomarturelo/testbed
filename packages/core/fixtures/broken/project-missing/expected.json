@@ -1,0 +1,12 @@
+[
+  {
+    "code": "project.missing",
+    "path": "casefile.yaml",
+    "field": "projects.0.path"
+  },
+  {
+    "code": "project.missing",
+    "path": "casefile.yaml",
+    "field": "projects.1.path"
+  }
+]

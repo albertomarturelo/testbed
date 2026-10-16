@@ -1,0 +1,7 @@
+[
+  {
+    "code": "project.tests_missing",
+    "path": "casefile.yaml",
+    "field": "projects.0.path"
+  }
+]

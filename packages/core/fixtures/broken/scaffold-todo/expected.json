@@ -1,0 +1,27 @@
+[
+  {
+    "code": "scaffold.todo",
+    "path": "context/tests/_common.yaml",
+    "field": "layer"
+  },
+  {
+    "code": "scaffold.todo",
+    "path": "context/tests/_common.yaml",
+    "field": "surfaces.0"
+  },
+  {
+    "code": "scaffold.todo",
+    "path": "context/tests/a/TC-0001.md",
+    "field": "priority"
+  },
+  {
+    "code": "schema.invalid",
+    "path": "context/tests/a/TC-0001.md",
+    "field": "state"
+  },
+  {
+    "code": "scaffold.todo",
+    "path": "context/tests/a/TC-0001.md",
+    "field": "title"
+  }
+]
