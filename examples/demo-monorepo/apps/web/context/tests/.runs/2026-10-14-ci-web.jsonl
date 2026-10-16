@@ -1,0 +1,1 @@
+{"run_id":"2026-10-14-ci-web","case_id":"TC-0001","status":"passed","executor":"ci:github-actions","at":"2026-10-14T07:00:00Z","surface":"web","env":"staging","build":"web-2.0.0+7","automation_ref":"login.spec.ts::signs in with valid credentials"}

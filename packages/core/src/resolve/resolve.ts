@@ -1,12 +1,16 @@
+import { posix } from "node:path";
 import { type CasefileError, fail, ok, type Result } from "../errors.js";
 import type { LoadedCase } from "../load/parse.js";
-import { TESTS_DIR } from "../load/paths.js";
-import type { LoadedRepo } from "../load/repo.js";
-import type { CommonFile, HistoryEntry, RunEvent, TestCaseFile } from "../schema/index.js";
+import { CONFIG_FILE, TESTS_DIR } from "../load/paths.js";
+import type { LoadedWorkspace } from "../load/workspace.js";
+import type { CommonFile, Config, HistoryEntry, RunEvent, TestCaseFile } from "../schema/index.js";
 
 /** One level of inherited defaults, outermost first. */
 export type CommonsLayer = {
-  /** Repo-relative path of a `_common.yaml`, or `ext:<package>@<version>` (ADR org-commons-via-extension). */
+  /**
+   * Workspace-relative path of a `_common.yaml`, `casefile.yaml` for workspace
+   * commons, or `ext:<package>@<version>` (ADR org-commons-via-extension).
+   */
   origin: string;
   commons: CommonFile;
 };
@@ -28,7 +32,9 @@ export type ResolvedCase = Omit<
   TestCaseFile,
   "surfaces" | "layer" | "priority" | "automation" | "labels" | "preconditions" | "data" | "history"
 > & {
-  /** Repo-relative path of the case file. */
+  /** Name of the project the case belongs to; ids are unique per project. */
+  project: string;
+  /** Workspace-relative path of the case file. */
   path: string;
   surfaces: NonNullable<TestCaseFile["surfaces"]>;
   layer: NonNullable<TestCaseFile["layer"]>;
@@ -47,8 +53,10 @@ export type ResolvedCase = Omit<
 };
 
 export type ResolveContext = {
-  /** Extension and repo commons, outermost first; see `commonsChain`. */
+  project: string;
+  /** Extension, workspace and project commons, outermost first; see `commonsChain`. */
   layers: readonly CommonsLayer[];
+  /** Run events of the case's own project. */
   runs: readonly RunEvent[];
   /** Commit whose message carries `Casefile-Change: <change>`, or `null` (git adapter: #10). */
   commitFor: (change: string) => string | null;
@@ -132,6 +140,7 @@ export function resolveCase(loaded: LoadedCase, context: ResolveContext): Result
   const ref = file.automation?.ref;
   return ok({
     ...file,
+    project: context.project,
     path,
     surfaces,
     layer,
@@ -168,20 +177,23 @@ function automationStatus(
 }
 
 /**
- * Repo commons that apply to a case, root first: `context/tests/_common.yaml`,
- * then one per folder down to the case's own folder. The tree is the file's
- * location, not its `feature` field (the validator checks they agree, #9).
+ * Project commons that apply to a case, root first: the project's
+ * `context/tests/_common.yaml`, then one per folder down to the case's own folder.
+ * The tree is the file's location, not its `feature` field (the validator checks
+ * they agree, #9). Paths are workspace-relative; `projectPath` is `.` at the root.
  */
 export function commonsChain(
   commons: ReadonlyMap<string, CommonFile>,
+  projectPath: string,
   casePath: string,
 ): CommonsLayer[] {
+  const testsDir = posix.join(projectPath, TESTS_DIR);
   const folders = casePath
-    .slice(TESTS_DIR.length + 1)
+    .slice(testsDir.length + 1)
     .split("/")
     .slice(0, -1);
-  const dirs = folders.map((_, i) => `${TESTS_DIR}/${folders.slice(0, i + 1).join("/")}`);
-  return [TESTS_DIR, ...dirs].flatMap((dir) => {
+  const dirs = folders.map((_, i) => `${testsDir}/${folders.slice(0, i + 1).join("/")}`);
+  return [testsDir, ...dirs].flatMap((dir) => {
     const origin = `${dir}/_common.yaml`;
     const found = commons.get(origin);
     return found === undefined ? [] : [{ origin, commons: found }];
@@ -193,19 +205,41 @@ export function extensionLayer(name: string, version: string, commons: CommonFil
   return { origin: `ext:${name}@${version}`, commons };
 }
 
-export type ResolvedRepo = { cases: ResolvedCase[]; errors: CasefileError[] };
+/** The workspace-level `commons` of `casefile.yaml`, if any (ADR workspace-and-projects). */
+export function workspaceLayer(config: Config | null): CommonsLayer[] {
+  return config?.commons === undefined ? [] : [{ origin: CONFIG_FILE, commons: config.commons }];
+}
 
-/** Resolves every loaded case; extension layers go before the repo's own commons. */
-export function resolveRepo(
-  repo: LoadedRepo,
+export type ResolvedWorkspace = { cases: ResolvedCase[]; errors: CasefileError[] };
+
+/**
+ * Resolves every case of every project. Layers, outermost first: extension
+ * commons → workspace `commons` → project root → ancestors → case. Each case only
+ * sees the run events of its own project.
+ */
+export function resolveWorkspace(
+  workspace: LoadedWorkspace,
   options: Pick<ResolveContext, "commitFor"> & { extensionLayers?: readonly CommonsLayer[] },
-): ResolvedRepo {
-  const resolved: ResolvedRepo = { cases: [], errors: [] };
-  for (const loaded of repo.cases) {
-    const layers = [...(options.extensionLayers ?? []), ...commonsChain(repo.commons, loaded.path)];
-    const result = resolveCase(loaded, { layers, runs: repo.runs, commitFor: options.commitFor });
-    if (result.ok) resolved.cases.push(result.value);
-    else resolved.errors.push(...result.errors);
+): ResolvedWorkspace {
+  const resolved: ResolvedWorkspace = { cases: [], errors: [] };
+  const outer = [...(options.extensionLayers ?? []), ...workspaceLayer(workspace.config)];
+  for (const project of workspace.projects) {
+    for (const loaded of project.cases) {
+      const layers = [...outer, ...commonsChain(project.commons, project.path, loaded.path)];
+      const result = resolveCase(loaded, {
+        project: project.name,
+        layers,
+        runs: project.runs,
+        commitFor: options.commitFor,
+      });
+      if (result.ok) resolved.cases.push(result.value);
+      else resolved.errors.push(...result.errors);
+    }
   }
   return resolved;
+}
+
+/** Qualified reference to a case across projects: `web/TC-0003`. */
+export function caseRef(c: Pick<ResolvedCase, "project" | "id">): string {
+  return `${c.project}/${c.id}`;
 }

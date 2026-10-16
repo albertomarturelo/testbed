@@ -275,36 +275,43 @@ export const samples: Record<FileSchemaName, { valid: Sample[]; invalid: Sample[
       { name: "gate without scope", value: { gates: [{ name: "g", require: {} }] } },
     ],
   },
-  workspace: {
+  config: {
     valid: [
+      { name: "after init, no projects yet", value: { version: 1, projects: [] } },
       {
-        name: "three repos",
+        name: "single-project repo",
+        value: { version: 1, projects: [{ name: "app", path: "." }] },
+      },
+      {
+        name: "monorepo with extensions and workspace commons",
         value: {
-          repos: [
-            { name: "web", path: "../web" },
-            { name: "mobile", path: "../mobile", url: "git@example.com:acme/mobile.git" },
-            { name: "backend", path: "../backend" },
+          version: 1,
+          projects: [
+            { name: "web", path: "apps/web" },
+            { name: "api", path: "services/api" },
           ],
+          extensions: ["@acme/casefile-org", "casefile-ingest-x"],
+          commons: { labels: { owner_team: "platform" }, preconditions: ["VPN is up"] },
         },
       },
     ],
     invalid: [
-      { name: "no repos", value: { repos: [] } },
-      { name: "repo without path", value: { repos: [{ name: "web" }] } },
-    ],
-  },
-  config: {
-    valid: [
-      { name: "minimal", value: { version: 1 } },
+      { name: "missing version", value: { projects: [] } },
+      { name: "missing projects", value: { version: 1 } },
+      { name: "version 2", value: { version: 2, projects: [] } },
+      { name: "project without path", value: { version: 1, projects: [{ name: "web" }] } },
       {
-        name: "with extensions",
-        value: { version: 1, extensions: ["@acme/casefile-org", "casefile-ingest-x"] },
+        name: "project name not a slug",
+        value: { version: 1, projects: [{ name: "Web", path: "." }] },
       },
-    ],
-    invalid: [
-      { name: "missing version", value: {} },
-      { name: "version 2", value: { version: 2 } },
-      { name: "invalid package name", value: { version: 1, extensions: ["Not A Package"] } },
+      {
+        name: "invalid package name",
+        value: { version: 1, projects: [], extensions: ["Not A Package"] },
+      },
+      {
+        name: "unknown key in commons",
+        value: { version: 1, projects: [], commons: { owner: "x" } },
+      },
     ],
   },
 };

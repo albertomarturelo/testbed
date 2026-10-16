@@ -1,16 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { DEMO_EXPECTED, DEMO_ROOT } from "../demo.fixture.js";
+import {
+  DEMO_EXPECTED,
+  DEMO_MONOREPO_EXPECTED,
+  DEMO_MONOREPO_ROOT,
+  DEMO_ROOT,
+} from "../demo.fixture.js";
 import type { LoadedCase } from "../load/parse.js";
-import { loadRepo } from "../load/repo.js";
+import { type LoadedWorkspace, loadWorkspace } from "../load/workspace.js";
 import type { CommonFile, RunEvent, TestCaseFile } from "../schema/index.js";
 import {
   type CommonsLayer,
+  caseRef,
   commonsChain,
   extensionLayer,
   type ResolveContext,
   type ResolvedCase,
   resolveCase,
-  resolveRepo,
+  resolveWorkspace,
+  workspaceLayer,
 } from "./resolve.js";
 
 const PATH = "context/tests/a/TC-0001.md";
@@ -50,7 +57,13 @@ const RUN: RunEvent = {
 
 function resolve(file: Partial<TestCaseFile>, context: Partial<ResolveContext> = {}) {
   const loaded: LoadedCase = { path: PATH, file: { ...FILE, ...file }, body: "" };
-  return resolveCase(loaded, { layers: [ROOT], runs: [], commitFor: () => null, ...context });
+  return resolveCase(loaded, {
+    project: "app",
+    layers: [ROOT],
+    runs: [],
+    commitFor: () => null,
+    ...context,
+  });
 }
 
 function resolved(
@@ -235,32 +248,55 @@ describe("commonsChain", () => {
     ["context/tests/_common.yaml", { layer: "e2e" }],
     ["context/tests/a/b/_common.yaml", { layer: "api" }],
     ["context/tests/ab/_common.yaml", { layer: "ui" }],
+    ["apps/web/context/tests/_common.yaml", { layer: "ui" }],
+    ["apps/web/context/tests/a/_common.yaml", { layer: "ui" }],
   ]);
 
-  it("lists existing commons from the root down to the case folder", () => {
-    expect(commonsChain(commons, "context/tests/a/b/TC-0001.md").map((l) => l.origin)).toEqual([
-      "context/tests/_common.yaml",
-      "context/tests/a/b/_common.yaml",
-    ]);
+  it("lists existing commons from the project root down to the case folder", () => {
+    expect(commonsChain(commons, ".", "context/tests/a/b/TC-0001.md").map((l) => l.origin)).toEqual(
+      ["context/tests/_common.yaml", "context/tests/a/b/_common.yaml"],
+    );
   });
 
   it("only uses the root for a case at the top level", () => {
-    expect(commonsChain(commons, "context/tests/TC-0001.md").map((l) => l.origin)).toEqual([
+    expect(commonsChain(commons, ".", "context/tests/TC-0001.md").map((l) => l.origin)).toEqual([
       "context/tests/_common.yaml",
+    ]);
+  });
+
+  it("stays inside the project directory", () => {
+    const chain = commonsChain(commons, "apps/web", "apps/web/context/tests/a/TC-0001.md");
+    expect(chain.map((l) => l.origin)).toEqual([
+      "apps/web/context/tests/_common.yaml",
+      "apps/web/context/tests/a/_common.yaml",
     ]);
   });
 });
 
-describe("resolveRepo on examples/demo-repo", async () => {
-  const repo = await loadRepo(DEMO_ROOT);
-  const { cases, errors } = resolveRepo(repo, { commitFor: () => null });
-  const tc3 = cases.find((c) => c.id === "TC-0003");
-
-  it("resolves every case", () => {
-    expect(errors).toEqual([]);
-    expect(cases.map((c) => c.id).sort()).toEqual([...DEMO_EXPECTED.caseIds]);
+describe("workspaceLayer", () => {
+  it("is empty without workspace commons", () => {
+    expect(workspaceLayer(null)).toEqual([]);
+    expect(workspaceLayer({ version: 1, projects: [] })).toEqual([]);
   });
 
+  it("reports casefile.yaml as the origin", () => {
+    const commons = { layer: "e2e" } as const;
+    expect(workspaceLayer({ version: 1, projects: [], commons })).toEqual([
+      { origin: "casefile.yaml", commons },
+    ]);
+  });
+});
+
+describe("resolveWorkspace on examples/demo-repo", async () => {
+  const workspace = await loadWorkspace(DEMO_ROOT);
+  const { cases, errors } = resolveWorkspace(workspace, { commitFor: () => null });
+  const tc3 = cases.find((c) => c.id === "TC-0003");
+
+  it("resolves every case into the single project", () => {
+    expect(errors).toEqual([]);
+    expect(cases.map((c) => c.id).sort()).toEqual([...DEMO_EXPECTED.caseIds]);
+    expect(new Set(cases.map((c) => c.project))).toEqual(new Set([DEMO_EXPECTED.project]));
+  });
   it("resolves TC-0003 through its commons chain with origins", () => {
     const [root, checkout, payments] = DEMO_EXPECTED.tc0003CommonsChain;
     const own = "context/tests/checkout/payments/TC-0003.md";
@@ -299,21 +335,118 @@ describe("resolveRepo on examples/demo-repo", async () => {
     expect(automated.sort()).toEqual([...DEMO_EXPECTED.derivedAutomated]);
   });
 
-  it("puts extension layers before the repo root", () => {
+  it("puts extension layers before the project root", () => {
     const org = extensionLayer("@acme/commons", "1.0.0", {
       priority: "P3",
       labels: { org: "acme" },
     });
-    const withOrg = resolveRepo(repo, { commitFor: () => null, extensionLayers: [org] });
+    const withOrg = resolveWorkspace(workspace, { commitFor: () => null, extensionLayers: [org] });
     const c = withOrg.cases.find((x) => x.id === "TC-0003");
     expect(c?.priority).toBe("P1");
     expect(c?.origins["labels.org"]).toBe("ext:@acme/commons@1.0.0");
   });
 
   it("collects resolve errors per case", () => {
-    const broken = { ...repo, commons: new Map() };
-    const result = resolveRepo(broken, { commitFor: () => null });
+    const broken: LoadedWorkspace = {
+      ...workspace,
+      projects: workspace.projects.map((p) => ({ ...p, commons: new Map() })),
+    };
+    const result = resolveWorkspace(broken, { commitFor: () => null });
     expect(result.errors.length).toBeGreaterThan(0);
     expect(result.errors.every((e) => e.code === "resolve.missing_field")).toBe(true);
+  });
+});
+
+describe("resolveWorkspace on examples/demo-monorepo", async () => {
+  const workspace = await loadWorkspace(DEMO_MONOREPO_ROOT);
+  const { cases, errors } = resolveWorkspace(workspace, { commitFor: () => null });
+  const byRef = new Map(cases.map((c) => [caseRef(c), c]));
+
+  it("resolves the same id in two projects as two distinct cases", () => {
+    expect(errors).toEqual([]);
+    expect([...byRef.keys()].sort()).toEqual([...DEMO_MONOREPO_EXPECTED.caseRefs]);
+    expect(byRef.get("web/TC-0001")?.title).not.toBe(byRef.get("api/TC-0001")?.title);
+  });
+
+  it("inherits workspace commons before the project's, with origins", () => {
+    const [workspaceOrigin, webRoot] = DEMO_MONOREPO_EXPECTED.webTc0001CommonsChain;
+    const web = byRef.get("web/TC-0001");
+    expect(web).toMatchObject({
+      project: "web",
+      path: "apps/web/context/tests/login/TC-0001.md",
+      surfaces: ["web"],
+      labels: { owner_team: "storefront" },
+      data: { base_url: "https://staging.acme.example" },
+      preconditions: ["The Acme staging environment is reachable"],
+    });
+    expect(web?.origins).toEqual({
+      surfaces: webRoot,
+      layer: webRoot,
+      priority: webRoot,
+      "automation.eligible": webRoot,
+      "labels.owner_team": webRoot,
+      "data.base_url": workspaceOrigin,
+      "preconditions.0": workspaceOrigin,
+    });
+    expect(byRef.get("api/TC-0001")).toMatchObject({
+      labels: { owner_team: "platform" },
+      data: { base_url: "https://api.staging.acme.example" },
+      preconditions: [
+        "The Acme staging environment is reachable",
+        "The orders service is seeded with the demo catalog",
+      ],
+      origins: {
+        "labels.owner_team": "casefile.yaml",
+        "data.base_url": "services/api/context/tests/_common.yaml",
+      },
+    });
+  });
+
+  it("derives automated from each project's own runs", () => {
+    const automated = cases.filter((c) => c.automation.status === "automated").map(caseRef);
+    expect(automated.sort()).toEqual([...DEMO_MONOREPO_EXPECTED.derivedAutomated]);
+  });
+
+  it("never uses another project's runs", () => {
+    const [web, api] = workspace.projects;
+    if (web === undefined || api === undefined) throw new Error("demo-monorepo has two projects");
+    // Give api's case the ref that only web's runs carry: it must stay unproven.
+    const apiCase = api.cases[0];
+    if (apiCase === undefined) throw new Error("api has a case");
+    const swapped: LoadedWorkspace = {
+      ...workspace,
+      projects: [
+        web,
+        {
+          ...api,
+          runs: [],
+          cases: [
+            {
+              ...apiCase,
+              file: {
+                ...apiCase.file,
+                automation: {
+                  status: "in_progress",
+                  ref: "login.spec.ts::signs in with valid credentials",
+                },
+              },
+            },
+          ],
+        },
+      ],
+    };
+    const result = resolveWorkspace(swapped, { commitFor: () => null });
+    const api1 = result.cases.find((c) => caseRef(c) === "api/TC-0001");
+    expect(api1?.automation.status).toBe("in_progress");
+  });
+
+  it("puts extension layers before workspace commons", () => {
+    const org = extensionLayer("@acme/commons", "1.0.0", {
+      labels: { owner_team: "org", org: "acme" },
+    });
+    const result = resolveWorkspace(workspace, { commitFor: () => null, extensionLayers: [org] });
+    const api = result.cases.find((c) => caseRef(c) === "api/TC-0001");
+    expect(api?.labels).toMatchObject({ owner_team: "platform", org: "acme" });
+    expect(api?.origins["labels.org"]).toBe("ext:@acme/commons@1.0.0");
   });
 });

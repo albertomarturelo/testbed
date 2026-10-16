@@ -6,7 +6,6 @@ import { PropertiesFile } from "./properties.js";
 import { ReleasePolicy } from "./release-policy.js";
 import { RunEvent } from "./run-event.js";
 import { TestCaseFile } from "./test-case.js";
-import { Workspace } from "./workspace.js";
 
 export * from "./common.js";
 export * from "./config.js";
@@ -16,7 +15,6 @@ export * from "./properties.js";
 export * from "./release-policy.js";
 export * from "./run-event.js";
 export * from "./test-case.js";
-export * from "./workspace.js";
 
 /** Every file format, keyed by the name of its generated `schema/<name>.schema.json`. */
 export const fileSchemas = {
@@ -26,8 +24,7 @@ export const fileSchemas = {
   "run-event": { title: "casefile run event (.runs/*.jsonl line)", schema: RunEvent },
   "inbox-item": { title: "casefile inbox item", schema: InboxItem },
   "release-policy": { title: "casefile releases/policy.yaml", schema: ReleasePolicy },
-  workspace: { title: "casefile.workspace.yaml", schema: Workspace },
-  config: { title: "casefile.yaml", schema: Config },
+  config: { title: "casefile.yaml (workspace root)", schema: Config },
 } as const;
 
 export type FileSchemaName = keyof typeof fileSchemas;

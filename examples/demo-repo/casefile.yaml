@@ -1,1 +1,5 @@
+# Workspace root (ADR workspace-and-projects): a single-project repo.
 version: 1
+projects:
+  - name: web
+    path: .

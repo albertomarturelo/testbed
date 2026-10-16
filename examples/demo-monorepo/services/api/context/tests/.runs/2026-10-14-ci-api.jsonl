@@ -1,0 +1,1 @@
+{"run_id":"2026-10-14-ci-api","case_id":"TC-0001","status":"passed","executor":"ci:github-actions","at":"2026-10-14T07:05:00Z","surface":"api","env":"staging","build":"api-3.1.0+12","automation_ref":"orders.test.ts::creates an order"}
