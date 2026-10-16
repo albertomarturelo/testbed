@@ -88,7 +88,11 @@ export async function loadWorkspace(root: string): Promise<LoadedWorkspace> {
   return workspace;
 }
 
-/** Reads one project; errors are returned next to whatever loaded. `entry.path` is normalized. */
+/**
+ * Reads one project; errors are returned next to whatever loaded. `entry.path`
+ * is normalized but not checked: the caller must keep it inside the workspace,
+ * as `loadWorkspace` does (`project.outside_workspace`).
+ */
 export async function loadProject(
   root: string,
   entry: ProjectEntry,
