@@ -50,8 +50,9 @@ the bundled skills), and the actor (human, agent, CI) is invisible to a process.
    field `next: string[]` is the operation's advice to the human and prints last.
    A list of flat records (scalars only) prints as a table with a header row.
    An error with `column` and a `field` naming a one-line text input prints that
-   input with a `^` under the column (`query` DSL errors). *(Tables and caret
-   added by #45.)*
+   input with a `^` under the column (`query` DSL errors). Multi-line text
+   prints as `key: |` with its lines indented under it, never in a table cell.
+   *(Tables and caret added by #45; multi-line text by #68.)*
 7. **Exit codes:** 0 `ok`; 1 errors (usage errors included); 2 when an error is
    `workspace.missing`. `validate` returns `ok` with warnings only and fails with
    every finding when one is an error, so ADR agent-driven-setup's 0 / 1 / 2 hold.

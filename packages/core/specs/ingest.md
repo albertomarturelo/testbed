@@ -87,7 +87,7 @@ suites allowed. One result per `<testcase>`:
 | `duration_ms` | `time` in seconds × 1000, rounded |
 | `source` | the nearest suite's `hostname`: the Playwright project (`chromium`) |
 | `note` | the `<failure>` or `<error>` text (the runner's message, call log or stack trace), blank edge lines removed and dedented; without text, its `message` attribute |
-| `evidence` | one `{ "kind": "attachment", "ref": "<path>" }` per `[[ATTACHMENT\|<path>]]` line in `<system-out>` (Playwright), the path made workspace-relative from the report's directory |
+| `evidence` | one `{ "kind": "attachment", "ref": "<path>" }` per `[[ATTACHMENT\|<path>]]` line in `<system-out>` (Playwright): a relative path made workspace-relative from the report's directory, an absolute one kept as written |
 
 A failed Playwright test, reported in `results/junit.xml`:
 

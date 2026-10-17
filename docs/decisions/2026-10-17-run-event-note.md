@@ -33,9 +33,9 @@ log, and every event is one line of an append-only JSONL file kept in Git.
    trace), with blank edge lines removed and the common indentation stripped;
    without text, its `message` attribute. `skipped` and passes carry no note.
 5. **Attachments as evidence:** a `[[ATTACHMENT|<path>]]` line in the test's
-   `system-out` (Playwright) becomes `{ kind: "attachment", ref: <path> }`, the
-   path resolved from the report's directory to a workspace-relative one, in
-   report order. Evidence stays references; casefile never reads the file.
+   `system-out` (Playwright) becomes `{ kind: "attachment", ref: <path> }`, in
+   report order: a relative path resolved from the report's directory to a
+   workspace-relative one, an absolute path kept as written. Evidence stays references; casefile never reads the file.
 6. **Idempotency (ingester-contract §6) is unchanged:** the note and evidence
    are part of the event. A report ingested before this change, ingested again,
    appends its failed events once more with their notes; the earlier lines stay

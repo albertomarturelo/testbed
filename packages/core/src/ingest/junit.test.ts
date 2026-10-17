@@ -126,9 +126,9 @@ describe("junitIngester", () => {
     });
   });
 
-  it("makes attachment paths workspace-relative from the report's directory", async () => {
+  it("makes relative attachment paths workspace-relative from the report's directory", async () => {
     const result = await junitIngester.parse(
-      `<testsuite><testcase name="a"><system-out>[[ATTACHMENT|../test-results/a/error-context.md]]\n[[ATTACHMENT|trace.zip]]</system-out></testcase></testsuite>`,
+      `<testsuite><testcase name="a"><system-out>[[ATTACHMENT|../test-results/a/error-context.md]]\n[[ATTACHMENT|trace.zip]]\n[[ATTACHMENT|/home/ci/out/a.png]]\n[[ATTACHMENT|C:\\ci\\out\\b.png]]</system-out></testcase></testsuite>`,
       { path: "web/results/junit.xml" },
     );
     expect(result).toEqual({
@@ -140,6 +140,9 @@ describe("junitIngester", () => {
           evidence: [
             { kind: "attachment", ref: "web/test-results/a/error-context.md" },
             { kind: "attachment", ref: "web/results/trace.zip" },
+            // Absolute paths are not relative to the report: kept as written.
+            { kind: "attachment", ref: "/home/ci/out/a.png" },
+            { kind: "attachment", ref: "C:/ci/out/b.png" },
           ],
         },
       ],

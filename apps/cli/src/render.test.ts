@@ -56,6 +56,24 @@ describe("renderValue", () => {
     ).toBe("findings:\n  warning  toolchain.unpinned  .casefile/package.json  m");
   });
 
+  it("prints multi-line text as an indented block, and keeps it out of tables", () => {
+    expect(
+      renderValue({
+        runs: [{ status: "failed", note: "Error: timed out\n\n  at login.spec.ts:18" }],
+      }),
+    ).toBe(
+      [
+        "runs:",
+        "  -",
+        "    status: failed",
+        "    note: |",
+        "      Error: timed out",
+        "",
+        "        at login.spec.ts:18",
+      ].join("\n"),
+    );
+  });
+
   it("prints a non-object value as is", () => {
     expect(renderValue("text")).toBe("text");
     expect(renderValue([1, 2])).toBe("[1,2]");

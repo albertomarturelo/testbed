@@ -22,8 +22,9 @@ type Suite = { name?: string; timestamp?: string; hostname?: string };
  * - `duration_ms`: `time` (seconds) × 1000, rounded.
  * - `source`: the nearest suite's `hostname`: the project name in Playwright.
  * - `note`: the `failure` / `error` text, dedented; without text, its `message`.
- * - `evidence`: `[[ATTACHMENT|<path>]]` lines in `system-out` (Playwright), the
- *   path made workspace-relative from the report's directory (ADR run-event-note).
+ * - `evidence`: `[[ATTACHMENT|<path>]]` lines in `system-out` (Playwright), a
+ *   relative path made workspace-relative from the report's directory, an
+ *   absolute one kept as written (ADR run-event-note).
  */
 export const junitIngester = defineIngester({
   format: "junit",
@@ -115,16 +116,22 @@ function dedent(text: string): string {
 
 const ATTACHMENT = /\[\[ATTACHMENT\|([^\]\r\n]+)\]\]/g;
 
-/** Playwright's attachment lines, as evidence; paths in them are relative to the report. */
+/** `/home/ci/a.png`, `C:/ci/a.png`: not relative to the report, so never joined to it. */
+const ABSOLUTE = /^(?:\/|[A-Za-z]:\/)/;
+
+/** Playwright's attachment lines, as evidence; relative paths in them start at the report. */
 function attachments(element: XmlElement, report: string): { kind: string; ref: string }[] {
   const dir = posix.dirname(report);
   return element.children
     .filter((child) => child.name === "system-out")
     .flatMap((child) => [...child.text.matchAll(ATTACHMENT)])
-    .map((match) => ({
-      kind: "attachment",
-      ref: posix.normalize(posix.join(dir, (match[1] as string).trim().replaceAll("\\", "/"))),
-    }));
+    .map((match) => {
+      const path = (match[1] as string).trim().replaceAll("\\", "/");
+      return {
+        kind: "attachment",
+        ref: ABSOLUTE.test(path) ? path : posix.normalize(posix.join(dir, path)),
+      };
+    });
 }
 
 /** ISO time in UTC without milliseconds, as casefile writes `at`; `undefined` without a zone. */

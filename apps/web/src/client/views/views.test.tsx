@@ -107,6 +107,9 @@ describe("CaseDetail", () => {
     });
     render(<CaseDetail caseRef="web/TC-0002" />);
     expect(await screen.findByText("Test timeout of 30000ms exceeded.")).toBeTruthy();
+    // The note scrolls in a labelled region the keyboard can reach.
+    const note = screen.getByRole("region", { name: "Note of the failed run 9137" });
+    expect(note.getAttribute("tabindex")).toBe("0");
     expect(screen.getByText("test-results/x/error-context.md")).toBeTruthy();
     expect(screen.getByText("ci:github-actions")).toBeTruthy();
     expect(screen.getByText("30.0 s")).toBeTruthy();

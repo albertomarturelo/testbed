@@ -210,9 +210,17 @@ function RunsCard({ caseRef }: { caseRef: string }) {
                   )}
                 </div>
                 {run.note === undefined ? null : (
-                  <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-3 font-mono text-xs">
-                    {run.note}
-                  </pre>
+                  // A long note scrolls: a labelled, focusable region, so the keyboard scrolls it too.
+                  <section
+                    // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region must be focusable
+                    tabIndex={0}
+                    aria-label={`Note of the ${run.status} run ${run.run_id}`}
+                    className="max-h-64 overflow-auto rounded-md bg-muted p-3"
+                  >
+                    <pre className="whitespace-pre-wrap break-words font-mono text-xs">
+                      {run.note}
+                    </pre>
+                  </section>
                 )}
                 {(run.evidence ?? []).length === 0 ? null : (
                   <ul className="flex flex-col gap-0.5 text-xs">
