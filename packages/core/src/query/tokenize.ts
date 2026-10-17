@@ -3,7 +3,7 @@ import { type CasefileError, fail, ok, type Result } from "../errors.js";
 export type ComparisonOperator = "=" | "!=" | "<" | "<=" | ">" | ">=";
 
 /**
- * A lexical token of the query DSL (see GRAMMAR.md). `start` is the 0-based
+ * A lexical token of the query DSL (see `specs/query-grammar.md`). `start` is the 0-based
  * offset of its first character in the query text.
  */
 export type Token =

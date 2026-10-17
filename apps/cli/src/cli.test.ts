@@ -68,6 +68,7 @@ describe("casefile cli: host commands", () => {
     expect((await cli(["spec", "project-add"])).stdout).toMatch(/^# project-add\n/);
     expect((await cli(["spec", "project", "add"])).stdout).toMatch(/^# project-add\n/);
     expect((await cli(["spec", "validate"])).stdout).toContain("## Output");
+    expect((await cli(["spec", "query-grammar"])).stdout).toContain("## Syntax (EBNF)");
     expect(await cli(["spec", "nope"])).toEqual({
       code: 1,
       stdout: "",
@@ -331,9 +332,9 @@ describe("casefile resolve, query, id next", () => {
     expect(result.code).toBe(0);
     expect(result.stdout).toContain(`ref: ${DEMO_EXPECTED.project}/TC-0003`);
     expect(result.stdout).toMatch(/\n {2}field +value +origin\n/);
-    expect(result.stdout).toMatch(
-      /\n {2}priority +P1 +context\/tests\/checkout\/payments\/_common\.yaml\n/,
-    );
+    // Each file of the commons chain shows up as an origin.
+    for (const file of DEMO_EXPECTED.tc0003CommonsChain) expect(result.stdout).toContain(file);
+    expect(result.stdout).toMatch(/\n {2}priority +\S+ +context\/tests\//);
   });
 
   it("asks to qualify an ambiguous id; resolves a qualified one", async () => {

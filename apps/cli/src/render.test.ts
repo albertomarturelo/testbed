@@ -126,6 +126,10 @@ describe("renderErrors", () => {
     // No caret for a file error, a non-text or multi-line input, or a missing field.
     expect(renderErrors([{ ...error, path: "f.md" }], { query: "a" })).not.toContain("^");
     expect(renderErrors([error], { query: "a\nb" })).not.toContain("^");
+    // A tab prints as one space so the caret stays under its column.
+    expect(renderErrors([error], { query: "\t= (" })).toBe(
+      ["error  query.x  column 3 [query]  m", "   = (", "    ^"].join("\n"),
+    );
     expect(renderErrors([error], { query: 3 })).not.toContain("^");
     expect(renderErrors([{ code: "x", column: 2, message: "m" }], { query: "ab" })).not.toContain(
       "^",

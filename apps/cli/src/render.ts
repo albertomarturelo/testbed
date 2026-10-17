@@ -91,7 +91,8 @@ function caret(error: CasefileError, input: Readonly<Record<string, unknown>>): 
   const text = error.field === undefined ? undefined : input[error.field];
   if (error.column === undefined || error.path !== undefined || typeof text !== "string") return [];
   if (text.includes("\n")) return [];
-  return [`  ${text}`, `  ${" ".repeat(Math.max(0, error.column - 1))}^`];
+  // One column per character: a tab would widen the line but not the caret.
+  return [`  ${text.replaceAll("\t", " ")}`, `  ${" ".repeat(Math.max(0, error.column - 1))}^`];
 }
 
 /** Rows of scalars as aligned columns under a header, in first-seen key order. */

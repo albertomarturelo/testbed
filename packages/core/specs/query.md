@@ -11,7 +11,7 @@ defines collections and scopes release gates. It never writes.
 
 | Field | Type | Meaning |
 |---|---|---|
-| `query` | DSL text | Evaluated on each **resolved** case. Grammar and semantics: `packages/core/src/query/GRAMMAR.md`. |
+| `query` | DSL text | Evaluated on each **resolved** case. Full grammar and semantics: `casefile spec query-grammar`. |
 | `project` | project name | Only that project's cases. Filled by the host from `--project` or the project containing `--cwd`; absent: every project. |
 
 ## The language, briefly

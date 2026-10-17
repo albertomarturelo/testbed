@@ -136,4 +136,5 @@ One language for UI filters, dynamic collections, gate scopes and `casefile quer
 `AND OR NOT ( )`, `= != < <= > >=`, `IN (...)`, `CONTAINS`, dotted paths on the
 **resolved** case, context variables (`release.*`). Hand-written parser, typed AST,
 errors with positions. Grammar (EBNF) and semantics:
-[`packages/core/src/query/GRAMMAR.md`](../packages/core/src/query/GRAMMAR.md).
+[`packages/core/specs/query-grammar.md`](../packages/core/specs/query-grammar.md), shipped as the topic
+`casefile spec query-grammar`.

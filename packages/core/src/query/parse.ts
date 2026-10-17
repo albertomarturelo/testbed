@@ -52,7 +52,7 @@ const NUMBER = /^-?\d+(\.\d+)?$/;
 /** Most nested `NOT` / `(` a query may hold, so hostile input fails as a value, not a stack overflow. */
 export const MAX_QUERY_DEPTH = 64;
 
-/** Parses a query into its AST (grammar: GRAMMAR.md). Errors carry a 1-based `column`. */
+/** Parses a query into its AST (grammar: `specs/query-grammar.md`). Errors carry a 1-based `column`. */
 export function parseQuery(text: string): Result<QueryNode> {
   const tokens = tokenize(text);
   if (!tokens.ok) return tokens;

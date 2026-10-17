@@ -6,7 +6,7 @@ import { loadWorkspaceCases, selectProject } from "./cases.js";
 import { defineOperation } from "./operation.js";
 
 const QueryInput = z.strictObject({
-  /** A query in the DSL (`casefile spec query`, grammar in core's `query/GRAMMAR.md`). */
+  /** A query in the DSL (`casefile spec query`; grammar: `casefile spec query-grammar`). */
   query: z.string().min(1),
   /** Only this project's cases; filled by the host. Absent: every project. */
   project: z.string().min(1).optional().meta({ host: "project" }),

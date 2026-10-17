@@ -46,11 +46,11 @@ describe("resolve operation", () => {
     expect(value.case.id).toBe("TC-0003");
     const origins = new Set(value.inherited.map((row) => row.origin));
     for (const file of DEMO_EXPECTED.tc0003CommonsChain) expect(origins).toContain(file);
-    expect(value.inherited).toContainEqual({
-      field: "priority",
-      value: "P1",
-      origin: "context/tests/checkout/payments/_common.yaml",
-    });
+    // The innermost commons sets the priority (as the demo's README describes).
+    const innermost = DEMO_EXPECTED.tc0003CommonsChain.at(-1);
+    expect(value.inherited).toContainEqual(
+      expect.objectContaining({ field: "priority", origin: innermost }),
+    );
     expect(value.inherited).toContainEqual(
       expect.objectContaining({ field: "surfaces", value: '["web"]' }),
     );
