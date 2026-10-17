@@ -29,7 +29,7 @@ the agent decides, the library writes).
    XCTest…). A proposed case that one of them already verifies gets
    `automation.ref`, the test's identifier as the ingester reports it: by
    convention `<test file>::<test title>`, e.g.
-   `login.spec.ts::rejects an empty password` (`casefile spec ingest`, #17, fixes
+   `login.spec.ts::rejects an empty password` (`casefile spec ingest` gives
    the exact form per format).
 
 ## Input

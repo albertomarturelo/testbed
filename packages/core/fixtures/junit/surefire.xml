@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Maven Surefire style: one suite, a local (zone-less) timestamp, an error and a skip. -->
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" name="com.acme.orders.OrderApiTest" time="2.031" tests="4" errors="1" skipped="1" failures="0" timestamp="2026-10-17T11:12:03">
+  <properties>
+    <property name="java.version" value="21.0.4"/>
+  </properties>
+  <testcase name="createsAnOrder" classname="com.acme.orders.OrderApiTest" time="1,204.5"/>
+  <testcase name="rejectsAnEmptyCart" classname="com.acme.orders.OrderApiTest" time="0.311">
+    <error message="Connection refused" type="java.net.ConnectException">java.net.ConnectException: Connection refused
+	at com.acme.orders.OrderApiTest.rejectsAnEmptyCart(OrderApiTest.java:42)</error>
+  </testcase>
+  <testcase name="cancelsAnOrder" time="0.2" timestamp="2026-10-17T11:12:05+02:00">
+    <skipped message="flaky on CI"/>
+  </testcase>
+  <testsuite name="com.acme.orders.OrderApiTest$Refunds" time="0.4">
+    <testcase name="refundsAPaidOrder" time="0.4"/>
+  </testsuite>
+</testsuite>

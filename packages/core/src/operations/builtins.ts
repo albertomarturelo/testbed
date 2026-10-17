@@ -1,3 +1,5 @@
+import { junitIngester } from "../ingest/junit.js";
+import { ingestOperation } from "../ingest/operation.js";
 import { coverOperation } from "./cover.js";
 import { idNextOperation } from "./id-next.js";
 import { initOperation } from "./init.js";
@@ -18,4 +20,5 @@ export const builtinOperations: readonly Operation[] = [
   idNextOperation,
   overviewOperation,
   coverOperation,
+  ingestOperation(junitIngester),
 ];
