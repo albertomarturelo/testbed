@@ -41,6 +41,7 @@ describe("openRegistry", () => {
   it("has the built-ins and their SPECs without a workspace", async () => {
     const host = await openRegistry(null);
     expect(host.registry.list().map((o) => o.name)).toEqual([
+      "cover",
       "id-next",
       "init",
       "overview",
@@ -68,6 +69,7 @@ describe("openRegistry", () => {
     ]);
     const host = await openRegistry(root);
     expect(host.registry.list().map((o) => o.name)).toEqual([
+      "cover",
       "escape",
       "hello",
       "id-next",

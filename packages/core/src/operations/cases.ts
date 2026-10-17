@@ -1,4 +1,6 @@
+import { posix } from "node:path";
 import { type CasefileError, fail, ok, type Result } from "../errors.js";
+import { TESTS_DIR } from "../load/paths.js";
 import { type LoadedProject, type LoadedWorkspace, loadWorkspace } from "../load/workspace.js";
 import { type ResolvedWorkspace, resolveWorkspace } from "../resolve/resolve.js";
 import { extensionLayers, loadExtensions } from "./extensions.js";
@@ -40,4 +42,39 @@ export function unknownProject(name: string): CasefileError {
     field: "project",
     message: `no project named '${name}' in casefile.yaml`,
   };
+}
+
+/**
+ * The one project an operation acts on: `name`, else the only project. Ids are
+ * per project (ADR workspace-and-projects §5), so several projects and no name
+ * is `project.required`.
+ */
+export function requireProject(
+  workspace: LoadedWorkspace,
+  name: string | undefined,
+): Result<LoadedProject> {
+  const selected = selectProject(workspace, name);
+  if (!selected.ok) return selected;
+  if (selected.value !== null) return ok(selected.value);
+  const [only] = workspace.projects;
+  if (workspace.projects.length === 1 && only !== undefined) return ok(only);
+  const names = workspace.projects.map((p) => p.name).join(", ") || "none";
+  return fail({
+    code: "project.required",
+    field: "project",
+    message: `ids are per project and this workspace has ${workspace.projects.length} (${names}): pass --project <name> or run inside one`,
+  });
+}
+
+/** A case file name: `.../TC-0003.md` → `TC-0003`. */
+const CASE_FILE = /(?:^|\/)(TC-[0-9]{4,})\.md$/;
+
+/** Ids a project already uses, including case files that do not parse: they still hold theirs. */
+export function takenIds(workspace: LoadedWorkspace, project: LoadedProject): string[] {
+  const tests = posix.join(project.path, TESTS_DIR);
+  const unparsed = workspace.errors
+    .map((e) => e.path ?? "")
+    .filter((path) => path.startsWith(`${tests}/`))
+    .flatMap((path) => CASE_FILE.exec(path)?.slice(1) ?? []);
+  return [...project.cases.map((c) => c.file.id), ...unparsed];
 }

@@ -13,6 +13,7 @@ describe("builtinOperations", () => {
       expect(registry.register(operation)).toEqual({ ok: true, value: undefined });
     }
     expect(registry.list().map((o) => o.name)).toEqual([
+      "cover",
       "id-next",
       "init",
       "overview",
