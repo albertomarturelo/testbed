@@ -63,7 +63,7 @@ from source, with the toolchain linked to `apps/cli` (ADR npm-scope-casefile §6
 |---|---|
 | `casefile overview --cwd examples/npm-login` | 9 drafts in `login`: 6 `automated` (P1 render, P3 links, the rest P2), 3 `manual` |
 | `TC-0001`, `TC-0004`, `TC-0005` | last run `passed` |
-| `TC-0002`, `TC-0003`, `TC-0006` | last run `failed`: the page answered those tests with a Cloudflare "security verification" challenge, not the form (#67) |
+| `TC-0002`, `TC-0003`, `TC-0006` | last run `failed`: the page answered those tests with a Cloudflare "security verification" challenge, not the form (#67). Their assertions were then checked by hand on the live page and hold: an empty submit leaves Username `valueMissing` on `/login`, Show password turns the field to `text` (the button becomes Hide password), and the links point to `/forgot` and `/signup` |
 | `TC-0007` … `TC-0009` | `manual`, `automation.eligible: false`: they need a real account (sign in, wrong password, second factor) |
 | `casefile validate --cwd examples/npm-login` | exit 0 once the toolchain is linked (step 1) |
 
