@@ -170,7 +170,10 @@ describe("casefile init → project add", () => {
     const init = await cli(["init", "--cwd", tmp]);
     expect(init.code).toBe(0);
     expect(init.stdout).toContain("created:\n  - casefile.yaml");
-    expect(init.stdout).toMatch(/\nNext:\n {2}- Run \/casefile-setup in your agent/);
+    // The bundled skills are offered first, with the command that copies them.
+    expect(init.stdout).toMatch(
+      /\nNext:\n {2}- Copy the shipped skills \(casefile-setup, qa-cover\)[^\n]*\n {2}- Run \/casefile-setup in your agent/,
+    );
     expect(init.stdout).toContain("gpg.format ssh");
     const pinned = JSON.parse(await readFile(join(tmp, ".casefile/package.json"), "utf8"));
     expect(pinned.dependencies.casefile).toMatch(/^\d+\.\d+\.\d+$/);
@@ -214,6 +217,18 @@ describe("casefile init → project add", () => {
       ".agents/skills",
     ]);
     expect(result.code).toBe(0);
+    // The repository's skills/ is the bundle: both targets get every skill.
+    for (const target of [".claude/skills", ".agents/skills"]) {
+      for (const [skill, spec] of [
+        ["casefile-setup", "setup"],
+        ["qa-cover", "cover"],
+      ] as const) {
+        const text = await readFile(join(tmp, target, skill, "SKILL.md"), "utf8");
+        expect(text).toContain(`name: ${skill}\n`);
+        // Skills cite their SPEC instead of restating it (CONVENTIONS 8).
+        expect(text).toContain(`casefile spec ${spec}`);
+      }
+    }
     const bad = await cli(["init", "--cwd", tmp, "--skills-into", ".cursor/skills"]);
     expect(bad.code).toBe(1);
     expect(bad.stderr).toContain("operation.invalid_input");
