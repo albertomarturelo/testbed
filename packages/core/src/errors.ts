@@ -16,6 +16,8 @@ export type CasefileError = {
   message: string;
   /** 1-based line in the file, when known. */
   line?: number;
+  /** 1-based character column, when known: in the line, or in a one-line input such as a query. */
+  column?: number;
 };
 
 export type Result<T> = { ok: true; value: T } | { ok: false; errors: CasefileError[] };

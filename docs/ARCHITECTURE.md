@@ -135,4 +135,5 @@ is a cache invalidated by the file watcher (inferred — confirm).
 One language for UI filters, dynamic collections, gate scopes and `casefile query`:
 `AND OR NOT ( )`, `= != < <= > >=`, `IN (...)`, `CONTAINS`, dotted paths on the
 **resolved** case, context variables (`release.*`). Hand-written parser, typed AST,
-errors with positions.
+errors with positions. Grammar (EBNF) and semantics:
+[`packages/core/src/query/GRAMMAR.md`](../packages/core/src/query/GRAMMAR.md).
