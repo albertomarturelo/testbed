@@ -16,7 +16,8 @@ You never write test cases here, and you never touch the product's code or its
 
 In these steps, `casefile` means the CLI the human used for `casefile init`,
 or `.casefile/node_modules/.bin/casefile` once the toolchain is installed.
-Never run `npx casefile`. The npm package named `casefile` is not this tool.
+Never run `npx casefile`: this tool is the npm package `@casefile/cli`, and the
+unscoped `casefile` package is a different one.
 
 1. **Read the procedure.** Run `casefile spec setup` and follow it step by
    step. It is the source of truth; this skill only adds the rules below.

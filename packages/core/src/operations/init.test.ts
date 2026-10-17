@@ -52,14 +52,14 @@ describe("init", () => {
     const config = parseConfigFile("casefile.yaml", await read("casefile.yaml"));
     expect(config).toEqual({ ok: true, value: { version: 1, projects: [] } });
     expect(JSON.parse(await read(".casefile/package.json")).dependencies).toEqual({
-      casefile: "0.4.1",
+      "@casefile/cli": "0.4.1",
     });
     expect(await read(".casefile/.gitignore")).toBe("node_modules/\n");
   });
 
   it("is idempotent and never overwrites", async () => {
     await put("casefile.yaml", "version: 1\nprojects: [] # mine\n");
-    await put(".casefile/package.json", '{"dependencies":{"casefile":"0.1.0"}}');
+    await put(".casefile/package.json", '{"dependencies":{"@casefile/cli":"0.1.0"}}');
     const result = await init({});
     expect(result.ok && result.value.created).toEqual([".casefile/.gitignore"]);
     expect(await read("casefile.yaml")).toBe("version: 1\nprojects: [] # mine\n");

@@ -1,6 +1,6 @@
 {
   "private": true,
   "dependencies": {
-    "casefile": "0.4.1"
+    "@casefile/cli": "0.4.1"
   }
 }

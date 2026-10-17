@@ -4,7 +4,8 @@
 
 Accepted — 2026-10-15 (#29). Amends [org-commons-via-extension](2026-10-15-org-commons-via-extension.md)
 (which lockfile pins extensions) and extends `init` in
-[agent-driven-setup](2026-10-15-agent-driven-setup.md).
+[agent-driven-setup](2026-10-15-agent-driven-setup.md). The pinned package is `@casefile/cli`
+(bin `casefile`) since [npm-scope-casefile](2026-10-17-npm-scope-casefile.md).
 
 ## Context
 

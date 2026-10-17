@@ -103,7 +103,7 @@ describe("init → project add → validate", () => {
       expect(added.ok).toBe(true);
       expect((await validateAt(root)).map((f) => f.code)).toContain("toolchain.not_installed");
 
-      await fakeInstall(root, "casefile", "0.4.1");
+      await fakeInstall(root, "@casefile/cli", "0.4.1");
       const findings = await validateAt(root);
       expect(findings.map((f) => [f.code, f.path, f.field])).toEqual(
         ["automation.eligible", "layer", "priority", "review.mode", "surfaces"].map((field) => [
@@ -131,7 +131,11 @@ describe("environment level", () => {
     }
   };
   const pin = (root: string, version: string) =>
-    put(root, ".casefile/package.json", JSON.stringify({ dependencies: { casefile: version } }));
+    put(
+      root,
+      ".casefile/package.json",
+      JSON.stringify({ dependencies: { "@casefile/cli": version } }),
+    );
 
   it("has nothing to check without .casefile/package.json", () =>
     withWorkspace(async (root) => {
@@ -146,7 +150,7 @@ describe("environment level", () => {
         "version: 1\nprojects: [{ name: web, path: . }]\nextensions: ['@acme/commons']\n",
       );
       await pin(root, "0.4.1");
-      await fakeInstall(root, "casefile", "0.4.1");
+      await fakeInstall(root, "@casefile/cli", "0.4.1");
       await fakeInstall(root, "@acme/commons", "1.0.0");
       expect(await validateAt(root)).toEqual([]);
     }));
@@ -159,7 +163,7 @@ describe("environment level", () => {
         ["toolchain.not_installed", "error"],
         ["toolchain.unpinned", "warning"],
       ]);
-      await fakeInstall(root, "casefile", "0.4.2");
+      await fakeInstall(root, "@casefile/cli", "0.4.2");
       expect(await codes()).toEqual([["toolchain.unpinned", "warning"]]);
     }));
 
@@ -182,14 +186,14 @@ describe("environment level", () => {
       await put(
         root,
         ".casefile/package.json",
-        JSON.stringify({ dependencies: { casefile: "0.4.1", "@acme/commons": "1.0.0" } }),
+        JSON.stringify({ dependencies: { "@casefile/cli": "0.4.1", "@acme/commons": "1.0.0" } }),
       );
-      await fakeInstall(root, "casefile", "0.4.2");
+      await fakeInstall(root, "@casefile/cli", "0.4.2");
       await fakeInstall(root, "@acme/commons", "0.9.0");
       expect((await validateAt(root)).map((f) => [f.code, f.message])).toEqual([
         [
           "toolchain.not_installed",
-          "casefile 0.4.1 is pinned in .casefile/package.json but 0.4.2 is installed",
+          "@casefile/cli 0.4.1 is pinned in .casefile/package.json but 0.4.2 is installed",
         ],
         [
           "extension.not_installed",
