@@ -11,42 +11,45 @@ amends a consequence of [ingester-contract](2026-10-17-ingester-contract.md).
 
 `casefile ingest` appends events to `.runs/<run>.jsonl` and commits nothing
 (ingester-contract). Nothing says how a CI job gets that file into the
-repository, or what author and trailers the commit carries, and the
-write-ownership audit (#41) recognises writers by author. The first real case
-(#35) had the agent ingest locally for that reason. Constraints:
+repository, or with what author and trailers, which the write-ownership audit
+(#41) reads; so the first real case (#35) had the agent ingest. Constraints:
 write-ownership says CI results must land without an agent session; casefile
 reads runs only from the repository's files (files-are-source-of-truth);
 protected branches need a PR, and squash merges fold each commit's author
-into the PR author's; run ids are unique per run, so new run files do not
-conflict, but shards ingested separately into one run id do (`specs/ingest.md`).
+into the PR author's; a run id names one CI run (a re-run keeps it), and shards
+ingested separately into one run id conflict in Git (`specs/ingest.md`).
 
 ## Decision
 
-1. **Only runs of shared branches are recorded:** the default branch and
-   release branches, on `push`. A pull-request run tests unmerged code: its
-   report stays a CI artifact and nothing is committed.
+1. **Only runs of shared branches are recorded:** the branches the workflow's
+   `push` trigger lists (the default branch, release branches). A pull-request
+   run tests unmerged code: its report stays a CI artifact, nothing is committed.
 2. **`ingest` returns the commit**, like every writing operation:
    `commit: { author, message }` and the run file it wrote, built by core's pure
-   formatter. Subject `runs: record <run> for <project>`, then the trailers
-   `Casefile-Run: <run>`, `Executor: <executor>` and, when the host passes it,
-   `Tested-Commit: <sha>` (GitHub: `$GITHUB_SHA`). The author follows the actor:
+   formatter. Subject `ingest(<project>): record run <run>` (the shape of
+   `cover`), then the trailers `Casefile-Run: <run>`, `Executor: <executor>`
+   and, when the host passes it, `Tested-Commit: <sha>` (GitHub: `$GITHUB_SHA`).
+   The author follows the actor:
    CI ingests as `casefile-ci`, an agent as `casefile-agent`. These trailers
    replace `Requested-by:`/`Casefile-Change:`: a run writes no `history` entry
    and answers no one's intent. Nothing to commit when nothing was appended.
 3. **The CI identity is `casefile-ci <casefile-ci@casefile.invalid>`**, the same
    in every repository and CI vendor, `.invalid` for the reason given in
    agent-runs-the-commit §3.
-4. **CI runs that commit and pushes it to the branch it tested**, exactly as
+4. **CI ingests on the tip of the branch it tested, commits and pushes**, as
    agent-runs-the-commit §2: `git add <path>`, then
    `git -c user.name=casefile-ci -c user.email=casefile-ci@casefile.invalid commit -F <message> -- <path>`,
-   then `git push`. If the branch moved, `git pull --rebase` and push again (a
-   few tries): a new run file never conflicts.
+   then `git push`. The tip, not the tested commit: a re-run reuses the run id
+   (`$GITHUB_RUN_ID`) and must see the run file already there. If the push is
+   rejected, CI resets to the new tip and ingests again (a few tries), never
+   resolving a conflict: ingest is idempotent by content, so the retry appends
+   only what the branch still lacks.
 5. **One record job per run.** Test jobs and shards upload their reports as
    artifacts; one job that `needs` them all and runs `if: always()` (failures
    are what must be recorded) downloads them, merges shard reports, ingests
    once and commits once. This removes the shard conflict of `specs/ingest.md`.
-   The tests workflow ignores pushes that only touch `**/context/tests/.runs/**`,
-   so the record commit does not start another run.
+   The tests skip pushes that only touch `**/context/tests/.runs/**`, so the
+   record commit starts no new run; `validate` does not skip them (§7).
 6. **Pushing past protection is the repository owner's grant:** a protected
    branch lists the credential CI pushes with (a deploy key or a GitHub App) as
    the only bypass of its rules. casefile ships the GitHub Actions template and
@@ -54,7 +57,9 @@ conflict, but shards ingested separately into one run id do (`specs/ingest.md`).
 7. **The audit (#41) bounds that credential:** a `casefile-ci` commit may only
    add lines to `**/context/tests/.runs/*.jsonl`, every added event has a `ci:*`
    executor and the file is `<Casefile-Run>.jsonl`. Anything else in it, or a
-   `ci:*` event committed by another author, is a finding.
+   `ci:*` event committed by another author, is a finding. These commits never
+   sit in a pull request's range, so the audit also runs on every push to the
+   recorded branches (`before..after`).
 
 ## Alternatives Considered
 
@@ -76,9 +81,8 @@ conflict, but shards ingested separately into one run id do (`specs/ingest.md`).
    runs describe code that may never merge.
 5. **The CI vendor's own identity** (`github-actions[bot]`) — differs per
    vendor and per setup; the audit needs one fixed author, as for the agent.
-6. **`ingest` commits itself** — rejected for the same reasons as core
-   committing in agent-runs-the-commit: hooks, signing and staging stay with
-   the caller.
+6. **`ingest` commits itself** — rejected as in agent-runs-the-commit: hooks,
+   signing and staging stay with the caller.
 
 ## Consequences
 
@@ -91,7 +95,5 @@ conflict, but shards ingested separately into one run id do (`specs/ingest.md`).
 - A release branch squash-merged into the default branch folds `casefile-ci`
   commits into the merger's: #41 must accept run lines whose `Casefile-Run:`
   trailer text survives in the squash body.
-- Follow-up issue: `ingest` returns the commit, `specs/ingest.md`, and a
-  GitHub Actions template with its SPEC (record job, bypass setup); the
-  npm-login example gets its workflow from it. The `casefile-ci` rule (§7)
-  joins #41's acceptance criteria.
+- Follow-up #73: `ingest` returns the commit, `specs/ingest.md`, the GitHub
+  Actions template and its SPEC, the npm-login workflow. §7 goes to #41.
