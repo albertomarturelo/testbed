@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted — 2026-10-15 (#4)
+Accepted — 2026-10-15 (#4). §1 amended by [local-ui-stack](2026-10-17-local-ui-stack.md):
+Vite bundles the `apps/web` client only.
 
 ## Context
 

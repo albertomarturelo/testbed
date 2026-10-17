@@ -21,7 +21,7 @@ orchestrates from a local UI without touching files.
 | Actor | Writes | Through |
 |---|---|---|
 | Agent (Claude Code, Codex) | Files under `context/tests/` (sole writer); `projects` and `commons` in `casefile.yaml` | Skills with limited scope, MCP, `casefile project add` |
-| Human QA | Intents (`.inbox/`); `casefile.yaml` `version`/`extensions` | Local UI (`casefile ui`), `casefile init` |
+| Human QA | Intents (`.inbox/`); `casefile.yaml` `version`/`extensions` | Local UI (`pnpm ui` in F1; `casefile ui` after the publishing decision — [local-ui-stack](decisions/2026-10-17-local-ui-stack.md)), `casefile init` |
 | CI | Run results, validation verdicts | `casefile` CLI |
 | Release manager | Sign-offs | Readiness reports, `release sign` |
 
@@ -57,7 +57,7 @@ renders the registry: CLI commands, MCP tools, inbox `kind`s, web screens. See
 | `packages/core` | Schemas (JSON Schema 2020-12 + Zod), file loader (`yaml` + frontmatter splitter in core), inheritance resolver, query DSL (parser + evaluator), in-memory index with watcher, validator, id generator, Git utilities, gate evaluation, operation/extension registry, built-in operations and ingesters | F0 |
 | `apps/cli` | Generic host ([cli-generic-host](decisions/2026-10-17-cli-generic-host.md)): renders the registry as commands; `init`, `project add`, `validate --json`, `resolve`, `query`, `id next`, `gates`, `spec` working in F0; published to npm as `casefile` (includes `casefile mcp`) | F0 |
 | `apps/mcp` | Generic host: MCP server (stdio + Streamable HTTP), token scopes; `cases.search`, `coverage.query` real, the rest typed stubs | F0 skeleton / F2 full |
-| `apps/web` | README only: Inbox, Explorer, Release screens + `.inbox` contract | F1 |
+| `apps/web` | Local UI: Vite + React SPA on shadcn/ui, served with a read-only JSON API over the registry by a `node:http` host on `127.0.0.1` ([local-ui-stack](decisions/2026-10-17-local-ui-stack.md)); later Inbox and Release screens + `.inbox` contract | F1 |
 | `packages/bridge-*` | README only: field mapping + `Bridge { push, pull, import(dryRun) }` | F2 |
 | `skills/` | `SKILL.md` per skill, installable into `.claude/skills/` and `.agents/skills/` | F0 |
 | `packages/core/specs/` | One SPEC per built-in operation plus topic SPECs (`setup`, `commons`, `errors`), shipped in the package; read with `casefile spec <name>` ([specs-ship-with-operations](decisions/2026-10-15-specs-ship-with-operations.md)) | F0 |
