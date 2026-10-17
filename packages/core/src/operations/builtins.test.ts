@@ -12,7 +12,14 @@ describe("builtinOperations", () => {
     for (const operation of builtinOperations) {
       expect(registry.register(operation)).toEqual({ ok: true, value: undefined });
     }
-    expect(registry.list().map((o) => o.name)).toEqual(["init", "project-add", "validate"]);
+    expect(registry.list().map((o) => o.name)).toEqual([
+      "id-next",
+      "init",
+      "project-add",
+      "query",
+      "resolve",
+      "validate",
+    ]);
   });
 
   it.each(builtinOperations.map((o) => [o.name, o.spec]))(

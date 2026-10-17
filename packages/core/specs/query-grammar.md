@@ -1,7 +1,8 @@
-# Query DSL grammar
+# query-grammar
 
-One language for UI filters, collections, gate scopes and `casefile query`
-(ADR [single-query-dsl](../../../../docs/decisions/2026-10-15-single-query-dsl.md)).
+The full grammar and semantics of the query DSL: one language for UI filters,
+collections, gate scopes and `casefile query` (ADR single-query-dsl). Read it
+with `casefile spec query-grammar`; the code is in core's `src/query/`.
 A query is evaluated on one **resolved** case. Changing this grammar is a
 versioned decision: write an ADR first.
 

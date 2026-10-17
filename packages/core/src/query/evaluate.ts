@@ -20,7 +20,7 @@ export type QueryContext = {
 
 /**
  * Whether a case matches a parsed query. Pure and total: a missing field or a
- * type mismatch makes the predicate false, never an error (GRAMMAR.md, semantics).
+ * type mismatch makes the predicate false, never an error (`specs/query-grammar.md`, semantics).
  * Check the context first with `checkQueryContext`.
  */
 export function evaluateQuery(

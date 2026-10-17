@@ -138,7 +138,7 @@ export async function run(
     root: invokeRoot,
     actor: actor as Actor,
   });
-  return result(outcome, json);
+  return result(outcome, json, input);
 }
 
 async function hostValue(
@@ -170,12 +170,16 @@ async function spec(args: readonly string[], host: HostRegistry): Promise<CliRes
   return text.ok ? out(text.value.trimEnd()) : result(text, json);
 }
 
-function result(outcome: Result<unknown>, json: boolean): CliResult {
+function result(
+  outcome: Result<unknown>,
+  json: boolean,
+  input: Readonly<Record<string, unknown>> = {},
+): CliResult {
   const code = outcome.ok ? 0 : exitCode(outcome.errors);
   if (json) return { code, stdout: JSON.stringify(outcome, null, 2), stderr: "" };
   return outcome.ok
     ? { code, stdout: renderValue(outcome.value), stderr: "" }
-    : { code, stdout: "", stderr: renderErrors(outcome.errors) };
+    : { code, stdout: "", stderr: renderErrors(outcome.errors, input) };
 }
 
 /** ADR agent-driven-setup: 0 ok, 1 errors, 2 no workspace. */

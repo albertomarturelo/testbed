@@ -23,10 +23,17 @@ export function renderValue(value: unknown): string {
 
 /**
  * One line per error (`severity code path:line message`, then its hint); for
- * validator findings (they carry `severity`), the counts too.
+ * validator findings (they carry `severity`), the counts too. An error with a
+ * `column` in a text input it names by `field` shows that input with a caret.
  */
-export function renderErrors(errors: readonly CasefileError[]): string {
-  const lines = errors.flatMap((error) => diagnostic(error as Diagnostic));
+export function renderErrors(
+  errors: readonly CasefileError[],
+  input: Readonly<Record<string, unknown>> = {},
+): string {
+  const lines = errors.flatMap((error) => [
+    ...diagnostic(error as Diagnostic),
+    ...caret(error, input),
+  ]);
   if (!errors.some((e) => (e as Diagnostic).severity !== undefined)) return lines.join("\n");
   const count = (severity: string) =>
     errors.filter((e) => ((e as Diagnostic).severity ?? "error") === severity).length;
@@ -45,6 +52,7 @@ function entry(key: string, value: unknown, indent: string): string[] {
     if (value.every(isDiagnostic)) {
       return [`${indent}${key}:`, ...value.flatMap((d) => diagnostic(d, `${indent}  `))];
     }
+    if (value.every(isFlatRecord)) return [`${indent}${key}:`, ...table(value, `${indent}  `)];
     return [
       `${indent}${key}:`,
       ...value.flatMap((item) =>
@@ -67,10 +75,43 @@ function entry(key: string, value: unknown, indent: string): string[] {
 }
 
 function diagnostic(d: Diagnostic, indent = ""): string[] {
-  const at = [d.path, d.line, d.column].filter((part) => part !== undefined).join(":");
+  // `path:line:column` in a file; a bare column belongs to a one-line input (a query).
+  const at =
+    d.path !== undefined
+      ? [d.path, d.line, d.column].filter((part) => part !== undefined).join(":")
+      : d.column !== undefined
+        ? `column ${d.column}`
+        : "";
   const where = [at, d.field === undefined ? "" : `[${d.field}]`].filter(Boolean).join(" ");
   const head = [d.severity ?? "error", d.code, where, d.message].filter(Boolean);
   return [`${indent}${head.join("  ")}`, ...(d.hint ? [`${indent}  hint: ${d.hint}`] : [])];
+}
+
+function caret(error: CasefileError, input: Readonly<Record<string, unknown>>): string[] {
+  const text = error.field === undefined ? undefined : input[error.field];
+  if (error.column === undefined || error.path !== undefined || typeof text !== "string") return [];
+  if (text.includes("\n")) return [];
+  // One column per character: a tab would widen the line but not the caret.
+  return [`  ${text.replaceAll("\t", " ")}`, `  ${" ".repeat(Math.max(0, error.column - 1))}^`];
+}
+
+/** Rows of scalars as aligned columns under a header, in first-seen key order. */
+function table(rows: readonly Record<string, unknown>[], indent: string): string[] {
+  const keys = [...new Set(rows.flatMap((row) => Object.keys(row)))];
+  const cells = [keys, ...rows.map((row) => keys.map((k) => (k in row ? scalar(row[k]) : "")))];
+  const widths = keys.map((_, i) => Math.max(...cells.map((line) => (line[i] as string).length)));
+  return cells.map(
+    (line) =>
+      indent +
+      line
+        .map((cell, i) => (i === line.length - 1 ? cell : cell.padEnd(widths[i] as number)))
+        .join("  ")
+        .trimEnd(),
+  );
+}
+
+function isFlatRecord(value: unknown): value is Record<string, unknown> {
+  return isRecord(value) && Object.values(value).every((v) => v === null || typeof v !== "object");
 }
 
 function scalar(value: unknown): string {
