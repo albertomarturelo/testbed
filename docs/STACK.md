@@ -48,6 +48,9 @@ Upgrades are deliberate PRs that update this table.
 |---|---|---|
 | File watching | chokidar | #9 |
 | MCP | Official MCP TypeScript SDK (stdio + Streamable HTTP) | #15 |
+| Local UI client (`apps/web`, dev deps bundled into `dist/client`) | React + `react-dom`, Vite + `@vitejs/plugin-react`, Tailwind CSS v4 + `@tailwindcss/vite`, shadcn/ui (CLI at an exact version) and the helpers its components pull in (Radix, `class-variance-authority`, `clsx`, `tailwind-merge`, `lucide-react`) ([local-ui-stack](decisions/2026-10-17-local-ui-stack.md)) | #54 |
+| Local UI tests | `happy-dom`, `@testing-library/react` (dev) | #54 |
 
-Not used, by decision: any LLM SDK, database, Docker, auth provider, bundler,
-UI framework (UI arrives in F1 with its own ADR), gray-matter (frontmatter is split in core).
+Not used, by decision: any LLM SDK, database, Docker, auth provider, a bundler
+outside the `apps/web` client, an HTTP server framework (`node:http` serves the UI),
+a client router or state library (needs an ADR), gray-matter (frontmatter is split in core).

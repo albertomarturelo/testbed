@@ -35,3 +35,9 @@ Corrections are appended here in the same change that fixes the code.
     `<issue>-<short-slug>` → PR into `main` with `Closes #<n>` and the issue's AC
     checklist; Conventional Commits subjects; squash merge on green CI; no
     direct commits to `main`. See ADR branch-per-issue-pr.
+13. **UI components come from shadcn/ui (confirmed 2026-10-17).** The local UI uses
+    shadcn/ui as its design system: add a component with the shadcn CLI at an exact
+    version into `apps/web/src/client/components/ui/`, commit it and own it as our
+    code; compose screens from those components and Tailwind utilities, not
+    hand-rolled CSS or another component library. A client library bundled into
+    the UI counts as shipped code for rule 10. See ADR local-ui-stack.
