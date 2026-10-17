@@ -3,7 +3,8 @@
 ## Status
 
 Accepted — 2026-10-15. Amends [initial-architecture](2026-10-15-initial-architecture.md)
-(module map).
+(module map). Package names amended by
+[npm-scope-casefile](2026-10-17-npm-scope-casefile.md): `apps/cli` is `@casefile/cli`.
 
 ## Context
 

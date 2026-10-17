@@ -1,7 +1,8 @@
 {
-  "name": "casefile",
+  "name": "@casefile/cli",
   "version": "0.0.0",
   "description": "Test cases belong in the repository. Agent proposes, human decides.",
+  "private": true,
   "license": "MIT",
   "type": "module",
   "engines": {

@@ -15,11 +15,12 @@ writes the files.
 The human has already run, in the repository root:
 
 ```bash
-casefile init --skills-into .claude/skills
+npx @casefile/cli init --skills-into .claude/skills
 ```
 
 So `casefile.yaml` (`version: 1`, `projects: []`) and `.casefile/package.json`
-(casefile pinned to an exact version) exist. If `casefile.yaml` is missing,
+(`@casefile/cli` pinned to an exact version) exist. Never run
+`npx casefile`: the unscoped npm package `casefile` is a different tool. If `casefile.yaml` is missing,
 stop and ask the human to run `casefile init`: it is theirs to run
 (`casefile spec init`).
 

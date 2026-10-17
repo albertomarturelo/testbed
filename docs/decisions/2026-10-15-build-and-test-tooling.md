@@ -3,7 +3,8 @@
 ## Status
 
 Accepted — 2026-10-15 (#4). §1 amended by [local-ui-stack](2026-10-17-local-ui-stack.md):
-Vite bundles the `apps/web` client only.
+Vite bundles the `apps/web` client only. §4 package names amended by
+[npm-scope-casefile](2026-10-17-npm-scope-casefile.md) (`@casefile/cli`, `@casefile/core` published).
 
 ## Context
 

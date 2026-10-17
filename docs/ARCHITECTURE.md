@@ -58,7 +58,7 @@ renders the registry: CLI commands, MCP tools, inbox `kind`s, web screens. See
 | Path | Responsibility | Phase |
 |---|---|---|
 | `packages/core` | Schemas (JSON Schema 2020-12 + Zod), file loader (`yaml` + frontmatter splitter in core), inheritance resolver, query DSL (parser + evaluator), in-memory index with watcher, validator, id generator, Git utilities, gate evaluation, operation/extension registry, built-in operations and ingesters | F0 |
-| `apps/cli` | Generic host ([cli-generic-host](decisions/2026-10-17-cli-generic-host.md)): renders the registry as commands; `init`, `project add`, `validate --json`, `resolve`, `query`, `id next`, `overview`, `cover`, `gates`, `spec` working in F0; published to npm as `casefile` (includes `casefile mcp`) | F0 |
+| `apps/cli` | Generic host ([cli-generic-host](decisions/2026-10-17-cli-generic-host.md)): renders the registry as commands; `init`, `project add`, `validate --json`, `resolve`, `query`, `id next`, `overview`, `cover`, `gates`, `spec` working in F0; published to npm as `@casefile/cli` with the bin `casefile` ([npm-scope-casefile](decisions/2026-10-17-npm-scope-casefile.md)); `casefile mcp` still open | F0 |
 | `apps/mcp` | Generic host: MCP server (stdio + Streamable HTTP), token scopes; `cases.search`, `coverage.query` real, the rest typed stubs | F0 skeleton / F2 full |
 | `apps/web` | Local UI: Vite + React SPA on shadcn/ui, served with a read-only JSON API over the registry by a `node:http` host on `127.0.0.1` ([local-ui-stack](decisions/2026-10-17-local-ui-stack.md)); later Inbox and Release screens + `.inbox` contract | F1 |
 | `packages/bridge-*` | README only: field mapping + `Bridge { push, pull, import(dryRun) }` | F2 |
@@ -103,7 +103,8 @@ Cross-project references are qualified: `web/TC-0003`.
 Setup is done by the user's agent; the library scaffolds and validates
 ([agent-driven-setup](decisions/2026-10-15-agent-driven-setup.md)).
 
-1. Human: `casefile init` (never `npx casefile`: that npm name is another package, #63) → `casefile.yaml` (no projects yet), `.casefile/` pinning
+1. Human: `npx @casefile/cli init` (never `npx casefile`: that npm name is another package;
+   [npm-scope-casefile](decisions/2026-10-17-npm-scope-casefile.md)) → `casefile.yaml` (no projects yet), `.casefile/` pinning
    casefile, and skills offered
    ([casefile-toolchain-dir](decisions/2026-10-15-casefile-toolchain-dir.md)).
 2. Agent, `/casefile-setup`: reads `casefile spec setup`, explores the repo, confirms
