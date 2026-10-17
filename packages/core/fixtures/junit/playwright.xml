@@ -1,0 +1,35 @@
+<testsuites id="" name="" tests="6" failures="1" skipped="1" errors="0" time="4.127">
+<testsuite name="login.spec.ts" timestamp="2026-10-17T09:12:03.418Z" hostname="chromium" tests="5" failures="1" skipped="1" time="3.512" errors="0">
+<testcase name="signs in with valid credentials" classname="login.spec.ts" time="1.204">
+</testcase>
+<testcase name="rejects an empty password" classname="login.spec.ts" time="0.611">
+<failure message="login.spec.ts:18:5 rejects an empty password" type="FAILURE">
+<![CDATA[  [chromium] › login.spec.ts:18:5 › rejects an empty password ─────────────────
+
+    Error: expect(locator).toHaveText(expected) failed
+
+    Locator: getByRole('alert')
+    Expected: "Password is required"
+    Received: "<empty>"
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|test-results/login-rejects-an-empty-password-chromium/test-failed-1.png]]
+]]>
+</system-out>
+</testcase>
+<testcase name="password reset › sends a reset link to a registered email" classname="login.spec.ts" time="0.873">
+</testcase>
+<testcase name="locks the account after five failed attempts" classname="login.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="signs out from the account menu" classname="login.spec.ts" time="0.824">
+</testcase>
+</testsuite>
+<testsuite name="search.spec.ts" timestamp="2026-10-17T09:12:03.420Z" hostname="chromium" tests="1" failures="0" skipped="0" time="0.615" errors="0">
+<testcase name="finds a product by name &amp; shows its price" classname="search.spec.ts" time="0.615">
+</testcase>
+</testsuite>
+</testsuites>

@@ -1,7 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { parseCaseFile, parseCommonFile, parseConfigFile } from "../load/parse.js";
+import { parseCaseFile, parseCommonFile, parseConfigFile, parseRunFile } from "../load/parse.js";
 import { CORE_SPECS_DIR } from "./spec.js";
 
 /**
@@ -12,6 +12,7 @@ const PARSERS: [RegExp, (path: string, text: string) => { ok: boolean }][] = [
   [/^casefile\.yaml$/, parseConfigFile],
   [/_common\.yaml$/, parseCommonFile],
   [/^TC-\d{4,}\.md$/, parseCaseFile],
+  [/\.jsonl$/, (path, text) => ({ ok: parseRunFile(path, text).errors.length === 0 })],
 ];
 
 const files = (await readdir(CORE_SPECS_DIR)).filter((f) => f.endsWith(".md"));
@@ -34,6 +35,7 @@ describe("SPEC examples", () => {
     expect(named).toContain("setup.md:casefile.yaml");
     expect(named).toContain("setup.md:_common.yaml");
     expect(named).toContain("cover.md:TC-0003.md");
+    expect(named).toContain("ingest.md:9137.jsonl");
   });
 
   it.each(examples.map((e) => [`${e.spec} ${e.name}`, e] as const))("%s parses", (_, e) => {

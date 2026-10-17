@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -412,5 +412,50 @@ describe("casefile resolve, query, id next", () => {
     expect(help).toMatch(/id next\s+Prints the next free case id of a project/);
     expect(help).toMatch(/query\s+Lists the cases a query selects\./);
     expect(help).toMatch(/resolve\s+Shows one case as casefile sees it after inheritance/);
+  });
+});
+
+describe("casefile ingest junit", () => {
+  const report = "apps/web/test-results/junit.xml";
+  const argv = (...extra: string[]) => [
+    "ingest",
+    "junit",
+    report,
+    "--run",
+    "9137",
+    "--executor",
+    "ci:github-actions",
+    "--cwd",
+    join(tmp, "apps/web"),
+    ...extra,
+  ];
+  beforeEach(async () => {
+    await cp(MONOREPO, tmp, { recursive: true });
+    await put(report, await readFile(join(BROKEN, "../junit/playwright.xml"), "utf8"));
+  });
+
+  it("appends the matched events of the project at --cwd and lists the unmatched", async () => {
+    const result = await cli(argv("--build", "web-2.1.0+9"), { CASEFILE_ACTOR: "ci" });
+    expect(result).toMatchObject({ code: 0, stderr: "" });
+    expect(result.stdout).toContain("path: apps/web/context/tests/.runs/9137.jsonl");
+    expect(result.stdout).toContain("appended: 1");
+    expect(result.stdout).toMatch(/unmatched:\n\s+ref\s+status\n/);
+    expect(result.stdout).toMatch(/login\.spec\.ts::rejects an empty password\s+failed/);
+    expect(result.stdout).toContain("Next:");
+    const run = await readFile(join(tmp, "apps/web/context/tests/.runs/9137.jsonl"), "utf8");
+    expect(JSON.parse(run)).toMatchObject({ case_id: "TC-0001", build: "web-2.1.0+9" });
+
+    const again = await cli(argv("--build", "web-2.1.0+9", "--json"), { CASEFILE_ACTOR: "ci" });
+    expect(JSON.parse(again.stdout)).toMatchObject({ ok: true, value: { appended: 0 } });
+  });
+
+  it("is refused to a human", async () => {
+    const result = await cli(argv());
+    expect(result.code).toBe(1);
+    expect(result.stderr).toContain("operation.actor_not_allowed");
+  });
+
+  it("is listed with the other commands", async () => {
+    expect((await cli([])).stdout).toMatch(/ingest junit\s+Turns a test report into run events/);
   });
 });

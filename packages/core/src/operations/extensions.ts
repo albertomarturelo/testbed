@@ -2,6 +2,8 @@ import { readFile } from "node:fs/promises";
 import { join, posix } from "node:path";
 import { pathToFileURL } from "node:url";
 import { type CasefileError, ok, type Result } from "../errors.js";
+import type { Ingester } from "../ingest/ingester.js";
+import { ingesterProblems, ingestOperation } from "../ingest/operation.js";
 import { CONFIG_FILE } from "../load/paths.js";
 import { type CommonsLayer, extensionLayer } from "../resolve/resolve.js";
 import { CommonFile, PackageName } from "../schema/index.js";
@@ -13,11 +15,13 @@ export const TOOLCHAIN_DIR = ".casefile";
 
 /**
  * What an extension package exports as `manifest` (ADR extension-model). Only
- * the parts with a consumer today are typed; ingesters, bridges, validators and
- * skills join when their extension points land.
+ * the parts with a consumer today are typed; bridges, validators and skills
+ * join when their extension points land.
  */
 export type ExtensionManifest = {
   operations?: Operation[];
+  /** Result formats; each becomes the operation `ingest-<format>` (ADR ingester-contract). */
+  ingesters?: Ingester[];
   /** Org-level commons (ADR org-commons-via-extension). */
   commons?: CommonFile;
 };
@@ -26,6 +30,7 @@ export type LoadedExtension = {
   name: string;
   /** The installed version, from its `package.json` in `.casefile/node_modules`. */
   version: string;
+  /** Checked; `operations` already holds the `ingest-<format>` operation of each ingester. */
   manifest: ExtensionManifest;
 };
 
@@ -201,10 +206,15 @@ function checkManifest(name: string, value: unknown): Result<ExtensionManifest> 
     errors: [{ code: "extension.invalid_manifest", message: `${name}: ${message}` }],
   });
   if (value === null || typeof value !== "object") return invalid("exports no `manifest` object");
-  const { operations, commons } = value as Record<string, unknown>;
+  const { operations, ingesters, commons } = value as Record<string, unknown>;
   if (operations !== undefined && !Array.isArray(operations)) {
     return invalid("`manifest.operations` is not an array");
   }
+  if (ingesters !== undefined && !Array.isArray(ingesters)) {
+    return invalid("`manifest.ingesters` is not an array");
+  }
+  const problems = ((ingesters ?? []) as unknown[]).flatMap(ingesterProblems);
+  if (problems.length > 0) return invalid(`\`manifest.ingesters\`: ${problems.join("; ")}`);
   let parsedCommons: CommonFile | undefined;
   if (commons !== undefined) {
     const parsed = CommonFile.safeParse(commons);
@@ -213,8 +223,14 @@ function checkManifest(name: string, value: unknown): Result<ExtensionManifest> 
     }
     parsedCommons = parsed.data;
   }
+  // Ingesters register as operations, through the same `register` as any other.
+  const all = [
+    ...((operations ?? []) as Operation[]),
+    ...((ingesters ?? []) as Ingester[]).map(ingestOperation),
+  ];
   return ok({
-    ...(operations === undefined ? {} : { operations: operations as Operation[] }),
+    ...(operations === undefined && ingesters === undefined ? {} : { operations: all }),
+    ...(ingesters === undefined ? {} : { ingesters: ingesters as Ingester[] }),
     ...(parsedCommons === undefined ? {} : { commons: parsedCommons }),
   });
 }
