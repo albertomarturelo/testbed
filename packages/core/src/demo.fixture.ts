@@ -54,3 +54,42 @@ export const DEMO_MONOREPO_EXPECTED = {
     "web/TC-0002": { feature: "login", last_run: null, last_run_at: null },
   },
 } as const;
+
+/** Absolute path of `examples/npm-login`, the first real case (#35). */
+export const NPM_LOGIN_ROOT = fileURLToPath(
+  new URL("../../../examples/npm-login/", import.meta.url),
+);
+
+/**
+ * What the npm-login example holds, as the real flow produced it (setup skill,
+ * `qa-cover login`, one Playwright run ingested). Keep in sync with its README.
+ */
+export const NPM_LOGIN_EXPECTED = {
+  project: "npm-login",
+  caseIds: [
+    "TC-0001",
+    "TC-0002",
+    "TC-0003",
+    "TC-0004",
+    "TC-0005",
+    "TC-0006",
+    "TC-0007",
+    "TC-0008",
+    "TC-0009",
+  ],
+  /** Every case is a draft waiting for review. */
+  states: { draft: 9 },
+  /** Front-end cases, linked to a test in `e2e/login.spec.ts` and proven by the ingested run. */
+  derivedAutomated: ["TC-0001", "TC-0002", "TC-0003", "TC-0004", "TC-0005", "TC-0006"],
+  /** Cases that need an account: manual, `automation.eligible: false`. */
+  manualNotEligible: ["TC-0007", "TC-0008", "TC-0009"],
+  /** Latest result of the run `local-2026-10-17-1`; the failures met a Cloudflare challenge. */
+  lastRun: {
+    "TC-0001": "passed",
+    "TC-0002": "failed",
+    "TC-0003": "failed",
+    "TC-0004": "passed",
+    "TC-0005": "passed",
+    "TC-0006": "failed",
+  },
+} as const;

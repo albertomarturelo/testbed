@@ -66,6 +66,7 @@ renders the registry: CLI commands, MCP tools, inbox `kind`s, web screens. See
 | `packages/core/specs/` | One SPEC per built-in operation plus topic SPECs (`setup`, `commons`, `errors`), shipped in the package; read with `casefile spec <name>` ([specs-ship-with-operations](decisions/2026-10-15-specs-ship-with-operations.md)) | F0 |
 | `examples/demo-repo` | One-project workspace: fixture for core tests and the user-facing demo | F0 |
 | `examples/demo-monorepo` | Two-project workspace fixture for workspace tests | F0 |
+| `examples/npm-login` | The first real case: a product repo with its own Playwright spec, covered through the real flow (setup, `qa-cover`, ingest); its own `package.json`, outside the pnpm workspace | F0 |
 
 ## Data layout in a user workspace (product data model)
 
