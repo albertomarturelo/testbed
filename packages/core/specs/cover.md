@@ -8,8 +8,9 @@ with a change id, and returns the commit to make (ADR agent-driven-setup:
 the agent decides, the library writes).
 
 - **Actor:** agent
-- **CLI:** `casefile cover <feature> --cases '<json>' --requested-by <email> --agent <name> [--inbox <id>] [--project <name>]`
-  (run with `CASEFILE_ACTOR=agent`)
+- **CLI:** `casefile cover <feature> --cases '<json>' --requested-by <email> --agent <name> [--inbox <id>] [--project <name>] --json`
+  (run with `CASEFILE_ACTOR=agent`; read `commit` from the `--json` output, since the plain
+  output does not keep the message byte for byte)
 - **Writes:** `**/context/tests/**/TC-*.md` (new files only)
 
 ## Before calling it
@@ -47,7 +48,7 @@ listed here are not accepted:
 
 | Field | Required | Notes |
 |---|---|---|
-| `title` | yes | What the case verifies, one line. |
+| `title` | yes | What the case verifies, one line (no line breaks). |
 | `steps` | yes | `[{ do, expect, evidence? }]`, at least one. |
 | `acceptance_ref`, `work_items` | no | Where the requirement comes from (`story:PROJ-12`). |
 | `surfaces`, `layer`, `priority` | no | Only when the case differs from its commons. |
@@ -118,7 +119,7 @@ first call instead.
   "commit": {
     "author": "casefile-agent <casefile-agent@casefile.invalid>",
     "message": "cover(login): propose 2 cases\n\nRequested-by: qa@acme.example\nAgent: claude-code\nCasefile-Change: 9d2f6a1e-3b4c-4d5e-8f90-1a2b3c4d5e6f\n" },
-  "next": ["Commit the created files with commit.author and commit.message",
+  "next": ["Commit the created files with commit.author and commit.message taken from --json output, staging only them (`git commit -F <message> -- <paths>`)",
            "Ask the human to review the drafts: web/TC-0003, web/TC-0004"] }
 ```
 
@@ -129,7 +130,7 @@ Workspace `examples/demo-monorepo`: `web` already has `TC-0001` and `TC-0002` in
 
 ```bash
 CASEFILE_ACTOR=agent casefile cover login --project web \
-  --requested-by qa@acme.example --agent claude-code --cases '[
+  --requested-by qa@acme.example --agent claude-code --json --cases '[
   { "title": "Reject an empty password",
     "steps": [{ "do": "Submit a registered email with an empty password",
                 "expect": "The form says the password is required and stays on the page" }],

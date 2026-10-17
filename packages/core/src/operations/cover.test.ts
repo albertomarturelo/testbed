@@ -74,6 +74,7 @@ describe("cover", () => {
       message: commitMessage("cover(login): propose 1 case", { ...base, change: value.change }),
     });
     expect(value.next[0]).toContain("-- <paths>");
+    expect(value.next[0]).toContain("--json");
     expect(value.next[1]).toContain("web/TC-0003");
   });
 
@@ -146,6 +147,7 @@ describe("cover refuses, writing nothing", () => {
       { state: "active" },
       { id: "TC-0100" },
       { automation: { status: "manual" } },
+      { title: "Line one\nline two" },
     ]) {
       await refused(
         { cases: [{ title: "T", steps: [step], ...extra }] },

@@ -24,7 +24,6 @@ import { defineOperation } from "./operation.js";
  * stored as `automated` (ADR write-ownership), so only `eligible` and `ref`.
  */
 const ProposedCase = TestCaseFile.pick({
-  title: true,
   acceptance_ref: true,
   surfaces: true,
   layer: true,
@@ -36,6 +35,8 @@ const ProposedCase = TestCaseFile.pick({
   work_items: true,
   duplicates_checked_against: true,
 }).extend({
+  /** One line: titles are listed in tables (CLI, UI). */
+  title: z.string().regex(/^[^\r\n]+$/, "one line, no line breaks"),
   automation: z
     .strictObject({ eligible: z.boolean().optional(), ref: z.string().min(1).optional() })
     .optional(),
@@ -208,7 +209,7 @@ export const coverOperation = defineOperation({
         ),
       },
       next: [
-        `Commit the created files with commit.author and commit.message, staging only them (\`git commit -F <message> -- <paths>\`)`,
+        `Commit the created files with commit.author and commit.message taken from --json output, staging only them (\`git commit -F <message> -- <paths>\`)`,
         `Ask the human to review the drafts: ${refs}`,
       ],
     });
