@@ -1,6 +1,7 @@
 import { posix } from "node:path";
 import { CONFIG_FILE, normalizeProjectPath, pathContains, TESTS_DIR } from "../load/paths.js";
 import { CASEFILE_PACKAGE, TOOLCHAIN_DIR, type Toolchain } from "../operations/extensions.js";
+import { NPM_INSTALL, notInstalled, TOOLCHAIN_PACKAGE } from "../operations/toolchain.js";
 import { commonsChain, resolveCase, workspaceLayer } from "../resolve/resolve.js";
 import { ExactVersion } from "../schema/index.js";
 import { type Finding, finding, fromError } from "./finding.js";
@@ -185,25 +186,6 @@ export const resolutionLevel: Level = {
     });
   },
 };
-
-const TOOLCHAIN_PACKAGE = `${TOOLCHAIN_DIR}/package.json`;
-const NPM_INSTALL = `npm install --prefix ${TOOLCHAIN_DIR} --ignore-scripts`;
-
-/**
- * Why `name` is not usable as declared, or `null`: not installed at all, or a
- * version other than its exact pin in `.casefile/package.json` (a stale install).
- */
-function notInstalled(toolchain: Toolchain, name: string): string | null {
-  const installed = Object.hasOwn(toolchain.installed, name)
-    ? toolchain.installed[name]
-    : undefined;
-  if (installed === undefined) return `${name} is not installed in ${TOOLCHAIN_DIR}/node_modules`;
-  const pin = toolchain.declared?.[name];
-  if (pin !== undefined && ExactVersion.safeParse(pin).success && installed !== pin) {
-    return `${name} ${pin} is pinned in ${TOOLCHAIN_PACKAGE} but ${installed} is installed`;
-  }
-  return null;
-}
 
 /**
  * What must be installed for the workspace to run (ADR casefile-toolchain-dir):

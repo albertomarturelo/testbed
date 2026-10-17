@@ -24,6 +24,7 @@ import {
   parseGlobalArgs,
   toCommand,
 } from "./args.js";
+import { planDelegation, type Reexec, reexec } from "./delegate.js";
 import { renderErrors, renderValue } from "./render.js";
 
 const pkg = createRequire(import.meta.url)("../package.json") as { version: string };
@@ -43,6 +44,8 @@ export type CliEnvironment = {
   /** Directory `--cwd` is resolved against. */
   cwd: string;
   env: Readonly<Record<string, string | undefined>>;
+  /** How to re-execute the pinned casefile; tests replace it. Default: `reexec`. */
+  reexec?: Reexec;
 };
 
 /**
@@ -53,6 +56,15 @@ export async function run(
   argv: readonly string[],
   environment: CliEnvironment,
 ): Promise<CliResult> {
+  // The pinned casefile runs, whatever binary was invoked (ADR casefile-toolchain-dir §4).
+  const plan = await planDelegation(argv, environment.cwd, environment.env, pkg.version);
+  // Saying which casefile runs, and how to use it, works even before the install.
+  const local = argv[0] === undefined || ["-h", "--help", "-v", "--version"].includes(argv[0]);
+  if (plan.kind === "fail" && !local) return result(fail(...plan.errors), argv.includes("--json"));
+  if (plan.kind === "delegate") {
+    return { code: (environment.reexec ?? reexec)(plan, argv), stdout: "", stderr: "" };
+  }
+
   const cwd = resolve(environment.cwd, findCwd(argv) ?? ".");
   const located = await findWorkspaceRoot(cwd);
   const root = located.ok ? located.value : null;
