@@ -2,6 +2,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { nextCaseId } from "@casefile/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 // The demo oracles live in core's sources (CONVENTIONS 6); tests may read them across the boundary.
 import { DEMO_EXPECTED, DEMO_MONOREPO_EXPECTED } from "../../../packages/core/src/demo.fixture.js";
@@ -321,5 +322,79 @@ describe("an extension's operation, without CLI changes", () => {
     const result = await cli(["hello", "world", "ada", "--cwd", tmp]);
     expect(result.code).toBe(1);
     expect(result.stderr).toContain("note: @acme/absent is not installed");
+  });
+});
+
+describe("casefile resolve, query, id next", () => {
+  it("resolves a case with each inherited value's origin", async () => {
+    const result = await cli(["resolve", "TC-0003", "--cwd", DEMO]);
+    expect(result.code).toBe(0);
+    expect(result.stdout).toContain(`ref: ${DEMO_EXPECTED.project}/TC-0003`);
+    expect(result.stdout).toMatch(/\n {2}field +value +origin\n/);
+    expect(result.stdout).toMatch(
+      /\n {2}priority +P1 +context\/tests\/checkout\/payments\/_common\.yaml\n/,
+    );
+  });
+
+  it("asks to qualify an ambiguous id; resolves a qualified one", async () => {
+    const ambiguous = await cli(["resolve", "TC-0001", "--cwd", MONOREPO]);
+    expect(ambiguous.code).toBe(1);
+    expect(ambiguous.stderr).toContain("case.ambiguous");
+    expect(ambiguous.stderr).toContain("use web/TC-0001 or --project");
+    const qualified = await cli(["resolve", "web/TC-0001", "--cwd", MONOREPO]);
+    expect(qualified.code).toBe(0);
+    expect(qualified.stdout).toContain("ref: web/TC-0001");
+    // Inside a project, a bare id is that project's.
+    const inside = await cli(["resolve", "TC-0001", "--cwd", join(MONOREPO, "services/api")]);
+    expect(inside.stdout).toContain("ref: api/TC-0001");
+  });
+
+  it("lists the matching cases as a table", async () => {
+    const [query, ids] = Object.entries(DEMO_EXPECTED.queries)[0] as [string, readonly string[]];
+    const result = await cli(["query", query, "--cwd", DEMO]);
+    expect(result.code).toBe(0);
+    expect(result.stdout).toContain(`count: ${ids.length}`);
+    expect(result.stdout).toMatch(/\n {2}ref +state +priority +title\n/);
+    for (const id of ids) expect(result.stdout).toContain(`${DEMO_EXPECTED.project}/${id}`);
+  });
+
+  it("points at a DSL error with a caret and exits 1", async () => {
+    const result = await cli(["query", "state = active AND (priority = P0", "--cwd", DEMO]);
+    expect(result).toEqual({
+      code: 1,
+      stdout: "",
+      stderr: [
+        "error  query.unexpected_end  column 34 [query]  expected `)`, but the query ends",
+        "  state = active AND (priority = P0",
+        `  ${" ".repeat(33)}^`,
+      ].join("\n"),
+    });
+    const json = JSON.parse((await cli(["query", "state =", "--json", "--cwd", DEMO])).stdout);
+    expect(json.errors[0]).toMatchObject({
+      code: "query.unexpected_end",
+      column: 8,
+      field: "query",
+    });
+  });
+
+  it("prints the next id of the current or the selected project", async () => {
+    const single = await cli(["id", "next", "--cwd", DEMO]);
+    expect(single).toEqual({
+      code: 0,
+      stdout: `project: ${DEMO_EXPECTED.project}\nid: ${nextCaseId(DEMO_EXPECTED.caseIds)}`,
+      stderr: "",
+    });
+    const root = await cli(["id", "next", "--cwd", MONOREPO]);
+    expect(root.code).toBe(1);
+    expect(root.stderr).toContain("project.required");
+    const selected = await cli(["id", "next", "--cwd", MONOREPO, "--project", "web"]);
+    expect(selected.stdout).toContain("project: web\nid: TC-");
+  });
+
+  it("lists the new commands with their SPEC summaries", async () => {
+    const help = (await cli([])).stdout;
+    expect(help).toMatch(/id next\s+Prints the next free case id of a project/);
+    expect(help).toMatch(/query\s+Lists the cases a query selects\./);
+    expect(help).toMatch(/resolve\s+Shows one case as casefile sees it after inheritance/);
   });
 });

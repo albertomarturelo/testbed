@@ -40,7 +40,14 @@ async function installExtension(name: string, operations: string[]) {
 describe("openRegistry", () => {
   it("has the built-ins and their SPECs without a workspace", async () => {
     const host = await openRegistry(null);
-    expect(host.registry.list().map((o) => o.name)).toEqual(["init", "project-add", "validate"]);
+    expect(host.registry.list().map((o) => o.name)).toEqual([
+      "id-next",
+      "init",
+      "project-add",
+      "query",
+      "resolve",
+      "validate",
+    ]);
     expect(host.specs.get("init")).toBe(join(CORE_PACKAGE_DIR, "specs/init.md"));
     expect(host).toMatchObject({ config: null, errors: [] });
   });
@@ -62,8 +69,11 @@ describe("openRegistry", () => {
     expect(host.registry.list().map((o) => o.name)).toEqual([
       "escape",
       "hello",
+      "id-next",
       "init",
       "project-add",
+      "query",
+      "resolve",
       "validate",
     ]);
     expect(host.specs.get("hello")).toBe(

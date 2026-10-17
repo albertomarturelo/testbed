@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted — 2026-10-17 (#11). Amends the `project add <name> <path>` form of
+Accepted — 2026-10-17 (#11); output rules extended by #45. Amends the `project add <name> <path>` form of
 [agent-driven-setup](2026-10-15-agent-driven-setup.md) and the interactive
 skill prompt of `init`'s SPEC.
 
@@ -48,6 +48,10 @@ the bundled skills), and the actor (human, agent, CI) is invisible to a process.
    message`, then `hint`) on stderr, followed by error/warning counts when they
    are validator findings (they carry `severity`). An output
    field `next: string[]` is the operation's advice to the human and prints last.
+   A list of flat records (scalars only) prints as a table with a header row.
+   An error with `column` and a `field` naming a one-line text input prints that
+   input with a `^` under the column (`query` DSL errors). *(Tables and caret
+   added by #45.)*
 7. **Exit codes:** 0 `ok`; 1 errors (usage errors included); 2 when an error is
    `workspace.missing`. `validate` returns `ok` with warnings only and fails with
    every finding when one is an error, so ADR agent-driven-setup's 0 / 1 / 2 hold.

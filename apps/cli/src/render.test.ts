@@ -62,6 +62,26 @@ describe("renderValue", () => {
   });
 });
 
+describe("renderValue tables", () => {
+  it("prints a list of flat records as aligned columns with a header", () => {
+    expect(
+      renderValue({
+        cases: [
+          { ref: "web/TC-0003", state: "active", title: "Pay" },
+          { ref: "web/TC-0010", state: "draft", extra: true, title: "Refund" },
+        ],
+      }),
+    ).toBe(
+      [
+        "cases:",
+        "  ref          state   title   extra",
+        "  web/TC-0003  active  Pay",
+        "  web/TC-0010  draft   Refund  true",
+      ].join("\n"),
+    );
+  });
+});
+
 describe("renderErrors", () => {
   it("prints location, field, hint and counts for findings", () => {
     expect(
@@ -96,5 +116,19 @@ describe("renderErrors", () => {
     ];
     expect(renderErrors(findings as never).endsWith("2 errors, 0 warnings")).toBe(true);
     expect(renderErrors([{ code: "cli.usage", message: "nope" }])).toBe("error  cli.usage  nope");
+  });
+
+  it("draws a caret under the column of a one-line input the error names", () => {
+    const error = { code: "query.x", column: 3, field: "query", message: "m" };
+    expect(renderErrors([error], { query: "a = (" })).toBe(
+      ["error  query.x  column 3 [query]  m", "  a = (", "    ^"].join("\n"),
+    );
+    // No caret for a file error, a non-text or multi-line input, or a missing field.
+    expect(renderErrors([{ ...error, path: "f.md" }], { query: "a" })).not.toContain("^");
+    expect(renderErrors([error], { query: "a\nb" })).not.toContain("^");
+    expect(renderErrors([error], { query: 3 })).not.toContain("^");
+    expect(renderErrors([{ code: "x", column: 2, message: "m" }], { query: "ab" })).not.toContain(
+      "^",
+    );
   });
 });
