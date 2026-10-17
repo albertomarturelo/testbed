@@ -15,6 +15,11 @@ export const IngestedResult = RunEvent.pick({
   ref: z.string().min(1),
   /** When the test ran; absent: the ingestion time. */
   at: RunEvent.shape.at.optional(),
+  /**
+   * Where in the report the result comes from when a test can report more than
+   * once (a Playwright project): kept as evidence when results are merged.
+   */
+  source: z.string().min(1).optional(),
 });
 
 export type IngestedResult = z.infer<typeof IngestedResult>;

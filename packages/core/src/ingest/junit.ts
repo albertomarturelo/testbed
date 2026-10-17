@@ -6,7 +6,7 @@ import { parseXml, type XmlElement } from "./xml.js";
 const ZONED = /(?:Z|[+-]\d{2}:?\d{2})$/;
 
 /** What a `testsuite` passes down to the suites and test cases inside it. */
-type Suite = { name?: string; timestamp?: string };
+type Suite = { name?: string; timestamp?: string; hostname?: string };
 
 /**
  * JUnit XML (`<testsuites>` or a single `<testsuite>`, nested suites allowed),
@@ -19,6 +19,7 @@ type Suite = { name?: string; timestamp?: string };
  *   `skipped`, else `passed`.
  * - `at`: the case's or nearest suite's `timestamp`, when it has a time zone.
  * - `duration_ms`: `time` (seconds) × 1000, rounded.
+ * - `source`: the nearest suite's `hostname`: the project name in Playwright.
  */
 export const junitIngester = defineIngester({
   format: "junit",
@@ -61,6 +62,7 @@ export const junitIngester = defineIngester({
           ? {
               name: element.attributes.name || outer.name,
               timestamp: element.attributes.timestamp ?? outer.timestamp,
+              hostname: element.attributes.hostname || outer.hostname,
             }
           : outer;
       // Reversed onto the stack, so results keep document order.
@@ -82,6 +84,7 @@ function testCase(element: XmlElement, suite: Suite): IngestedResult | string {
         ? "skipped"
         : "passed";
   const result: IngestedResult = { ref: owner ? `${owner}::${name}` : name, status };
+  if (suite.hostname) result.source = suite.hostname;
   const at = zonedTime(timestamp ?? suite.timestamp);
   if (at !== undefined) result.at = at;
   const seconds = time === undefined ? Number.NaN : Number(time.replaceAll(",", ""));

@@ -26,20 +26,29 @@ format; built-in formats are described here.
 
 ## What it does
 
-1. Parses the report into results: `{ ref, status, at?, duration_ms? }`.
-2. Matches each `ref` against the `automation.ref` of the project's cases.
+1. Parses the report into results: `{ ref, status, at?, duration_ms?, source? }`.
+2. Merges results that share a `ref` (a test run in several Playwright
+   projects) into one: the **worst** status (`failed` > `blocked` > `passed` >
+   `not_run` > `skipped`), the latest `at`, the longest `duration_ms`, and one
+   `evidence` entry per result, `{ "kind": "result:<status>", "ref": "<source>" }`
+   (`#1`, `#2`… without a source). One event per case and report keeps a
+   failure in one project from being hidden by a pass in another: gates read
+   the latest event per case, and these would share `at`.
+3. Matches each `ref` against the `automation.ref` of the project's cases.
    A ref on no case is **unmatched**: listed in the output with its status,
    never written. A ref on several cases gives one event per case.
-3. Builds one run event per match, checked against the run-event schema
+4. Builds one run event per match, checked against the run-event schema
    (`schema/run-event.schema.json`); `at` is the report's time when it has a
    time zone, else the ingestion time.
-4. Appends to `.runs/<run>.jsonl` the events the file does not hold yet.
+5. Appends to `.runs/<run>.jsonl` the events the file does not hold yet.
    Events are compared without `at`, counting repeats: ingesting the same
    report twice writes nothing the second time, and a second shard of the
    same run adds only its own events. Existing lines are never changed.
    Shards ingested in separate CI checkouts each append to the same file and
    their commits conflict: ingest all shards from one job, or give each shard
-   its own run id (`9137-1`, `9137-2`).
+   its own run id (`9137-1`, `9137-2`). Results merge only within one report
+   (step 2), so when shards can split one test's projects, ingest the merged
+   report (`playwright merge-reports --reporter junit`) instead of each shard.
 
 ```json 9137.jsonl
 {"run_id":"9137","case_id":"TC-0001","status":"passed","executor":"ci:github-actions","at":"2026-10-17T09:12:03Z","build":"web-2.1.0+9","duration_ms":1204,"automation_ref":"login.spec.ts::signs in with valid credentials"}
@@ -73,6 +82,7 @@ suites allowed. One result per `<testcase>`:
 | `status` | `failed` with a `<failure>` or `<error>` child, `skipped` with `<skipped>`, else `passed` |
 | `at` | the test case's or nearest suite's `timestamp`, when it has a time zone |
 | `duration_ms` | `time` in seconds × 1000, rounded |
+| `source` | the nearest suite's `hostname`: the Playwright project (`chromium`) |
 
 For Playwright the ref is `<test file>::<title path>`: the file relative to
 `testDir`, then the titles inside it joined by ` › `, as Playwright writes them:
@@ -84,8 +94,14 @@ For Playwright the ref is `<test file>::<title path>`: the file relative to
 | Surefire `com.acme.OrderApiTest#createsAnOrder` | `com.acme.OrderApiTest::createsAnOrder` |
 
 A test that runs in several Playwright projects (chromium, firefox) gives one
-result, and so one event, per project. A `DOCTYPE` is refused: casefile never
-expands entities or fetches anything a report points to.
+result per project and, merged, one event per case:
+
+```json 9137-projects.jsonl
+{"run_id":"9137","case_id":"TC-0001","status":"failed","executor":"ci:github-actions","at":"2026-10-17T09:12:03Z","duration_ms":2500,"evidence":[{"kind":"result:passed","ref":"chromium"},{"kind":"result:failed","ref":"firefox"}],"automation_ref":"login.spec.ts::signs in with valid credentials"}
+```
+
+A `DOCTYPE` is refused: casefile never expands entities or fetches anything a
+report points to.
 
 ## Errors
 
@@ -123,7 +139,9 @@ export const manifest = {
 `parse` returns `{ ok: true, value: results }` or `{ ok: false, errors }`, with
 errors as values (`code`, `message`, `path`, `line`, `column`); it only reads
 the text it is given. Each result is `{ ref, status, at?, duration_ms?,
-evidence? }`, checked by casefile before any event is built. The extension
+evidence?, source? }`, checked by casefile before any event is built; set
+`source` when one test can report several times, so merged results stay
+traceable. The extension
 must say, in its SPEC, how its refs are formed so that `automation.ref` can be
 written to match. A format that is already registered (`junit`) is refused as
 `operation.duplicate`.

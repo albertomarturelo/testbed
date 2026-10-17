@@ -23,7 +23,8 @@ ingesters. JUnit is XML, and core has no XML parser (CONVENTIONS 10).
 1. **An ingester only parses.** `defineIngester({ format, spec, parse })`;
    `parse(text, { path })` returns `Result<IngestedResult[]>`: one result per
    test, keyed by `ref` (the `automation.ref` it would match) with `status` and
-   optional `at`, `duration_ms`, `evidence`. Report text is UTF-8 (every target
+   optional `at`, `duration_ms`, `evidence`, `source` (where in the report it
+   comes from, e.g. a Playwright project). Report text is UTF-8 (every target
    format is text). Errors are values with line and column.
 2. **Core does the rest, the same for every format.** `ingestOperation(ingester)`
    makes the operation `ingest-<format>` (CLI `casefile ingest <format> <report>`):
@@ -40,7 +41,7 @@ ingesters. JUnit is XML, and core has no XML parser (CONVENTIONS 10).
    operation; an ingested event is what proves `automated`.
 5. **Unmatched results are output, not events:** a result whose ref is on no
    case is listed in `unmatched` with its status; a ref on several cases gives
-   one event per case.
+   one event per case. Results are merged by ref first (§9).
 6. **Idempotent by content:** events already in the run file, compared without
    `at` and counted as a multiset, are not written again; new ones are appended
    after the existing lines, which stay byte for byte. Ingesting the same report
@@ -55,6 +56,17 @@ ingesters. JUnit is XML, and core has no XML parser (CONVENTIONS 10).
    (elements, attributes, text, CDATA, comments, the five predefined entities
    and character references). A `DOCTYPE` is refused, so no entity expansion
    and no external fetches.
+9. **One event per ref and case per report** (amended in review of PR #66).
+   A test run in several Playwright projects reports one result per project,
+   usually with the suite's `at`. As separate events they tie on `at`, and
+   [release-gate-evaluation](2026-10-17-release-gate-evaluation.md) §3 breaks
+   ties by file order: "firefox failed, chromium passed" would read `passed`
+   and a gate would go green over a failure. So results with the same ref are
+   merged: the worst status (`failed` > `blocked` > `passed` > `not_run` >
+   `skipped`: a failure is never hidden, an execution never by a skip), the
+   latest `at`, the longest `duration_ms` (projects run in parallel; the sum
+   would be no test's duration), and one evidence entry per result,
+   `{ kind: "result:<status>", ref: <source or #n> }`, in report order.
 
 ## Alternatives Considered
 
@@ -68,6 +80,10 @@ ingesters. JUnit is XML, and core has no XML parser (CONVENTIONS 10).
   for the small subset JUnit uses.
 - **Idempotency by run file existence** (refuse if `.runs/<run>.jsonl` exists) —
   simplest, but breaks sharded runs that report under one run id.
+- **One event per Playwright project** (the first version) — hides failures
+  through the gate tie-break above; putting the project in `env` would split
+  one case's result over environments the gates do not know.
+- **Sum of durations when merging** — no single run of the test took that long.
 - **Report path relative to `--cwd`** — needs a new kind of host input; paths
   are workspace-relative elsewhere (workspace-and-projects §7).
 
@@ -76,6 +92,8 @@ ingesters. JUnit is XML, and core has no XML parser (CONVENTIONS 10).
 - `ExtensionManifest` gains `ingesters`; the extension-model row reads
   `parse(text, ctx) → IngestedResult[]`.
 - A report outside the workspace is `path.outside_workspace`: CI copies it in.
+- §9 merges within one report only: shard reports that split a test's projects
+  are merged before ingest (`playwright merge-reports`), as the SPEC says.
 - The operation makes no commit: CI commits `.runs/` (or ships it) itself.
 - Failure messages and attachments are not mapped yet (no event field for the
   first; evidence for the second can come with the UI's need).

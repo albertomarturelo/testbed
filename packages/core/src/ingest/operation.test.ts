@@ -144,15 +144,61 @@ describe("ingest junit", () => {
     expect((await read(`${RUNS}/pw-1.jsonl`)).startsWith("not json\n[1]\n{")).toBe(true);
   });
 
-  it("keeps identical results within one report (one per Playwright project)", async () => {
-    const one = `<testsuite name="login.spec.ts" timestamp="2026-10-17T09:12:03Z" hostname="%s"><testcase name="signs in with valid credentials" classname="login.spec.ts" time="1"/></testsuite>`;
+  it("writes one event with the worst status when a test ran in several Playwright projects", async () => {
+    const suite = (project: string, time: string, body: string) =>
+      `<testsuite name="login.spec.ts" timestamp="${time}" hostname="${project}"><testcase name="signs in with valid credentials" classname="login.spec.ts" time="${project === "firefox" ? "2.5" : "1"}">${body}</testcase></testsuite>`;
+    // Same suite time in every project: separate events would tie on `at`.
     await put(
       REPORT,
-      `<testsuites>${one.replace("%s", "chromium")}${one.replace("%s", "firefox")}</testsuites>`,
+      `<testsuites>${suite("chromium", "2026-10-17T09:12:03Z", "")}${suite("firefox", "2026-10-17T09:12:03Z", '<failure message="x"/>')}${suite("webkit", "2026-10-17T09:12:03Z", "<skipped/>")}</testsuites>`,
     );
-    expect(await ingested()).toMatchObject({ results: 2, events: 2, appended: 2 });
+    expect(await ingested()).toMatchObject({ results: 3, events: 1, appended: 1 });
+    expect(await events()).toEqual([
+      {
+        run_id: "pw-1",
+        case_id: "TC-0001",
+        status: "failed",
+        executor: "ci:github-actions",
+        at: "2026-10-17T09:12:03Z",
+        duration_ms: 2500,
+        evidence: [
+          { kind: "result:passed", ref: "chromium" },
+          { kind: "result:failed", ref: "firefox" },
+          { kind: "result:skipped", ref: "webkit" },
+        ],
+        automation_ref: "login.spec.ts::signs in with valid credentials",
+      },
+    ]);
     expect(await ingested()).toMatchObject({ appended: 0 });
-    expect(await events()).toHaveLength(2);
+    expect(await events()).toHaveLength(1);
+  });
+
+  it("merges unmatched results by ref too, takes the latest time, and numbers sources it lacks", async () => {
+    await put(
+      REPORT,
+      `<testsuites>
+<testsuite name="a.spec.ts" timestamp="2026-10-17T09:00:00Z"><testcase name="t" classname="a.spec.ts"><skipped/></testcase></testsuite>
+<testsuite name="a.spec.ts" timestamp="2026-10-17T09:05:00+01:00"><testcase name="t" classname="a.spec.ts"/></testsuite>
+<testsuite name="a.spec.ts" timestamp="2026-10-17T08:30:00Z"><testcase name="t" classname="a.spec.ts"/></testsuite>
+</testsuites>`,
+    );
+    expect(await ingested({ run: "pw-0" })).toMatchObject({
+      results: 3,
+      events: 0,
+      unmatched: [{ ref: "a.spec.ts::t", status: "passed" }],
+    });
+    await setRef(TC_0002, "a.spec.ts::t");
+    expect(await ingested()).toMatchObject({ results: 3, events: 1, unmatched: [] });
+    expect((await events())[0]).toMatchObject({
+      case_id: "TC-0002",
+      status: "passed",
+      at: "2026-10-17T09:00:00Z",
+      evidence: [
+        { kind: "result:skipped", ref: "#1" },
+        { kind: "result:passed", ref: "#2" },
+        { kind: "result:passed", ref: "#3" },
+      ],
+    });
   });
 
   it("gives one event per case when several cases share a ref", async () => {

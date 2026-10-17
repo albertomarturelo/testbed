@@ -15,42 +15,48 @@ const fixture = async (name: string) => {
 };
 
 describe("junitIngester", () => {
-  it("reads a Playwright report: <file>::<title path>, statuses, suite time, durations", async () => {
+  it("reads a Playwright report: <file>::<title path>, statuses, project, suite time, durations", async () => {
     const results = await fixture("playwright.xml");
     expect(results).toEqual([
       {
         ref: "login.spec.ts::signs in with valid credentials",
         status: "passed",
+        source: "chromium",
         at: "2026-10-17T09:12:03Z",
         duration_ms: 1204,
       },
       {
         ref: "login.spec.ts::rejects an empty password",
         status: "failed",
+        source: "chromium",
         at: "2026-10-17T09:12:03Z",
         duration_ms: 611,
       },
       {
         ref: "login.spec.ts::password reset › sends a reset link to a registered email",
         status: "passed",
+        source: "chromium",
         at: "2026-10-17T09:12:03Z",
         duration_ms: 873,
       },
       {
         ref: "login.spec.ts::locks the account after five failed attempts",
         status: "skipped",
+        source: "chromium",
         at: "2026-10-17T09:12:03Z",
         duration_ms: 0,
       },
       {
         ref: "login.spec.ts::signs out from the account menu",
         status: "passed",
+        source: "chromium",
         at: "2026-10-17T09:12:03Z",
         duration_ms: 824,
       },
       {
         ref: "search.spec.ts::finds a product by name & shows its price",
         status: "passed",
+        source: "chromium",
         at: "2026-10-17T09:12:03Z",
         duration_ms: 615,
       },

@@ -112,7 +112,7 @@ export function ingestOperation(ingester: Ingester): Operation {
       const now = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
       const events: RunEvent[] = [];
       const unmatched: { ref: string; status: RunEvent["status"] }[] = [];
-      for (const result of results) {
+      for (const result of mergeByRef(results)) {
         const ids = casesByRef.get(result.ref);
         if (ids === undefined) unmatched.push({ ref: result.ref, status: result.status });
         for (const id of ids ?? []) {
@@ -184,6 +184,54 @@ function isResultList(value: unknown): value is Result<unknown[]> {
   const result = value as { ok?: unknown; value?: unknown; errors?: unknown };
   if (result.ok === true) return Array.isArray(result.value);
   return result.ok === false && Array.isArray(result.errors);
+}
+
+/** Worst first: a failure is never hidden by a pass, an execution never by a skip. */
+const SEVERITY: readonly RunEvent["status"][] = [
+  "failed",
+  "blocked",
+  "passed",
+  "not_run",
+  "skipped",
+];
+
+type Merged = Omit<IngestedResult, "source">;
+
+/**
+ * One result per ref (ADR ingester-contract §9). A test run in several
+ * Playwright projects reports one result per project, usually with the same
+ * `at`; as separate events, a gate's tie-break by file order could let
+ * "chromium passed" hide "firefox failed". Merged: the worst status, the
+ * latest `at`, the longest duration, and one `result:<status>` evidence entry
+ * per source, in report order. Refs come in order of first appearance.
+ */
+function mergeByRef(results: readonly IngestedResult[]): Merged[] {
+  const groups = new Map<string, IngestedResult[]>();
+  for (const result of results) groups.set(result.ref, [...(groups.get(result.ref) ?? []), result]);
+  return [...groups.values()].map((group) => {
+    const [first, ...rest] = group as [IngestedResult, ...IngestedResult[]];
+    const { source: _, ...single } = first;
+    if (rest.length === 0) return single;
+    const status = SEVERITY.find((s) => group.some((r) => r.status === s)) ?? first.status;
+    const times = group.flatMap((r) => (r.at === undefined ? [] : [r.at]));
+    const at = times.reduce<string | undefined>(
+      (latest, time) =>
+        latest === undefined || Date.parse(time) > Date.parse(latest) ? time : latest,
+      undefined,
+    );
+    const durations = group.flatMap((r) => (r.duration_ms === undefined ? [] : [r.duration_ms]));
+    const evidence = group.flatMap((r, i) => [
+      ...(r.evidence ?? []),
+      { kind: `result:${r.status}`, ref: r.source ?? `#${i + 1}` },
+    ]);
+    return {
+      ref: first.ref,
+      status,
+      ...(at === undefined ? {} : { at }),
+      ...(durations.length === 0 ? {} : { duration_ms: Math.max(...durations) }),
+      evidence,
+    };
+  });
 }
 
 /**
