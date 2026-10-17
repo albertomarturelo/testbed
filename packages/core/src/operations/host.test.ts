@@ -43,6 +43,7 @@ describe("openRegistry", () => {
     expect(host.registry.list().map((o) => o.name)).toEqual([
       "id-next",
       "init",
+      "overview",
       "project-add",
       "query",
       "resolve",
@@ -71,6 +72,7 @@ describe("openRegistry", () => {
       "hello",
       "id-next",
       "init",
+      "overview",
       "project-add",
       "query",
       "resolve",

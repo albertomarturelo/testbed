@@ -21,3 +21,4 @@ services/api/context/tests/    project `api`: _common.yaml, _properties.yaml, or
 | Resolve `api/TC-0001` | A different case with the same id: ids are unique per project |
 | `casefile validate` | No findings. The workspace label `owner_team` is declared in each project's `_properties.yaml` |
 | `automation.status = automated` | `web/TC-0001`, `api/TC-0001`: each matched by a CI run in its own project's `.runs/` |
+| `casefile overview` | Features `login` (web) and `orders` (api); `web/TC-0001` and `api/TC-0001` last ran `passed` (2026-10-14 07:00 and 07:05 UTC), `web/TC-0002` never ran |

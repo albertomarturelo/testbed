@@ -15,6 +15,7 @@ describe("builtinOperations", () => {
     expect(registry.list().map((o) => o.name)).toEqual([
       "id-next",
       "init",
+      "overview",
       "project-add",
       "query",
       "resolve",

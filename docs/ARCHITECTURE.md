@@ -1,10 +1,12 @@
 # Architecture — casefile
 
-> In progress: `packages/core` has schemas, loader, resolver, id generator, the
-> operation/extension registry, the built-in operations `init` and `project-add`, and the
+> In progress: `packages/core` has schemas, loader, resolver, id generator, query DSL,
+> gate evaluation, the operation/extension registry, the built-in operations `init`,
+> `project-add`, `validate`, `resolve`, `query`, `id-next` and `overview`, and the
 > validator (finding contract, code catalogue, level runner; levels workspace → file
 > schemas → cross-file → resolution → environment, fed by `loadWorkspace` and
-> `loadToolchain`); the
+> `loadToolchain`); `apps/cli` renders the registry and `apps/web` is the read-only
+> local UI (`pnpm ui`); the
 > rest is the **target** architecture taken from the founding brief. Anything not stated in the brief is marked
 > "(inferred — confirm)". Decisions are recorded in [decisions/](decisions/_index.md).
 
@@ -55,7 +57,7 @@ renders the registry: CLI commands, MCP tools, inbox `kind`s, web screens. See
 | Path | Responsibility | Phase |
 |---|---|---|
 | `packages/core` | Schemas (JSON Schema 2020-12 + Zod), file loader (`yaml` + frontmatter splitter in core), inheritance resolver, query DSL (parser + evaluator), in-memory index with watcher, validator, id generator, Git utilities, gate evaluation, operation/extension registry, built-in operations and ingesters | F0 |
-| `apps/cli` | Generic host ([cli-generic-host](decisions/2026-10-17-cli-generic-host.md)): renders the registry as commands; `init`, `project add`, `validate --json`, `resolve`, `query`, `id next`, `gates`, `spec` working in F0; published to npm as `casefile` (includes `casefile mcp`) | F0 |
+| `apps/cli` | Generic host ([cli-generic-host](decisions/2026-10-17-cli-generic-host.md)): renders the registry as commands; `init`, `project add`, `validate --json`, `resolve`, `query`, `id next`, `overview`, `gates`, `spec` working in F0; published to npm as `casefile` (includes `casefile mcp`) | F0 |
 | `apps/mcp` | Generic host: MCP server (stdio + Streamable HTTP), token scopes; `cases.search`, `coverage.query` real, the rest typed stubs | F0 skeleton / F2 full |
 | `apps/web` | Local UI: Vite + React SPA on shadcn/ui, served with a read-only JSON API over the registry by a `node:http` host on `127.0.0.1` ([local-ui-stack](decisions/2026-10-17-local-ui-stack.md)); later Inbox and Release screens + `.inbox` contract | F1 |
 | `packages/bridge-*` | README only: field mapping + `Bridge { push, pull, import(dryRun) }` | F2 |

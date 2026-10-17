@@ -19,6 +19,10 @@ Corrections are appended here in the same change that fixes the code.
    corrections are new events. (confirmed 2026-10-15)
 6. **Tests next to the code** as `*.test.ts`, using `examples/demo-repo` as the
    shared fixture; coverage ≥ 85 % on resolver, DSL and gates. (confirmed 2026-10-15)
+   App tests reuse core's demo oracles (`DEMO_EXPECTED`, `DEMO_MONOREPO_EXPECTED`)
+   by relative import of `packages/core/src/demo.fixture.js`, not by re-deriving
+   them; the fixture is not part of core's public API. (added 2026-10-17, #54:
+   CLI and web do this)
 7. **Errors are values with locations.** Validator and DSL errors carry file path /
    character position and a stable error code; the CLI turns them into exit codes. (confirmed 2026-10-15)
 8. **Skills cite SPECs, never restate them.** Skills follow
@@ -41,3 +45,9 @@ Corrections are appended here in the same change that fixes the code.
     code; compose screens from those components and Tailwind utilities, not
     hand-rolled CSS or another component library. A client library bundled into
     the UI counts as shipped code for rule 10. See ADR local-ui-stack.
+    From `apps/web`: `pnpm dlx shadcn@4.21.4 add <component>`. The CLI reads the
+    `@/*` alias from `tsconfig.json` (kept there for it). After every `add`, check
+    two things it gets wrong: it imports `cn` from a `cn` npm package and adds that
+    package with a `^` range. Point the import at `@/lib/utils` and remove the
+    package. Also pin any new package it adds to an exact version (corrected
+    2026-10-17, #54).

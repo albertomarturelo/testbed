@@ -1,6 +1,7 @@
 import { idNextOperation } from "./id-next.js";
 import { initOperation } from "./init.js";
 import type { Operation } from "./operation.js";
+import { overviewOperation } from "./overview.js";
 import { projectAddOperation } from "./project-add.js";
 import { queryOperation } from "./query.js";
 import { resolveOperation } from "./resolve.js";
@@ -14,4 +15,5 @@ export const builtinOperations: readonly Operation[] = [
   resolveOperation,
   queryOperation,
   idNextOperation,
+  overviewOperation,
 ];

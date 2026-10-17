@@ -24,6 +24,22 @@ Upgrades are deliberate PRs that update this table.
 | `@casefile/core` | `yaml` | runtime | 2.9.1 | YAML files and case frontmatter ([frontmatter-without-gray-matter](decisions/2026-10-15-frontmatter-without-gray-matter.md)) |
 | `casefile` (`apps/cli`) | `@casefile/core` | runtime | `workspace:*` | The registry the CLI renders (ADR cli-generic-host) |
 | `casefile` (`apps/cli`) | `zod` | dev | 4.6.5 | Test-only operation inputs for the argv rules; same version as core |
+| `@casefile/web` | `@casefile/core` | runtime | `workspace:*` | The registry the UI's API runs ([local-ui-stack](decisions/2026-10-17-local-ui-stack.md)) |
+| `@casefile/web` | `react`, `react-dom` | dev (bundled) | 19.3.0 | Client UI |
+| `@casefile/web` | `@types/react`, `@types/react-dom` | dev | 19.3.0 | Client types |
+| `@casefile/web` | `vite` | dev | 8.3.4 | Builds the client only (amends build-and-test-tooling §1) |
+| `@casefile/web` | `@vitejs/plugin-react` | dev | 6.1.2 | JSX and React refresh in Vite and Vitest |
+| `@casefile/web` | `tailwindcss`, `@tailwindcss/vite` | dev | 4.3.3 | Styles for shadcn/ui |
+| `@casefile/web` | `radix-ui` | dev (bundled) | 1.7.0 | Primitives behind the shadcn components |
+| `@casefile/web` | `class-variance-authority` | dev (bundled) | 0.7.1 | shadcn component variants |
+| `@casefile/web` | `clsx` | dev (bundled) | 2.1.1 | `cn()` class joining |
+| `@casefile/web` | `tailwind-merge` | dev (bundled) | 3.7.0 | `cn()` utility conflicts |
+| `@casefile/web` | `lucide-react` | dev (bundled) | 1.54.0 | Icons (shadcn default) |
+| `@casefile/web` | `tw-animate-css` | dev (bundled) | 1.4.0 | Animations the shadcn components use |
+| `@casefile/web` | `happy-dom`, `@testing-library/react` | dev | 20.14.6, 16.3.3 | Client smoke tests |
+
+shadcn/ui itself is not a dependency: its CLI (`shadcn@4.21.4`, run with
+`pnpm dlx`) copies components into `apps/web/src/client/components/ui/` (CONVENTIONS 13).
 
 ## Platform
 
@@ -48,8 +64,6 @@ Upgrades are deliberate PRs that update this table.
 |---|---|---|
 | File watching | chokidar | #9 |
 | MCP | Official MCP TypeScript SDK (stdio + Streamable HTTP) | #15 |
-| Local UI client (`apps/web`, dev deps bundled into `dist/client`) | React + `react-dom`, Vite + `@vitejs/plugin-react`, Tailwind CSS v4 + `@tailwindcss/vite`, shadcn/ui (CLI at an exact version) and the helpers its components pull in (Radix, `class-variance-authority`, `clsx`, `tailwind-merge`, `lucide-react`) ([local-ui-stack](decisions/2026-10-17-local-ui-stack.md)) | #54 |
-| Local UI tests | `happy-dom`, `@testing-library/react` (dev) | #54 |
 
 Not used, by decision: any LLM SDK, database, Docker, auth provider, a bundler
 outside the `apps/web` client, an HTTP server framework (`node:http` serves the UI),
