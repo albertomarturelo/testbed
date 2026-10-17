@@ -1,6 +1,8 @@
 node_modules/
 dist/
 coverage/
+# copied from skills/ when the CLI is packed (apps/cli prepack)
+apps/cli/skills/
 .turbo/
 *.log
 .DS_Store

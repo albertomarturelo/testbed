@@ -11,11 +11,14 @@
     "casefile": "./dist/bin.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "skills"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "prepack": "rm -rf skills && cp -R ../../skills skills",
+    "postpack": "rm -rf skills"
   },
   "dependencies": {
     "@casefile/core": "workspace:*"

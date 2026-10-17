@@ -15,7 +15,7 @@ writes the files.
 The human has already run, in the repository root:
 
 ```bash
-npx casefile init --skills-into .claude/skills
+casefile init --skills-into .claude/skills
 ```
 
 So `casefile.yaml` (`version: 1`, `projects: []`) and `.casefile/package.json`
@@ -91,10 +91,11 @@ Run every casefile command below with `CASEFILE_ACTOR=agent`.
    `.casefile/package-lock.json`, `.casefile/.gitignore` and every
    `context/tests/` scaffold in one commit. Author it as
    `casefile-agent <casefile-agent@casefile.invalid>`, the fixed agent
-   identity (ADR agent-runs-the-commit), and add the trailers
+   identity (ADR agent-runs-the-commit). The subject is
+   `setup: register <project names>`, and the trailers are
    `Requested-by: <the human's git email>` and `Agent: <your name>`. Commit
    only those paths (`git commit -F <message> -- <paths>`), never what the
-   human had staged.
+   human had staged. The skills `init` copied are the human's to commit.
 9. **Offer the next step and stop.** Offer `qa-bootstrap` for each project
    (ADR agent-driven-setup). Until that skill ships (#14), offer
    `/qa-cover <feature>` for the feature the human cares about first instead.

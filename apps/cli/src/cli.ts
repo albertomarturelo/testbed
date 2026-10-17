@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -29,8 +30,14 @@ import { renderErrors, renderValue } from "./render.js";
 
 const pkg = createRequire(import.meta.url)("../package.json") as { version: string };
 
-/** Skills bundled in the published package; `init` offers them (ADR agent-driven-setup). */
-const SKILLS_DIR = fileURLToPath(new URL("../skills/", import.meta.url));
+/**
+ * Skills `init` offers (ADR agent-driven-setup): bundled into the package as
+ * `skills/` when it is packed, else the repository's `skills/` (monorepo dev).
+ */
+const PACKED_SKILLS = fileURLToPath(new URL("../skills/", import.meta.url));
+const SKILLS_DIR = existsSync(PACKED_SKILLS)
+  ? PACKED_SKILLS
+  : fileURLToPath(new URL("../../../skills/", import.meta.url));
 
 const ACTORS: readonly Actor[] = ["human", "agent", "ci"];
 
