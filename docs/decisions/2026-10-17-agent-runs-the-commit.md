@@ -26,11 +26,13 @@ yet says who runs `git commit`, and `casefile-agent` has no email.
    `commit: { author, message }`. The message is the full text: subject, blank
    line, then the trailers `Requested-by:`, `Inbox-Id:` (when there is one),
    `Agent:` and `Casefile-Change:`. Core builds it with a pure formatter. The
-   operation also returns `created`/`modified` paths.
-2. **The agent runs the commit**, staging exactly those paths:
-   `git add <paths>` then
-   `git -c user.name=casefile-agent -c user.email=casefile-agent@casefile.invalid commit -F <message>`.
-   Skills say this once and cite the operation's SPEC.
+   operation also returns the files it wrote.
+2. **The agent runs the commit, of exactly those files.** First
+   `git add <paths>`, then
+   `git -c user.name=casefile-agent -c user.email=casefile-agent@casefile.invalid commit -F <message> -- <paths>`.
+   The pathspec matters: without it, `git commit` also takes whatever the
+   human had staged, and that would land under the agent's name. Skills say
+   this once and cite the operation's SPEC.
 3. **The agent identity is `casefile-agent <casefile-agent@casefile.invalid>`**,
    the same in every repository. `.invalid` is reserved (RFC 2606), so the
    address cannot belong to anyone. The write-ownership audit (#41) recognises

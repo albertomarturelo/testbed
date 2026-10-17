@@ -84,8 +84,12 @@ they cannot be given. A proposed case is always `state: draft` and
 
    ```bash
    git add <created paths>
-   git -c user.name=casefile-agent -c user.email=casefile-agent@casefile.invalid commit -F <message file>
+   git -c user.name=casefile-agent -c user.email=casefile-agent@casefile.invalid \
+     commit -F <message file> -- <created paths>
    ```
+
+   Keep the `-- <created paths>`: it commits those files only, and leaves
+   anything else the human had staged out of the agent's commit.
 
    The author is always `casefile-agent <casefile-agent@casefile.invalid>`.
    `.invalid` is a reserved domain, so the address cannot belong to anyone.

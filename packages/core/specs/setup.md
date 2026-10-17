@@ -89,13 +89,16 @@ Run every casefile command below with `CASEFILE_ACTOR=agent`.
    `.casefile/node_modules/.bin/casefile validate`.
 8. **Commit** `casefile.yaml`, `.casefile/package.json`,
    `.casefile/package-lock.json`, `.casefile/.gitignore` and every
-   `context/tests/` scaffold in one commit, authored as
+   `context/tests/` scaffold in one commit. Author it as
    `casefile-agent <casefile-agent@casefile.invalid>`, the fixed agent
-   identity (ADR agent-runs-the-commit). Add the trailers
-   `Requested-by: <the human's git email>` and `Agent: <your name>`.
-9. **Offer the next step and stop.** Propose `/qa-cover <feature>` for the
-   feature the human cares about first. Do not propose cases yourself during
-   setup.
+   identity (ADR agent-runs-the-commit), and add the trailers
+   `Requested-by: <the human's git email>` and `Agent: <your name>`. Commit
+   only those paths (`git commit -F <message> -- <paths>`), never what the
+   human had staged.
+9. **Offer the next step and stop.** Offer `qa-bootstrap` for each project
+   (ADR agent-driven-setup). Until that skill ships (#14), offer
+   `/qa-cover <feature>` for the feature the human cares about first instead.
+   Do not propose cases yourself during setup.
 
 ## Example: one product
 
