@@ -5,7 +5,7 @@ The agent runs it once per project during setup, after the human has confirmed
 the plan.
 
 - **Actor:** agent
-- **CLI:** `casefile project add <name> <path>`
+- **CLI:** `casefile project add <name> --path <path>` (run with `CASEFILE_ACTOR=agent`)
 - **Writes:** `casefile.yaml`, `**/context/tests/_common.yaml`,
   `**/context/tests/.runs/.gitkeep`, `**/context/tests/.inbox/.gitkeep`
 

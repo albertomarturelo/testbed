@@ -16,5 +16,11 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@casefile/core": "workspace:*"
+  },
+  "devDependencies": {
+    "zod": "4.6.5"
   }
 }

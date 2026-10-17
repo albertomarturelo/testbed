@@ -22,6 +22,8 @@ Upgrades are deliberate PRs that update this table.
 | `@casefile/core` | `zod` | runtime | 4.6.5 | Schemas; source of the generated JSON Schemas |
 | `@casefile/core` | `ajv` | dev | 8.20.0 | Parity test of committed JSON Schemas (draft 2020-12) |
 | `@casefile/core` | `yaml` | runtime | 2.9.1 | YAML files and case frontmatter ([frontmatter-without-gray-matter](decisions/2026-10-15-frontmatter-without-gray-matter.md)) |
+| `casefile` (`apps/cli`) | `@casefile/core` | runtime | `workspace:*` | The registry the CLI renders (ADR cli-generic-host) |
+| `casefile` (`apps/cli`) | `zod` | dev | 4.6.5 | Test-only operation inputs for the argv rules; same version as core |
 
 ## Platform
 
