@@ -48,12 +48,73 @@ describe("CaseDetail", () => {
         },
       },
     });
+    answers.runs = () => ({ ok: true, value: { ref: "web/TC-0001", runs: [] } });
     render(<CaseDetail caseRef="web/TC-0001" />);
     expect(await screen.findByRole("heading", { name: "Sign in" })).toBeTruthy();
     expect(screen.getByText("apps/web/context/tests/_common.yaml")).toBeTruthy();
     expect(screen.getByText("Submit the form")).toBeTruthy();
     expect(screen.getByText("login.spec.ts::signs in")).toBeTruthy();
-    expect(calls).toEqual([{ name: "resolve", input: { ref: "web/TC-0001" } }]);
+    expect(await screen.findByText("Never ran.")).toBeTruthy();
+    expect(calls).toEqual([
+      { name: "resolve", input: { ref: "web/TC-0001" } },
+      { name: "runs", input: { ref: "web/TC-0001" } },
+    ]);
+  });
+
+  it("lists the case's runs newest first, with why a run failed and its evidence", async () => {
+    answers.resolve = () => ({
+      ok: true,
+      value: {
+        ref: "web/TC-0002",
+        path: "context/tests/login/TC-0002.md",
+        inherited: [],
+        case: {
+          title: "Empty submit",
+          state: "draft",
+          priority: "P2",
+          automation: { status: "automated", eligible: true },
+        },
+      },
+    });
+    const path = "context/tests/.runs/9137.jsonl";
+    answers.runs = () => ({
+      ok: true,
+      value: {
+        ref: "web/TC-0002",
+        runs: [
+          {
+            run_id: "9137",
+            case_id: "TC-0002",
+            status: "failed",
+            executor: "ci:github-actions",
+            at: "2026-10-17T19:23:06Z",
+            duration_ms: 30018,
+            build: "web-2.1.0+9",
+            evidence: [{ kind: "attachment", ref: "test-results/x/error-context.md" }],
+            note: "Test timeout of 30000ms exceeded.",
+            path,
+          },
+          {
+            run_id: "9100",
+            case_id: "TC-0002",
+            status: "passed",
+            executor: "human:qa",
+            at: "2026-10-10T08:00:00Z",
+            path,
+          },
+        ],
+      },
+    });
+    render(<CaseDetail caseRef="web/TC-0002" />);
+    expect(await screen.findByText("Test timeout of 30000ms exceeded.")).toBeTruthy();
+    expect(screen.getByText("test-results/x/error-context.md")).toBeTruthy();
+    expect(screen.getByText("ci:github-actions")).toBeTruthy();
+    expect(screen.getByText("30.0 s")).toBeTruthy();
+    expect(screen.getByText("web-2.1.0+9")).toBeTruthy();
+    const times = screen.getAllByRole("time").map((t) => t.getAttribute("datetime"));
+    expect(times).toEqual(["2026-10-17T19:23:06Z", "2026-10-10T08:00:00Z"]);
+    expect(screen.getByText("failed")).toBeTruthy();
+    expect(screen.getByText("passed")).toBeTruthy();
   });
 
   it("shows the errors of a case that does not resolve", async () => {
@@ -63,6 +124,7 @@ describe("CaseDetail", () => {
     });
     render(<CaseDetail caseRef="web/TC-0009" />);
     expect(await screen.findByText("no case TC-0009 in the workspace")).toBeTruthy();
+    expect(calls.map((c) => c.name)).toEqual(["resolve"]);
   });
 });
 

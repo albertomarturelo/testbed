@@ -1,13 +1,8 @@
 import { z } from "zod";
 import { fail, ok } from "../errors.js";
 import { caseRef } from "../resolve/resolve.js";
-import { loadWorkspaceCases, selectProject } from "./cases.js";
+import { CaseRef, findCase, loadWorkspaceCases } from "./cases.js";
 import { defineOperation } from "./operation.js";
-
-/** `TC-0003`, or qualified with its project: `web/TC-0003` (ADR workspace-and-projects §5). */
-const CaseRef = z
-  .string()
-  .regex(/^(?:([a-z][a-z0-9-]*)\/)?(TC-[0-9]{4,})$/, "TC-NNNN or <project>/TC-NNNN");
 
 const ResolveInput = z.strictObject({
   /** The case: a bare id in the current project, or `<project>/TC-NNNN`. */
@@ -43,27 +38,10 @@ export const resolveOperation = defineOperation({
     const loaded = await loadWorkspaceCases(context.root);
     if (!loaded.ok) return loaded;
     const { workspace, resolved } = loaded.value;
-    const [, qualifier, id] = /^(?:([^/]+)\/)?(.+)$/.exec(input.ref) as RegExpExecArray;
-    const scope = selectProject(workspace, qualifier ?? input.project);
-    if (!scope.ok) return scope;
+    const target = findCase(workspace, input.ref, input.project);
+    if (!target.ok) return target;
 
-    const candidates = workspace.projects
-      .filter((p) => scope.value === null || p === scope.value)
-      .flatMap((p) => p.cases.filter((c) => c.file.id === id).map((c) => ({ project: p.name, c })));
-    if (candidates.length === 0) {
-      const where = scope.value === null ? "the workspace" : `project '${scope.value.name}'`;
-      return fail({ code: "case.unknown", field: "ref", message: `no case ${id} in ${where}` });
-    }
-    if (candidates.length > 1) {
-      const refs = candidates.map(({ project }) => `${project}/${id}`);
-      return fail({
-        code: "case.ambiguous",
-        field: "ref",
-        message: `${id} is a case in several projects (${refs.join(", ")}): use ${refs[0]} or --project`,
-      });
-    }
-
-    const { path } = (candidates[0] as (typeof candidates)[number]).c;
+    const { path } = target.value.case;
     const found = resolved.cases.find((c) => c.path === path);
     if (found === undefined) {
       // It loaded but did not resolve: the resolver's errors say why.

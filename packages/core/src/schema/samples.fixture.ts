@@ -154,6 +154,7 @@ export const samples: Record<FileSchemaName, { valid: Sample[]; invalid: Sample[
           step_results: [{ step: 1, status: "failed", note: "500 from refunds API" }],
           evidence: [{ kind: "screenshot", ref: "artifacts/tc-0001.png", sha256: "b".repeat(64) }],
           automation_ref: "refunds.spec.ts::refund captured",
+          note: "Error: 500 from refunds API",
           triage: { kind: "defect", by: "ana@example.com", ref: "PROJ-99", expires: "2026-11-01" },
         },
       },
@@ -163,6 +164,8 @@ export const samples: Record<FileSchemaName, { valid: Sample[]; invalid: Sample[
       { name: "unknown status", value: { ...runEvent, status: "ok" } },
       { name: "run id with slash", value: { ...runEvent, run_id: "a/b" } },
       { name: "negative duration", value: { ...runEvent, duration_ms: -1 } },
+      { name: "empty note", value: { ...runEvent, note: "" } },
+      { name: "note over 2000 characters", value: { ...runEvent, note: "x".repeat(2001) } },
       {
         name: "step index zero",
         value: { ...runEvent, step_results: [{ step: 0, status: "passed" }] },

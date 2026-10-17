@@ -29,6 +29,22 @@ describe("junitIngester", () => {
         ref: "login.spec.ts::rejects an empty password",
         status: "failed",
         source: "chromium",
+        // The failure's text, dedented; Playwright's `message` is only the location here.
+        note: [
+          "[chromium] › login.spec.ts:18:5 › rejects an empty password ─────────────────",
+          "",
+          "  Error: expect(locator).toHaveText(expected) failed",
+          "",
+          "  Locator: getByRole('alert')",
+          '  Expected: "Password is required"',
+          '  Received: "<empty>"',
+        ].join("\n"),
+        evidence: [
+          {
+            kind: "attachment",
+            ref: "test-results/login-rejects-an-empty-password-chromium/test-failed-1.png",
+          },
+        ],
         at: "2026-10-17T09:12:03Z",
         duration_ms: 611,
       },
@@ -74,6 +90,7 @@ describe("junitIngester", () => {
       {
         ref: "com.acme.orders.OrderApiTest::rejectsAnEmptyCart",
         status: "failed",
+        note: "java.net.ConnectException: Connection refused\n\tat com.acme.orders.OrderApiTest.rejectsAnEmptyCart(OrderApiTest.java:42)",
         duration_ms: 311,
       },
       {
@@ -93,6 +110,40 @@ describe("junitIngester", () => {
   it("uses the bare name without a classname or suite name, and ignores a bad time", async () => {
     const result = await parse(`<testsuite><testcase name="t" time="soon"/></testsuite>`);
     expect(result).toEqual({ ok: true, value: [{ ref: "t", status: "passed" }] });
+  });
+
+  it("takes the message attribute when the failure has no text, and nothing from a skip", async () => {
+    const result = await parse(
+      `<testsuite><testcase name="a"><failure message=" Timed out "/></testcase><testcase name="b"><error>  </error></testcase><testcase name="c"><skipped message="later"/></testcase></testsuite>`,
+    );
+    expect(result).toEqual({
+      ok: true,
+      value: [
+        { ref: "a", status: "failed", note: "Timed out" },
+        { ref: "b", status: "failed" },
+        { ref: "c", status: "skipped" },
+      ],
+    });
+  });
+
+  it("makes attachment paths workspace-relative from the report's directory", async () => {
+    const result = await junitIngester.parse(
+      `<testsuite><testcase name="a"><system-out>[[ATTACHMENT|../test-results/a/error-context.md]]\n[[ATTACHMENT|trace.zip]]</system-out></testcase></testsuite>`,
+      { path: "web/results/junit.xml" },
+    );
+    expect(result).toEqual({
+      ok: true,
+      value: [
+        {
+          ref: "a",
+          status: "passed",
+          evidence: [
+            { kind: "attachment", ref: "web/test-results/a/error-context.md" },
+            { kind: "attachment", ref: "web/results/trace.zip" },
+          ],
+        },
+      ],
+    });
   });
 
   it("reads an empty report as no results", async () => {

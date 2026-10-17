@@ -4,7 +4,8 @@
 
 Accepted — 2026-10-17 (#17). Refines the Ingester row of
 [extension-model](2026-10-15-extension-model.md); applies
-[write-ownership](2026-10-15-write-ownership.md) to `.runs/`.
+[write-ownership](2026-10-15-write-ownership.md) to `.runs/`. Failure
+messages and attachments added by [run-event-note](2026-10-17-run-event-note.md).
 
 ## Context
 
@@ -95,5 +96,4 @@ ingesters. JUnit is XML, and core has no XML parser (CONVENTIONS 10).
 - §9 merges within one report only: shard reports that split a test's projects
   are merged before ingest (`playwright merge-reports`), as the SPEC says.
 - The operation makes no commit: CI commits `.runs/` (or ships it) itself.
-- Failure messages and attachments are not mapped yet (no event field for the
-  first; evidence for the second can come with the UI's need).
+- Failure messages and attachments: see [run-event-note](2026-10-17-run-event-note.md).

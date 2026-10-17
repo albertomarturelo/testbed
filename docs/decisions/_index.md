@@ -32,3 +32,4 @@
 | [2026-10-17-agent-runs-the-commit](2026-10-17-agent-runs-the-commit.md) | Writing operations return the commit; the agent runs it | Accepted | 2026-10-17 |
 | [2026-10-17-npm-scope-casefile](2026-10-17-npm-scope-casefile.md) | casefile is published under the npm scope `@casefile` | Accepted | 2026-10-17 |
 | [2026-10-17-ingester-contract](2026-10-17-ingester-contract.md) | How result ingesters plug in and what they write | Accepted | 2026-10-17 |
+| [2026-10-17-run-event-note](2026-10-17-run-event-note.md) | Why a run ended: a bounded `note` on run events, attachments as evidence | Accepted | 2026-10-17 |

@@ -20,6 +20,8 @@ export const IngestedResult = RunEvent.pick({
    * once (a Playwright project): kept as evidence when results are merged.
    */
   source: z.string().min(1).optional(),
+  /** Why the result is what it is (a failure message), any length: core bounds it. */
+  note: z.string().min(1).optional(),
 });
 
 export type IngestedResult = z.infer<typeof IngestedResult>;

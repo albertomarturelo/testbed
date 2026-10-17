@@ -25,7 +25,7 @@ casefile.yaml                     workspace: one project, npm-login, at `.`
 context/tests/
   _common.yaml                    surfaces [web], e2e, P2, eligible, review required
   login/TC-0001 … TC-0009.md      nine drafts from qa-cover
-  .runs/local-2026-10-17-1.jsonl  the ingested Playwright run
+  .runs/local-2026-10-17-1.jsonl  the ingested Playwright run (failures ingested again with notes, #68)
 ```
 
 ## How it was built
@@ -56,6 +56,10 @@ from source, with the toolchain linked to `apps/cli` (ADR npm-scope-casefile §6
    `casefile ingest junit results/junit.xml --run local-2026-10-17-1 --executor agent:claude-code`.
    All six results matched a case by `automation.ref`. Re-ingesting wrote
    nothing. The run file was committed as `casefile-agent`.
+6. **After #68**, the same report was ingested again. Ingest now keeps each
+   failure's message as the event's `note` and Playwright's attachments as
+   `evidence` (ADR run-event-note). The three failures were appended once more
+   with them. The first events stay, because run files are never rewritten.
 
 ## What it is designed to show
 
@@ -63,7 +67,7 @@ from source, with the toolchain linked to `apps/cli` (ADR npm-scope-casefile §6
 |---|---|
 | `casefile overview --cwd examples/npm-login` | 9 drafts in `login`: 6 `automated` (P1 render, P3 links, the rest P2), 3 `manual` |
 | `TC-0001`, `TC-0004`, `TC-0005` | last run `passed` |
-| `TC-0002`, `TC-0003`, `TC-0006` | last run `failed`: the page answered those tests with a Cloudflare "security verification" challenge, not the form (#67). Their assertions were then checked by hand on the live page and hold: an empty submit leaves Username `valueMissing` on `/login`, Show password turns the field to `text` (the button becomes Hide password), and the links point to `/forgot` and `/signup` |
+| `TC-0002`, `TC-0003`, `TC-0006` | last run `failed`: the page answered those tests with a Cloudflare "security verification" challenge, not the form (#67). `casefile runs TC-0003` and the case page in the UI show the failure message and the `error-context.md` attachment, Playwright's page snapshot. That attachment stays in the local `test-results/` and is not committed. Their assertions were then checked by hand on the live page and hold: an empty submit leaves Username `valueMissing` on `/login`, Show password turns the field to `text` (the button becomes Hide password), and the links point to `/forgot` and `/signup` |
 | `TC-0007` … `TC-0009` | `manual`, `automation.eligible: false`: they need a real account (sign in, wrong password, second factor) |
 | `casefile validate --cwd examples/npm-login` | exit 0 once the toolchain is linked (step 1) |
 
@@ -90,7 +94,8 @@ pnpm build && pnpm ui --cwd examples/npm-login
 ```
 
 Then open <http://127.0.0.1:4321>. The UI lists the cases, automated vs manual,
-and each case's last run.
+and each case's last run. A case's page lists its runs, newest first, with the
+failure message of each failed one.
 
 ## Gaps this case found
 
@@ -98,7 +103,8 @@ and each case's last run.
   and `scripts/link-toolchain.mjs`.
 - **#67:** environment-blocked results (the bot challenge) are ingested as
   product `failed`.
-- **#68:** the UI shows no run history and no failure reason.
+- **#68:** the UI showed no run history and no failure reason. Solved: ingest
+  keeps the message as `note`, and the case page lists its runs.
 - **#69:** the UI does not tell "linked, never ran" from manual, and the table
   hides "Last run" at narrow widths.
 - **#70:** nothing says how a CI job gets its run file into the repository.

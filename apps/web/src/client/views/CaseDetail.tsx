@@ -1,8 +1,8 @@
 import { ArrowLeft } from "lucide-react";
 import { useEffect, useState } from "react";
-import { call, type Resolved, type Result } from "@/api";
+import { type CaseRuns, call, type Resolved, type Result } from "@/api";
 import { ErrorList } from "@/components/ErrorList";
-import { AutomationBadge } from "@/components/StatusBadge";
+import { AutomationBadge, RunBadge } from "@/components/StatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -75,6 +75,8 @@ export function CaseDetail({ caseRef }: { caseRef: string }) {
           </p>
         )}
       </div>
+
+      <RunsCard caseRef={caseRef} />
 
       <div className="grid gap-4 xl:grid-cols-2">
         <Card>
@@ -155,4 +157,84 @@ export function CaseDetail({ caseRef }: { caseRef: string }) {
       )}
     </div>
   );
+}
+
+/** The case's run events (`runs`), newest first, each with why it ended as it did. */
+function RunsCard({ caseRef }: { caseRef: string }) {
+  const [result, setResult] = useState<Result<CaseRuns> | null>(null);
+  useEffect(() => {
+    let current = true;
+    setResult(null);
+    call<CaseRuns>("runs", { ref: caseRef }).then((r) => current && setResult(r));
+    return () => {
+      current = false;
+    };
+  }, [caseRef]);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Runs</CardTitle>
+        <CardDescription>Newest first, from the project&apos;s run files.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {result === null ? (
+          <Skeleton className="h-16 w-full" />
+        ) : !result.ok ? (
+          <ErrorList errors={result.errors} />
+        ) : result.value.runs.length === 0 ? (
+          <p className="text-muted-foreground text-sm">Never ran.</p>
+        ) : (
+          <ol className="flex flex-col divide-y">
+            {result.value.runs.map((run, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: run files are append-only; events have no id
+              <li key={i} className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                  <RunBadge status={run.status} />
+                  <time dateTime={run.at} className="text-muted-foreground">
+                    {run.at}
+                  </time>
+                  <span title={run.path}>
+                    run <span className="font-mono text-xs">{run.run_id}</span>
+                  </span>
+                  <span className="font-mono text-xs">{run.executor}</span>
+                  {run.duration_ms === undefined ? null : (
+                    <span className="text-muted-foreground">{seconds(run.duration_ms)}</span>
+                  )}
+                  {(["env", "build", "release"] as const).map((field) =>
+                    run[field] === undefined ? null : (
+                      <Badge key={field} variant="outline" title={field}>
+                        {run[field]}
+                      </Badge>
+                    ),
+                  )}
+                </div>
+                {run.note === undefined ? null : (
+                  <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-3 font-mono text-xs">
+                    {run.note}
+                  </pre>
+                )}
+                {(run.evidence ?? []).length === 0 ? null : (
+                  <ul className="flex flex-col gap-0.5 text-xs">
+                    {(run.evidence ?? []).map((item, j) => (
+                      // biome-ignore lint/suspicious/noArrayIndexKey: evidence keeps report order
+                      <li key={j} className="flex flex-wrap gap-x-2">
+                        <span className="text-muted-foreground">{item.kind}</span>
+                        <span className="break-all font-mono">{item.ref}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            ))}
+          </ol>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/** `30018` → `30.0 s`. */
+function seconds(ms: number): string {
+  return `${(ms / 1000).toFixed(1)} s`;
 }

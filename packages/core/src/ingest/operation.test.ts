@@ -9,7 +9,7 @@ import { loadExtensions } from "../operations/extensions.js";
 import { openRegistry } from "../operations/host.js";
 import type { Actor } from "../operations/operation.js";
 import { createRegistry } from "../operations/registry.js";
-import { RunEvent } from "../schema/index.js";
+import { NOTE_MAX, RunEvent } from "../schema/index.js";
 
 const FIXTURES = fileURLToPath(new URL("../../fixtures/junit/", import.meta.url));
 const registry = createRegistry();
@@ -167,10 +167,32 @@ describe("ingest junit", () => {
           { kind: "result:skipped", ref: "webkit" },
         ],
         automation_ref: "login.spec.ts::signs in with valid credentials",
+        note: "x",
       },
     ]);
     expect(await ingested()).toMatchObject({ appended: 0 });
     expect(await events()).toHaveLength(1);
+  });
+
+  it("keeps the distinct notes of the results with the merged status, and cuts a long one", async () => {
+    const suite = (project: string, body: string) =>
+      `<testsuite name="login.spec.ts" hostname="${project}"><testcase name="signs in with valid credentials" classname="login.spec.ts">${body}</testcase></testsuite>`;
+    await put(
+      REPORT,
+      `<testsuites>${suite("chromium", "<failure>same</failure>")}${suite("firefox", "<failure>same</failure>")}${suite("webkit", "<failure>other</failure>")}${suite("edge", "<skipped>not this</skipped>")}</testsuites>`,
+    );
+    expect(await ingested()).toMatchObject({ appended: 1 });
+    expect((await events())[0]?.note).toBe("same\n\nother");
+
+    // 😀 is two UTF-16 units: the cut never splits it.
+    await put(
+      REPORT,
+      `<testsuite><testcase name="signs in with valid credentials" classname="login.spec.ts"><failure>${"a".repeat(NOTE_MAX - 2)}😀tail</failure></testcase></testsuite>`,
+    );
+    expect(await ingested({ run: "pw-2" })).toMatchObject({ appended: 1 });
+    const [long] = await events(`${RUNS}/pw-2.jsonl`);
+    expect(long?.note).toBe(`${"a".repeat(NOTE_MAX - 2)}…`);
+    expect(RunEvent.parse(long)).toEqual(long);
   });
 
   it("merges unmatched results by ref too, takes the latest time, and numbers sources it lacks", async () => {

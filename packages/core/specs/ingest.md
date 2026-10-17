@@ -26,20 +26,23 @@ format; built-in formats are described here.
 
 ## What it does
 
-1. Parses the report into results: `{ ref, status, at?, duration_ms?, source? }`.
+1. Parses the report into results: `{ ref, status, at?, duration_ms?, evidence?, source?, note? }`.
 2. Merges results that share a `ref` (a test run in several Playwright
    projects) into one: the **worst** status (`failed` > `blocked` > `passed` >
    `not_run` > `skipped`), the latest `at`, the longest `duration_ms`, and one
    `evidence` entry per result, `{ "kind": "result:<status>", "ref": "<source>" }`
    (`#1`, `#2`… without a source). One event per case and report keeps a
    failure in one project from being hidden by a pass in another: gates read
-   the latest event per case, and these would share `at`.
+   the latest event per case, and these would share `at`. The merged `note` is
+   the distinct notes of the results with the merged status, joined by a blank
+   line.
 3. Matches each `ref` against the `automation.ref` of the project's cases.
    A ref on no case is **unmatched**: listed in the output with its status,
    never written. A ref on several cases gives one event per case.
 4. Builds one run event per match, checked against the run-event schema
    (`schema/run-event.schema.json`); `at` is the report's time when it has a
-   time zone, else the ingestion time.
+   time zone, else the ingestion time. A `note` longer than 2000 characters is
+   cut to 2000, the last one `…` (ADR run-event-note).
 5. Appends to `.runs/<run>.jsonl` the events the file does not hold yet.
    Events are compared without `at`, counting repeats: ingesting the same
    report twice writes nothing the second time, and a second shard of the
@@ -83,6 +86,16 @@ suites allowed. One result per `<testcase>`:
 | `at` | the test case's or nearest suite's `timestamp`, when it has a time zone |
 | `duration_ms` | `time` in seconds × 1000, rounded |
 | `source` | the nearest suite's `hostname`: the Playwright project (`chromium`) |
+| `note` | the `<failure>` or `<error>` text (the runner's message, call log or stack trace), blank edge lines removed and dedented; without text, its `message` attribute |
+| `evidence` | one `{ "kind": "attachment", "ref": "<path>" }` per `[[ATTACHMENT\|<path>]]` line in `<system-out>` (Playwright), the path made workspace-relative from the report's directory |
+
+A failed Playwright test, reported in `results/junit.xml`:
+
+```json 9138.jsonl
+{"run_id":"9138","case_id":"TC-0002","status":"failed","executor":"ci:github-actions","at":"2026-10-17T09:12:03Z","duration_ms":611,"evidence":[{"kind":"attachment","ref":"test-results/login-rejects-an-empty-password-chromium/test-failed-1.png"}],"automation_ref":"login.spec.ts::rejects an empty password","note":"[chromium] › login.spec.ts:18:5 › rejects an empty password ───\n\n  Error: expect(locator).toHaveText(expected) failed"}
+```
+
+`casefile runs <ref>` lists a case's events with their notes.
 
 For Playwright the ref is `<test file>::<title path>`: the file relative to
 `testDir`, then the titles inside it joined by ` › `, as Playwright writes them:
@@ -139,9 +152,10 @@ export const manifest = {
 `parse` returns `{ ok: true, value: results }` or `{ ok: false, errors }`, with
 errors as values (`code`, `message`, `path`, `line`, `column`); it only reads
 the text it is given. Each result is `{ ref, status, at?, duration_ms?,
-evidence?, source? }`, checked by casefile before any event is built; set
+evidence?, source?, note? }`, checked by casefile before any event is built; set
 `source` when one test can report several times, so merged results stay
-traceable. The extension
+traceable, and `note` to say why a test failed (any length: casefile bounds
+it). The extension
 must say, in its SPEC, how its refs are formed so that `automation.ref` can be
 written to match. A format that is already registered (`junit`) is refused as
 `operation.duplicate`.

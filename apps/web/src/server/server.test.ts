@@ -7,6 +7,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   DEMO_MONOREPO_EXPECTED,
   DEMO_MONOREPO_ROOT,
+  NPM_LOGIN_EXPECTED,
+  NPM_LOGIN_ROOT,
 } from "../../../../packages/core/src/demo.fixture.js";
 import { createUiServer } from "./server.js";
 
@@ -104,6 +106,35 @@ describe("API", () => {
         .end();
     });
     expect(status).toBe(403);
+  });
+});
+
+describe("runs over examples/npm-login", () => {
+  it("answers a failed case's runs newest first, with the failure's note and evidence", async () => {
+    const npm = createUiServer({ root: NPM_LOGIN_ROOT, clientDir });
+    await new Promise<void>((done) => npm.listen(0, "127.0.0.1", done));
+    try {
+      const port = (npm.address() as AddressInfo).port;
+      for (const [id, text] of Object.entries(NPM_LOGIN_EXPECTED.failureNotes)) {
+        const response = await fetch(`http://127.0.0.1:${port}/api/operations/runs`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ ref: id }),
+        });
+        const body = (await response.json()) as {
+          ok: boolean;
+          value: { runs: { status: string; note?: string; evidence?: { kind: string }[] }[] };
+        };
+        expect(body.ok).toBe(true);
+        const [latest] = body.value.runs;
+        expect(body.value.runs).toHaveLength(NPM_LOGIN_EXPECTED.runCount[id as "TC-0002"]);
+        expect(latest?.status).toBe("failed");
+        expect(latest?.note).toContain(text);
+        expect(latest?.evidence).toEqual([expect.objectContaining({ kind: "attachment" })]);
+      }
+    } finally {
+      await new Promise((done) => npm.close(done));
+    }
   });
 });
 
