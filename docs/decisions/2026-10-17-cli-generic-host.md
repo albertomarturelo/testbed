@@ -45,7 +45,8 @@ the bundled skills), and the actor (human, agent, CI) is invisible to a process.
 6. **Output:** `--json` prints the `Result` (`{ ok, value }` / `{ ok, errors }`)
    on stdout, always. Otherwise a value prints as indented `key: value` lines on
    stdout and errors as one diagnostic line each (`severity code path:line
-   message`, then `hint`) on stderr, followed by error/warning counts. An output
+   message`, then `hint`) on stderr, followed by error/warning counts when they
+   are validator findings (they carry `severity`). An output
    field `next: string[]` is the operation's advice to the human and prints last.
 7. **Exit codes:** 0 `ok`; 1 errors (usage errors included); 2 when an error is
    `workspace.missing`. `validate` returns `ok` with warnings only and fails with

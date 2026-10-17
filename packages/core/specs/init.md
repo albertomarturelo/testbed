@@ -29,11 +29,15 @@ before `/casefile-setup`; running it again is safe.
 2. Copies every skill file into each directory in `skillsInto`, at
    `<target>/<path>`, with the same never-overwrite rule. With `skillsInto`
    empty, nothing is copied: the skill names come back in `skillsOffered` so the
-   host can ask the human. Skills are never installed silently.
+   host can offer them (the CLI prints the `--skills-into` command in `next`). Skills are never installed silently.
 3. Never writes under `context/` (the agent owns it) and never creates or edits
    the product's own `package.json`.
 4. Installs nothing. The setup skill runs
    `npm install --prefix .casefile --ignore-scripts` afterwards.
+5. Runs where the workspace is: inside an existing workspace (a `casefile.yaml`
+   at or above `--cwd`) it acts at that workspace's root, so running it again
+   from a subdirectory never nests a second workspace; elsewhere it creates one
+   in `--cwd`.
 
 ## Output
 
