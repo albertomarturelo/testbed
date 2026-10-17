@@ -1,4 +1,4 @@
-import { fail, ok, type Result } from "../errors.js";
+import { type CasefileError, fail, ok, type Result } from "../errors.js";
 import type { LoadedRun } from "../load/parse.js";
 import { queryCases } from "../query/evaluate.js";
 import type { ResolvedCase } from "../resolve/resolve.js";
@@ -51,7 +51,8 @@ export type GateReport = {
 
 /**
  * Evaluates every gate of a policy for one release. A scope that does not parse
- * or uses an unknown variable fails the whole evaluation, located at the gate.
+ * or uses an unknown variable fails the whole evaluation; every bad scope is
+ * reported, located at its gate.
  */
 export function evaluateGates(input: GateInput): Result<GateReport> {
   const release = releaseName(input.release);
@@ -61,16 +62,13 @@ export function evaluateGates(input: GateInput): Result<GateReport> {
   const latest = latestResults(runs);
 
   const gates: GateResult[] = [];
+  const errors: CasefileError[] = [];
   for (const [index, gate] of input.policy.gates.entries()) {
     const scoped = queryCases(gate.scope, input.cases, context);
     if (!scoped.ok) {
-      return fail(
-        ...scoped.errors.map((error) => ({
-          ...error,
-          path: input.policyPath,
-          field: `gates.${index}.scope`,
-        })),
-      );
+      const field = `gates.${index}.scope`;
+      errors.push(...scoped.errors.map((error) => ({ ...error, path: input.policyPath, field })));
+      continue;
     }
     const ids = scoped.value.map((c) => c.id);
     const reasons = checkGate(gate, ids, latest, build, input.today);
@@ -81,7 +79,7 @@ export function evaluateGates(input: GateInput): Result<GateReport> {
       reasons,
     });
   }
-  return ok({ release, build, gates });
+  return errors.length > 0 ? fail(...errors) : ok({ release, build, gates });
 }
 
 /** `release:web-1.2.0` and `web-1.2.0` both name `web-1.2.0`. */

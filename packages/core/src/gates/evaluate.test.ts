@@ -260,11 +260,12 @@ describe("evaluateGates: scope variables and errors", () => {
     expect(gate({}, runs, { scope }).cases).toEqual(["TC-0001", "TC-0003", "TC-0004"]);
   });
 
-  it("fails the evaluation, located at the gate, when a scope does not parse", () => {
+  it("fails the evaluation with every bad scope, located at its gate", () => {
     const policy: ReleasePolicy = {
       gates: [
-        { name: "ok", scope: SCOPE, require: {} },
         { name: "bad", scope: "state = (", require: {} },
+        { name: "ok", scope: SCOPE, require: {} },
+        { name: "worse", scope: "release.nope = x", require: {} },
       ],
     };
     const report = evaluateGates({
@@ -277,7 +278,10 @@ describe("evaluateGates: scope variables and errors", () => {
     });
     expect(report.ok).toBe(false);
     if (report.ok) return;
-    expect(report.errors[0]).toMatchObject({ path: POLICY_PATH, field: "gates.1.scope" });
+    expect(report.errors.map((e) => [e.path, e.field, e.code])).toEqual([
+      [POLICY_PATH, "gates.0.scope", expect.stringMatching(/^query\./)],
+      [POLICY_PATH, "gates.2.scope", "query.unknown_variable"],
+    ]);
     expect(report.errors[0]?.column).toBeTypeOf("number");
   });
 

@@ -54,7 +54,8 @@ so evaluation is a pure function of cases, runs, policy and release.
    a scope must not pass a release.
 6. **Errors.** A scope that does not parse, or uses an unknown `release.*`
    variable, fails the whole evaluation with the DSL error tagged
-   `field: "gates.<i>.scope"` and the policy path — never a silent red.
+   `field: "gates.<i>.scope"` and the policy path — never a silent red. Every
+   bad scope is reported in one pass.
 7. **Inputs.** The evaluator takes the resolved cases and run events of one
    project, its `ReleasePolicy`, the release ref, an optional build and the
    evaluation date. It reads no clock and no files.
