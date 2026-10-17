@@ -3,7 +3,8 @@
 ## Status
 
 Accepted — 2026-10-15 (from the founding brief). The `casefile-agent` identity and who runs
-the commit: [agent-runs-the-commit](2026-10-17-agent-runs-the-commit.md).
+the commit: [agent-runs-the-commit](2026-10-17-agent-runs-the-commit.md). The CI identity
+`casefile-ci`: [ci-commits-run-files](2026-10-17-ci-commits-run-files.md).
 
 ## Context
 

@@ -4,7 +4,8 @@
 
 Accepted — 2026-10-17 (#17). Refines the Ingester row of
 [extension-model](2026-10-15-extension-model.md); applies
-[write-ownership](2026-10-15-write-ownership.md) to `.runs/`.
+[write-ownership](2026-10-15-write-ownership.md) to `.runs/`. Who commits the run
+file, and how: [ci-commits-run-files](2026-10-17-ci-commits-run-files.md).
 
 ## Context
 

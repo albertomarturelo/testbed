@@ -4,7 +4,9 @@
 
 Accepted — 2026-10-15. Resolves the conflict noted in
 [agent-is-sole-writer](2026-10-15-agent-is-sole-writer.md) (#1). `casefile.yaml` ownership
-stated in [agent-driven-setup](2026-10-15-agent-driven-setup.md).
+stated in [agent-driven-setup](2026-10-15-agent-driven-setup.md). How CI's run
+files reach the repository, and CI's identity `casefile-ci`:
+[ci-commits-run-files](2026-10-17-ci-commits-run-files.md).
 
 ## Context
 
