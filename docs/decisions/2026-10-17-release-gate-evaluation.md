@@ -32,12 +32,13 @@ so evaluation is a pure function of cases, runs, policy and release.
    the latest event (by `at`, then file order) among the release's events that
    carry one. With none, `release.build` is unset, and `build: current` is red
    with the reason "no build known for the release".
-3. **Latest result.** For each in-scope case, only its events for the release
-   count; the latest by `at` (ties: the later in file order) is *the* result.
-   Results of other releases never count. A correction is a newer event.
+3. **Latest result.** For each in-scope case, only its executions for the
+   release count (status `passed`, `failed` or `blocked`); the latest by `at`
+   (ties: the later in file order) is *the* result. A later `skipped`/`not_run`
+   never hides an execution, and a case with only those has no result. Results
+   of other releases never count. A correction is a newer event.
 4. **Requirements**, each checked on the latest results:
-   - `executed: N` — at least N % of in-scope cases have a result whose status
-     is `passed`, `failed` or `blocked` (`skipped`/`not_run` are not executions).
+   - `executed: N` — at least N % of in-scope cases have a result.
    - `passed: N` — at least N % of in-scope cases have a `passed` result.
    - `failures: none` — no result is `failed` or `blocked`.
      `failures: triaged` — every `failed`/`blocked` result carries a `triage`
@@ -71,6 +72,8 @@ so evaluation is a pure function of cases, runs, policy and release.
 - **Empty scope is green** — vacuously true, but hides a misspelt scope.
 - **`source` from the case's derived `automation.status`** — says whether a case
   *can* run automated, not whether *this* result came from automation.
+- **Any latest event is the result, `skipped` included** — a nightly ingest
+  that skips a test would erase the manual pass QA recorded for the release.
 - **`blocked` as not executed** — a blocked case was attempted and is not
   shippable; treating it as a failure forces a triage, which is the safe side.
 

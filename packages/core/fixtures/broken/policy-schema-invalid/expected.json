@@ -1,0 +1,7 @@
+[
+  {
+    "code": "schema.invalid",
+    "path": "apps/web/context/releases/policy.yaml",
+    "field": "gates.0.require.executed"
+  }
+]

@@ -98,9 +98,11 @@ function latestBuild(runs: readonly LoadedRun[]): string | null {
   return found?.build ?? null;
 }
 
+/** Per case, its latest execution: a later `skipped`/`not_run` never hides one. */
 function latestResults(runs: readonly LoadedRun[]): Map<string, RunEvent> {
   const latest = new Map<string, RunEvent>();
   for (const { event } of runs) {
+    if (!EXECUTED.has(event.status)) continue;
     const current = latest.get(event.case_id);
     if (current === undefined || notBefore(event, current)) latest.set(event.case_id, event);
   }
@@ -127,7 +129,7 @@ function checkGate(
   const reasons: GateReason[] = [];
 
   if (require.executed !== undefined) {
-    const executed = new Set(where((e) => EXECUTED.has(e.status)));
+    const executed = new Set(results.map((r) => r.id));
     const missing = ids.filter((id) => !executed.has(id));
     if (!meets(executed.size, ids.length, require.executed)) {
       reasons.push({
@@ -206,7 +208,7 @@ function notBefore(event: RunEvent, other: RunEvent): boolean {
   return Date.parse(event.at) >= Date.parse(other.at);
 }
 
-/** `count / total ≥ required %`, in integers so 2/3 vs 66.67 has no rounding surprise. */
+/** `count / total ≥ required %`, cross-multiplied so no division rounds the share. */
 function meets(count: number, total: number, required: number): boolean {
   return count * 100 >= required * total;
 }

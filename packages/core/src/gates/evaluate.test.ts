@@ -138,6 +138,17 @@ describe("evaluateGates: release and latest result", () => {
 });
 
 describe("evaluateGates: executed and passed", () => {
+  it("never lets a later skipped or not_run result hide an execution", () => {
+    const runs = [
+      run("TC-0001", "passed", { at: "2026-10-15T10:00:00Z" }),
+      run("TC-0001", "skipped", { at: "2026-10-15T11:00:00Z" }),
+      run("TC-0002", "failed", { at: "2026-10-15T10:00:00Z" }),
+      run("TC-0002", "not_run", { at: "2026-10-15T11:00:00Z" }),
+    ];
+    expect(verdict({ executed: 100 }, runs)).toBe("green");
+    expect(offenders({ failures: "none" }, runs)).toEqual(["TC-0002"]);
+  });
+
   it("counts passed, failed and blocked as executed, not skipped or not_run", () => {
     const executed = [run("TC-0001", "blocked"), run("TC-0002", "failed")];
     expect(verdict({ executed: 100 }, executed)).toBe("green");

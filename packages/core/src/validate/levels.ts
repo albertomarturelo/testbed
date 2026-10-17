@@ -1,5 +1,11 @@
 import { posix } from "node:path";
-import { CONFIG_FILE, normalizeProjectPath, pathContains, TESTS_DIR } from "../load/paths.js";
+import {
+  CONFIG_FILE,
+  normalizeProjectPath,
+  POLICY_FILE,
+  pathContains,
+  TESTS_DIR,
+} from "../load/paths.js";
 import { CASEFILE_PACKAGE, TOOLCHAIN_DIR, type Toolchain } from "../operations/extensions.js";
 import { NPM_INSTALL, notInstalled, TOOLCHAIN_PACKAGE } from "../operations/toolchain.js";
 import { commonsChain, resolveCase, workspaceLayer } from "../resolve/resolve.js";
@@ -83,7 +89,10 @@ export const schemaLevel: Level = {
   project({ loaded }, { workspace: { errors } }) {
     if (loaded === undefined) return [];
     const prefix = `${posix.join(loaded.path, TESTS_DIR)}/`;
-    return errors.filter((e) => e.path?.startsWith(prefix)).map(fromError);
+    const policy = posix.join(loaded.path, POLICY_FILE);
+    return errors
+      .filter((e) => e.path !== undefined && (e.path.startsWith(prefix) || e.path === policy))
+      .map(fromError);
   },
 };
 
