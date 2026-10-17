@@ -124,7 +124,8 @@ Setup is done by the user's agent; the library scaffolds and validates
    to `.runs/*.jsonl` and never touches a case file; a matching `automation.ref`
    is what makes the resolver report `automated`.
 5. **Gates**: `casefile gates <release>` evaluates `policy.yaml` scopes (DSL) against
-   resolved cases + runs.
+   resolved cases + each case's latest run of that release; per gate `green`/`red`
+   with reasons ([release-gate-evaluation](decisions/2026-10-17-release-gate-evaluation.md)).
 6. **Mirrors**: bridges push/pull to Zephyr/Xray; `mirror.hash` detects drift.
 
 No database: every view (UI, MCP, index) is rebuilt from files. The in-memory index

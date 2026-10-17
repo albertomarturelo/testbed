@@ -51,9 +51,10 @@ wordchar   = char - ( space | "(" | ")" | "," | '"' | "'" | "=" | "!" | "<" | ">
 - **Paths** walk object keys and array indexes of the resolved case
   (`labels.risk`, `automation.status`, `steps.0.do`, `project`). Only own
   properties are read; on an array only an index is (`surfaces.length` is missing).
-- **Context variables** read the `QueryContext` (`release.changed_features`,
-  `release.build`). `queryCases` / `checkQueryContext` fail with
-  `query.unknown_variable` when one is not defined.
+- **Context variables** read the `QueryContext`. A gate scope gets `release.name`
+  (the release without `release:`) and `release.build` (unset when no run of the
+  release names a build; ADR release-gate-evaluation). `queryCases` /
+  `checkQueryContext` fail with `query.unknown_variable` when one is not defined.
 - **Missing fields** (absent, `null`, or a path through a non-object) match no
   predicate: `=`, `<`…, `IN`, `CONTAINS` are false, and `!=` is true.
 - **Type mismatches are false, never errors**, because label types vary per key.

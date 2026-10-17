@@ -58,7 +58,7 @@ export type ResolveContext = {
   layers: readonly CommonsLayer[];
   /** Run events of the case's own project. */
   runs: readonly RunEvent[];
-  /** Commit whose message carries `Casefile-Change: <change>`, or `null` (git adapter: #10). */
+  /** Commit whose message carries `Casefile-Change: <change>`, or `null` (git adapter: #51). */
   commitFor: (change: string) => string | null;
 };
 

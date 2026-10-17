@@ -1,5 +1,6 @@
 // Public API of @casefile/core. See docs/ARCHITECTURE.md.
 export * from "./errors.js";
+export * from "./gates/evaluate.js";
 export * from "./ids.js";
 export * from "./load/frontmatter.js";
 export * from "./load/parse.js";

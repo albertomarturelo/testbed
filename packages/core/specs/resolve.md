@@ -18,7 +18,7 @@ next to the file it came from. It never writes.
 
 1. Loads and resolves the workspace: extension commons → workspace `commons` →
    project `_common.yaml` → ancestors → case. Commit ids in `history` are
-   `null` until the git adapter lands (#10).
+   `null` until the git adapter lands (#51).
 2. A bare id found in **several** projects is `case.ambiguous`: ids are unique
    per project, so qualify it (`web/TC-0001`) or pass `--project`.
 
