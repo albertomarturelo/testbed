@@ -67,9 +67,20 @@ from source, with the toolchain linked to `apps/cli` (ADR npm-scope-casefile §6
 |---|---|
 | `casefile overview --cwd examples/npm-login` | 9 drafts in `login`: 6 `automated` (P1 render, P3 links, the rest P2), 3 `manual` |
 | `TC-0001`, `TC-0004`, `TC-0005` | last run `passed` |
-| `TC-0002`, `TC-0003`, `TC-0006` | last run `failed`: the page answered those tests with a Cloudflare "security verification" challenge, not the form (#67). `casefile runs TC-0003` and the case page in the UI show the failure message and the `error-context.md` attachment, Playwright's page snapshot. That attachment stays in the local `test-results/` and is not committed. Their assertions were then checked by hand on the live page and hold: an empty submit leaves Username `valueMissing` on `/login`, Show password turns the field to `text` (the button becomes Hide password), and the links point to `/forgot` and `/signup` |
+| `TC-0006` | last run `failed` because of the **environment**. Its page snapshot is Cloudflare's "Performing security verification" page, not the form (#67). Checked by hand on the live page, the links do point to `/forgot` and `/signup` |
+| `TC-0002` | last run `failed` because the **case was wrong**. The snapshot shows the real form, with Sign In disabled while both fields are empty, so the click waited until the 30 s timeout. The page blocks an empty submit by disabling the button. It does not rely on the browser's required-field check, as the case says. The spec now checks for the disabled button. The case's step is still the old one (#77) |
+| `TC-0003` | last run `failed` because the **test was too strict**. Show password does reveal the text, but the page sets `type="input"`, which is not a valid type, and browsers show such a field as text. The test checked that the attribute was `"text"`. It now checks the `type` property, which reads `"text"` |
 | `TC-0007` … `TC-0009` | `manual`, `automation.eligible: false`: they need a real account (sign in, wrong password, second factor) |
 | `casefile validate --cwd examples/npm-login` | exit 0 once the toolchain is linked (step 1) |
+
+Each cause above comes from the failure's own evidence.
+`casefile runs <case>`, or the case page in the UI, shows the failure message
+and the `error-context.md` attachment, which is Playwright's snapshot of the
+page. The attachment stays in the local `test-results/` and is not committed.
+The first write-up blamed all three failures on Cloudflare. It was written
+before #68 made those notes visible. The spec fixes for TC-0002 and TC-0003
+came after the run and have not run against the live site yet. The committed
+run still shows the failures.
 
 `packages/core/src/demo.fixture.ts` exports these outcomes as
 `NPM_LOGIN_EXPECTED`, and `packages/core/src/npm-login.test.ts` checks them.
@@ -102,7 +113,13 @@ failure message of each failed one.
 - **#63:** the npm name `casefile` was taken. Solved with the `@casefile` scope
   and `scripts/link-toolchain.mjs`.
 - **#67:** environment-blocked results (the bot challenge) are ingested as
-  product `failed`.
+  product `failed`. Of the three failures, only TC-0006's was the
+  environment.
+- **#76:** one plausible cause was given for all three failures without
+  looking at each one's snapshot. Two of them were the case and the test.
+  Read a failure's evidence before deciding why it failed.
+- **#77:** TC-0002's step describes a submit the page does not allow. The case
+  needs a revision.
 - **#68:** the UI showed no run history and no failure reason. Solved: ingest
   keeps the message as `note`, and the case page lists its runs.
 - **#69:** the UI does not tell "linked, never ran" from manual, and the table

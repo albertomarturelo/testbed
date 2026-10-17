@@ -83,7 +83,12 @@ export const NPM_LOGIN_EXPECTED = {
   derivedAutomated: ["TC-0001", "TC-0002", "TC-0003", "TC-0004", "TC-0005", "TC-0006"],
   /** Cases that need an account: manual, `automation.eligible: false`. */
   manualNotEligible: ["TC-0007", "TC-0008", "TC-0009"],
-  /** Latest result of the run `local-2026-10-17-1`; the failures met a Cloudflare challenge. */
+  /**
+   * Latest result of the run `local-2026-10-17-1`. Each failure has its own cause
+   * (#76): TC-0006 met a Cloudflare challenge (the environment, #67), TC-0002's
+   * Sign In is disabled while empty (the case was wrong, #77), and TC-0003's field
+   * became `type="input"` (the test was too strict).
+   */
   lastRun: {
     "TC-0001": "passed",
     "TC-0002": "failed",
@@ -106,10 +111,14 @@ export const NPM_LOGIN_EXPECTED = {
     "TC-0006": 2,
     "TC-0007": 0,
   },
-  /** Text in each failure's latest note; the page itself is in the attachment below. */
+  /**
+   * Text in each failure's latest note. The page itself is in the attachment
+   * below: only TC-0006's snapshot is the challenge page; TC-0002's is the form
+   * with Sign In disabled.
+   */
   failureNotes: {
     "TC-0002": "Test timeout of 30000ms exceeded.",
-    "TC-0003": 'Expected: "text"',
+    "TC-0003": 'Received: "input"',
     "TC-0006": "Error: element(s) not found",
   },
   /** Playwright's page snapshot of each failure, kept as `attachment` evidence. */
