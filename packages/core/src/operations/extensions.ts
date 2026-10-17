@@ -97,8 +97,11 @@ export async function loadExtensions(
   return { extensions, errors };
 }
 
-/** The npm package casefile is published as; `.casefile/package.json` pins it. */
-export const CASEFILE_PACKAGE = "casefile";
+/** The npm package of the CLI; `.casefile/package.json` pins it (ADR npm-scope-casefile). */
+export const CASEFILE_PACKAGE = "@casefile/cli";
+
+/** The command it installs. Not the package name: the unscoped npm `casefile` is another package. */
+export const CASEFILE_BIN = "casefile";
 
 /** What `.casefile/` declares and holds, for the validator's environment level. */
 export type Toolchain = {

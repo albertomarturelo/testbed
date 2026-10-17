@@ -5,6 +5,7 @@ import { z } from "zod";
 import { ok } from "../errors.js";
 import { CONFIG_FILE } from "../load/paths.js";
 import { ExactVersion } from "../schema/index.js";
+import { CASEFILE_PACKAGE } from "./extensions.js";
 import { defineOperation } from "./operation.js";
 import { writeIfAbsent } from "./write-if-absent.js";
 
@@ -57,7 +58,7 @@ function toolchainPackage(version: string): string {
   const pkg = {
     private: true,
     description: "casefile toolchain of this workspace; install with npm --prefix .casefile",
-    dependencies: { casefile: version },
+    dependencies: { [CASEFILE_PACKAGE]: version },
   };
   return `${JSON.stringify(pkg, null, 2)}\n`;
 }

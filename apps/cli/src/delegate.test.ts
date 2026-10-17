@@ -23,15 +23,15 @@ const put = async (path: string, text: string) => {
 const pin = (version: string) =>
   put(
     ".casefile/package.json",
-    JSON.stringify({ private: true, dependencies: { casefile: version } }),
+    JSON.stringify({ private: true, dependencies: { "@casefile/cli": version } }),
   );
 
 /** A stand-in for an installed casefile: it records its argv and guard, then exits 7. */
 async function install(version: string, bin: unknown = { casefile: "./bin.js" }) {
-  const dir = ".casefile/node_modules/casefile";
+  const dir = ".casefile/node_modules/@casefile/cli";
   await put(
     `${dir}/package.json`,
-    JSON.stringify({ name: "casefile", version, type: "module", bin }),
+    JSON.stringify({ name: "@casefile/cli", version, type: "module", bin }),
   );
   await put(
     `${dir}/bin.js`,
@@ -74,7 +74,7 @@ describe("delegation to the pinned casefile", () => {
       [
         {
           kind: "delegate",
-          bin: join(tmp, ".casefile/node_modules/casefile/bin.js"),
+          bin: join(tmp, ".casefile/node_modules/@casefile/cli/bin.js"),
           version: "0.4.1",
         },
         argv,
@@ -95,7 +95,7 @@ describe("delegation to the pinned casefile", () => {
     expect(calls).toEqual([]);
     expect(result.code).toBe(1);
     expect(result.stderr).toContain(
-      "error  toolchain.not_installed  .casefile/package.json [dependencies.casefile]  casefile is not installed in .casefile/node_modules; this is casefile 0.0.0",
+      "error  toolchain.not_installed  .casefile/package.json [dependencies.@casefile/cli]  @casefile/cli is not installed in .casefile/node_modules; this is casefile 0.0.0",
     );
     expect(result.stderr).toContain("hint: npm install --prefix .casefile --ignore-scripts");
     const json = await cli(["validate", "--json"]);
@@ -147,7 +147,7 @@ describe("delegation to the pinned casefile", () => {
     expect(await planDelegation(["validate"], tmp, {}, RUNNING)).toMatchObject({
       kind: "delegate",
     });
-    await put(".casefile/node_modules/casefile/package.json", "{");
+    await put(".casefile/node_modules/@casefile/cli/package.json", "{");
     // Unparseable: no version is installed, so the pin is not installed.
     expect(await planDelegation(["validate"], tmp, {}, RUNNING)).toMatchObject({ kind: "fail" });
   });
@@ -162,7 +162,7 @@ describe("reexec", () => {
       const code = reexec(
         {
           kind: "delegate",
-          bin: join(tmp, ".casefile/node_modules/casefile/bin.js"),
+          bin: join(tmp, ".casefile/node_modules/@casefile/cli/bin.js"),
           version: "0.4.1",
         },
         ["resolve", "TC-0003", "--json"],

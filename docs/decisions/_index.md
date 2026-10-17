@@ -30,4 +30,5 @@
 | [2026-10-17-release-gate-evaluation](2026-10-17-release-gate-evaluation.md) | How a release gate is evaluated | Accepted | 2026-10-17 |
 | [2026-10-17-local-ui-stack](2026-10-17-local-ui-stack.md) | The local UI is a Vite + React SPA on shadcn/ui, served by a Node host | Accepted | 2026-10-17 |
 | [2026-10-17-agent-runs-the-commit](2026-10-17-agent-runs-the-commit.md) | Writing operations return the commit; the agent runs it | Accepted | 2026-10-17 |
+| [2026-10-17-npm-scope-casefile](2026-10-17-npm-scope-casefile.md) | casefile is published under the npm scope `@casefile` | Accepted | 2026-10-17 |
 | [2026-10-17-ingester-contract](2026-10-17-ingester-contract.md) | How result ingesters plug in and what they write | Accepted | 2026-10-17 |

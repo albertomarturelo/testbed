@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import {
   builtinOperations,
+  CASEFILE_BIN,
   CASEFILE_PACKAGE,
   type CasefileError,
   DELEGATED_ENV,
@@ -91,7 +92,7 @@ async function installedBin(packageDir: string): Promise<string | null> {
     typeof bin === "string"
       ? bin
       : bin !== null && typeof bin === "object"
-        ? (bin as Record<string, unknown>)[CASEFILE_PACKAGE]
+        ? (bin as Record<string, unknown>)[CASEFILE_BIN]
         : undefined;
   if (typeof entry !== "string") return null;
   const file = resolve(packageDir, entry);

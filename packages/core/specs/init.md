@@ -23,7 +23,7 @@ before `/casefile-setup`; running it again is safe.
    never changed, even if it differs.
    - `casefile.yaml`: `version: 1`, `projects: []` and a comment pointing to
      `casefile spec setup`.
-   - `.casefile/package.json`: `dependencies.casefile` pinned to
+   - `.casefile/package.json`: `dependencies["@casefile/cli"]` pinned to
      `casefileVersion` (exact, no range).
    - `.casefile/.gitignore`: `node_modules/`.
 2. Copies every skill file into each directory in `skillsInto`, at

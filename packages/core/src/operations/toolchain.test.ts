@@ -16,7 +16,10 @@ describe("toolchainDelegation", () => {
 
   it("runs itself when the installed pin is the running version", () => {
     expect(
-      toolchainDelegation(toolchain({ casefile: "1.0.0" }, { casefile: "1.0.0" }), "1.0.0"),
+      toolchainDelegation(
+        toolchain({ "@casefile/cli": "1.0.0" }, { "@casefile/cli": "1.0.0" }),
+        "1.0.0",
+      ),
     ).toEqual({
       action: "run",
     });
@@ -24,14 +27,20 @@ describe("toolchainDelegation", () => {
 
   it("delegates to the installed pin when it differs", () => {
     expect(
-      toolchainDelegation(toolchain({ casefile: "0.4.1" }, { casefile: "0.4.1" }), "1.0.0"),
+      toolchainDelegation(
+        toolchain({ "@casefile/cli": "0.4.1" }, { "@casefile/cli": "0.4.1" }),
+        "1.0.0",
+      ),
     ).toEqual({
       action: "delegate",
       version: "0.4.1",
     });
     // A range pin delegates to whatever is installed.
     expect(
-      toolchainDelegation(toolchain({ casefile: "^0.4.0" }, { casefile: "0.4.7" }), "1.0.0"),
+      toolchainDelegation(
+        toolchain({ "@casefile/cli": "^0.4.0" }, { "@casefile/cli": "0.4.7" }),
+        "1.0.0",
+      ),
     ).toEqual({
       action: "delegate",
       version: "0.4.7",
@@ -39,30 +48,33 @@ describe("toolchainDelegation", () => {
   });
 
   it("fails with the install command when the pin is not installed", () => {
-    expect(toolchainDelegation(toolchain({ casefile: "0.4.1" }), "1.0.0")).toEqual({
+    expect(toolchainDelegation(toolchain({ "@casefile/cli": "0.4.1" }), "1.0.0")).toEqual({
       action: "fail",
       error: {
         code: "toolchain.not_installed",
         path: ".casefile/package.json",
-        field: "dependencies.casefile",
-        message: "casefile is not installed in .casefile/node_modules; this is casefile 1.0.0",
+        field: "dependencies.@casefile/cli",
+        message: "@casefile/cli is not installed in .casefile/node_modules; this is casefile 1.0.0",
         hint: expect.stringContaining("npm install --prefix .casefile --ignore-scripts"),
       },
     });
     // A stale install (not at its exact pin) is not installed either.
     expect(
-      toolchainDelegation(toolchain({ casefile: "0.4.1" }, { casefile: "0.3.0" }), "1.0.0"),
+      toolchainDelegation(
+        toolchain({ "@casefile/cli": "0.4.1" }, { "@casefile/cli": "0.3.0" }),
+        "1.0.0",
+      ),
     ).toMatchObject({
       action: "fail",
       error: {
         message:
-          "casefile 0.4.1 is pinned in .casefile/package.json but 0.3.0 is installed; this is casefile 1.0.0",
+          "@casefile/cli 0.4.1 is pinned in .casefile/package.json but 0.3.0 is installed; this is casefile 1.0.0",
       },
     });
   });
 
   it("needs no install when the exact pin is the running version", () => {
-    expect(toolchainDelegation(toolchain({ casefile: "1.0.0" }), "1.0.0")).toEqual({
+    expect(toolchainDelegation(toolchain({ "@casefile/cli": "1.0.0" }), "1.0.0")).toEqual({
       action: "run",
     });
   });

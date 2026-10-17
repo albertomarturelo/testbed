@@ -15,8 +15,8 @@ Scope: **propose only**. You write new `draft` cases through
 Moving a draft on is the human's review.
 
 In these steps, `casefile` means `.casefile/node_modules/.bin/casefile`, or the
-CLI the human installed. Never run `npx casefile`: the npm package named
-`casefile` is not this tool.
+CLI the human installed. Never run `npx casefile`: this tool is the npm
+package `@casefile/cli`, and the unscoped `casefile` package is a different one.
 
 1. **Read the procedure.** Run `casefile spec cover`. Its "Before calling it"
    section is your checklist, and its input table is the only shape
