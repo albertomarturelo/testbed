@@ -42,12 +42,14 @@ wordchar   = char - ( space | "(" | ")" | "," | '"' | "'" | "=" | "!" | "<" | ">
   (`TC-0001`, `checkout/payments`, `web-1.2.0+101`, `release:web-1.2.0`).
   A quoted string is always a string.
 - `NOT IN` is written `NOT path IN (...)`.
+- `NOT` and parentheses nest at most `MAX_QUERY_DEPTH` (64) levels; chains of
+  `AND` / `OR` have no length limit.
 
 ## Semantics
 
 - **Paths** walk object keys and array indexes of the resolved case
   (`labels.risk`, `automation.status`, `steps.0.do`, `project`). Only own
-  properties are read.
+  properties are read; on an array only an index is (`surfaces.length` is missing).
 - **Context variables** read the `QueryContext` (`release.changed_features`,
   `release.build`). `queryCases` / `checkQueryContext` fail with
   `query.unknown_variable` when one is not defined.
@@ -78,4 +80,5 @@ the query text. Parsing stops at the first error.
 | `query.invalid_character` | a `!` not followed by `=` |
 | `query.unexpected_token` | a token that does not fit the grammar there |
 | `query.unexpected_end` | the query ends where more is required (column = length + 1) |
+| `query.too_deep` | `NOT` / `(` nested deeper than `MAX_QUERY_DEPTH` (column of the token that exceeds it) |
 | `query.unknown_variable` | a context variable the context does not define |

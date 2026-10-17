@@ -24,6 +24,9 @@ export const DEMO_EXPECTED = {
   derivedAutomated: ["TC-0001", "TC-0004", "TC-0007"],
   queries: {
     "labels.risk = payments AND automation.status != automated": ["TC-0003", "TC-0005"],
+    /** The `smoke` gate scope of `releases/policy.yaml`. */
+    "labels.smoke = true AND state = active": ["TC-0001", "TC-0007"],
+    "work_items CONTAINS release:web-1.2.0": ["TC-0001", "TC-0003", "TC-0004"],
   },
   /** Gate verdicts for `release:web-1.2.0` (all runs are on build `web-1.2.0+101`). */
   gates: { smoke: "red", "payments-regression": "green", auth: "green" },

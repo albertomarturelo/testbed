@@ -29,4 +29,6 @@ context/                       CFD context of the (fictional) product
 |---|---|
 | Resolve `TC-0003` | Inherits from root, `checkout/` and `checkout/payments/` commons |
 | `labels.risk = payments AND automation.status != automated` | `TC-0003`, `TC-0005` (`TC-0004` is automated: a CI run matches its `automation.ref`) |
+| `labels.smoke = true AND state = active` (the `smoke` gate scope) | `TC-0001`, `TC-0007` |
+| `work_items CONTAINS release:web-1.2.0` | `TC-0001`, `TC-0003`, `TC-0004` |
 | Gates for `release:web-1.2.0` | `smoke` red (TC-0007 failed in CI, untriaged) · `payments-regression` green · `auth` green (TC-0002 failure is triaged) |

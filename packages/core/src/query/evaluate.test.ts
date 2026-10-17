@@ -74,6 +74,16 @@ describe("evaluateQuery: boolean operators", () => {
   });
 });
 
+describe("evaluateQuery: long chains", () => {
+  it("evaluates and collects variables of 20 000-term chains without overflowing", () => {
+    const terms = Array.from({ length: 20_000 }, () => "state = active");
+    expect(matches(terms.join(" AND "))).toBe(true);
+    expect(matches([...terms.map(() => "state = draft"), "priority = P1"].join(" OR "))).toBe(true);
+    const parsed = parseQuery(terms.map(() => "x IN release.list").join(" OR "));
+    expect(parsed.ok && checkQueryContext(parsed.value, { release: { list: [] } }).ok).toBe(true);
+  });
+});
+
 describe("evaluateQuery: missing fields and type mismatches", () => {
   it.each([
     ["labels.absent = x", false],
@@ -106,6 +116,8 @@ describe("evaluateQuery: missing fields and type mismatches", () => {
   it("does not read inherited object properties", () => {
     expect(matches("labels.constructor = x")).toBe(false);
     expect(matches("state.length = 6")).toBe(false);
+    expect(matches("surfaces.length = 2")).toBe(false);
+    expect(matches("labels.tags.length >= 0")).toBe(false);
   });
 });
 
@@ -219,12 +231,12 @@ describe("queryCases on examples/demo-repo", async () => {
     expect(ids(text)).toEqual(expected);
   });
 
-  it("selects the demo gate scopes", () => {
-    expect(ids("labels.smoke = true AND state = active")).toEqual(["TC-0001", "TC-0007"]);
-    expect(ids("work_items CONTAINS release:web-1.2.0")).toEqual(["TC-0001", "TC-0003", "TC-0004"]);
-    expect(
-      ids("feature IN release.changed_features", { release: { changed_features: ["auth/login"] } }),
-    ).toEqual(["TC-0001", "TC-0002"]);
+  it("reads a list from the release context", () => {
+    const context = { release: { changed_features: ["auth/login"] } };
+    expect(ids("feature IN release.changed_features", context)).toEqual(
+      ids("feature = auth/login"),
+    );
+    expect(ids("feature = auth/login").length).toBeGreaterThan(0);
   });
 
   it("returns parse and context errors instead of cases", () => {
@@ -254,6 +266,9 @@ describe("queryCases on examples/demo-monorepo", async () => {
 
   it("combines project with other fields", () => {
     const result = queryCases("project != web AND automation.status = automated", cases);
-    expect(result.ok && result.value.map(caseRef)).toEqual(["api/TC-0001"]);
+    const expected = DEMO_MONOREPO_EXPECTED.derivedAutomated.filter(
+      (ref) => !ref.startsWith("web/"),
+    );
+    expect(result.ok && result.value.map(caseRef)).toEqual(expected);
   });
 });

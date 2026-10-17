@@ -1,6 +1,7 @@
 import { fail, ok, type Result } from "../errors.js";
 import type { ResolvedCase } from "../resolve/resolve.js";
 import {
+  chain,
   parseQuery,
   type QueryLiteral,
   type QueryNode,
@@ -9,6 +10,8 @@ import {
   queryVariables,
 } from "./parse.js";
 import { queryError } from "./tokenize.js";
+
+const INDEX = /^\d+$/;
 
 /** Values of the context variables, keyed by context root (`release.changed_features`, `release.build`). */
 export type QueryContext = {
@@ -27,13 +30,9 @@ export function evaluateQuery(
 ): boolean {
   switch (node.kind) {
     case "and":
-      return (
-        evaluateQuery(node.left, subject, context) && evaluateQuery(node.right, subject, context)
-      );
+      return chain(node).every((operand) => evaluateQuery(operand, subject, context));
     case "or":
-      return (
-        evaluateQuery(node.left, subject, context) || evaluateQuery(node.right, subject, context)
-      );
+      return chain(node).some((operand) => evaluateQuery(operand, subject, context));
     case "not":
       return !evaluateQuery(node.operand, subject, context);
     case "compare": {
@@ -110,12 +109,16 @@ function read(path: QueryPath, subject: object, context: QueryContext): unknown 
     : readPath(subject, path.segments);
 }
 
-/** Walks object keys and array indexes; `undefined` as soon as a segment is missing. */
+/**
+ * Walks own object keys and array indexes (never `length`); `undefined` as soon
+ * as a segment is missing.
+ */
 function readPath(root: unknown, segments: readonly string[]): unknown {
   let current = root;
   for (const segment of segments) {
     if (current === null || typeof current !== "object" || !Object.hasOwn(current, segment))
       return undefined;
+    if (Array.isArray(current) && !INDEX.test(segment)) return undefined;
     current = (current as Record<string, unknown>)[segment];
   }
   return current;

@@ -49,6 +49,9 @@ const PATH = /^[A-Za-z_][A-Za-z0-9_-]*(\.[A-Za-z0-9_-]+)*$/;
 
 const NUMBER = /^-?\d+(\.\d+)?$/;
 
+/** Most nested `NOT` / `(` a query may hold, so hostile input fails as a value, not a stack overflow. */
+export const MAX_QUERY_DEPTH = 64;
+
 /** Parses a query into its AST (grammar: GRAMMAR.md). Errors carry a 1-based `column`. */
 export function parseQuery(text: string): Result<QueryNode> {
   const tokens = tokenize(text);
@@ -64,12 +67,27 @@ export function parseQuery(text: string): Result<QueryNode> {
   }
 }
 
+/**
+ * The operands of a run of the same `AND` / `OR`, in source order. Chains are
+ * left-deep, so walking them iteratively keeps recursion bounded by nesting.
+ */
+export function chain(node: QueryNode & { kind: "and" | "or" }): QueryNode[] {
+  const operands: QueryNode[] = [];
+  let current: QueryNode = node;
+  while (current.kind === node.kind && (current.kind === "and" || current.kind === "or")) {
+    operands.push(current.right);
+    current = current.left;
+  }
+  operands.push(current);
+  return operands.reverse();
+}
+
 /** Every context variable a query reads, in source order. */
 export function queryVariables(node: QueryNode): QueryPath[] {
   switch (node.kind) {
     case "and":
     case "or":
-      return [...queryVariables(node.left), ...queryVariables(node.right)];
+      return chain(node).flatMap(queryVariables);
     case "not":
       return queryVariables(node.operand);
     case "in":
@@ -95,6 +113,7 @@ class SyntaxFailure extends Error {
 
 class Parser {
   private index = 0;
+  private depth = 0;
 
   constructor(private readonly tokens: Token[]) {}
 
@@ -121,8 +140,8 @@ class Parser {
   /** not := "NOT" not | primary */
   private not(): QueryNode {
     if (this.keyword("NOT")) {
-      const start = this.next().start;
-      return { kind: "not", operand: this.not(), start };
+      const token = this.next();
+      return this.nested(token, () => ({ kind: "not", operand: this.not(), start: token.start }));
     }
     return this.primary();
   }
@@ -130,10 +149,11 @@ class Parser {
   /** primary := "(" or ")" | predicate */
   private primary(): QueryNode {
     if (this.peek().kind === "lparen") {
-      this.index++;
-      const node = this.or();
-      this.expect("rparen", "`)`");
-      return node;
+      return this.nested(this.next(), () => {
+        const node = this.or();
+        this.expect("rparen", "`)`");
+        return node;
+      });
     }
     return this.predicate();
   }
@@ -214,6 +234,24 @@ class Parser {
     const token = this.peek();
     if (token.kind !== kind) throw this.unexpected(token, expected);
     this.index++;
+  }
+
+  private nested<T>(token: Token, parse: () => T): T {
+    if (this.depth === MAX_QUERY_DEPTH) {
+      throw new SyntaxFailure(
+        queryError(
+          "query.too_deep",
+          token.start,
+          `query nests NOT and parentheses deeper than ${MAX_QUERY_DEPTH} levels`,
+        ),
+      );
+    }
+    this.depth++;
+    try {
+      return parse();
+    } finally {
+      this.depth--;
+    }
   }
 
   private keyword(name: string): boolean {

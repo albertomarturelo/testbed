@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseQuery, type QueryNode, queryVariables } from "./parse.js";
+import { MAX_QUERY_DEPTH, parseQuery, type QueryNode, queryVariables } from "./parse.js";
 
 function parsed(text: string): QueryNode {
   const result = parseQuery(text);
@@ -180,5 +180,45 @@ describe("parseQuery: errors with positions", () => {
     ["a = 'x", "query.unterminated_string", 5, "string opened with ' is never closed"],
   ])("%j → %s at column %i", (text, code, column, message) => {
     expect(parseQuery(text)).toEqual({ ok: false, errors: [{ code, column, message }] });
+  });
+});
+
+describe("parseQuery: nesting depth", () => {
+  const open = (n: number) => "(".repeat(n);
+  const close = (n: number) => ")".repeat(n);
+
+  it(`accepts ${MAX_QUERY_DEPTH} levels of parentheses and NOT`, () => {
+    expect(parseQuery(`${open(MAX_QUERY_DEPTH)}a = 1${close(MAX_QUERY_DEPTH)}`).ok).toBe(true);
+    expect(parseQuery(`${"NOT ".repeat(MAX_QUERY_DEPTH)}a = 1`).ok).toBe(true);
+    expect(parseQuery(`${open(32)}${"NOT ".repeat(32)}a = 1${close(32)}`).ok).toBe(true);
+  });
+
+  it("fails one level deeper at the token that exceeds it", () => {
+    expect(parseQuery(`${open(MAX_QUERY_DEPTH + 1)}a = 1${close(MAX_QUERY_DEPTH + 1)}`)).toEqual({
+      ok: false,
+      errors: [
+        {
+          code: "query.too_deep",
+          column: MAX_QUERY_DEPTH + 1,
+          message: `query nests NOT and parentheses deeper than ${MAX_QUERY_DEPTH} levels`,
+        },
+      ],
+    });
+    expect(parseQuery(`${"NOT ".repeat(MAX_QUERY_DEPTH + 1)}a = 1`)).toMatchObject({
+      ok: false,
+      errors: [{ code: "query.too_deep", column: MAX_QUERY_DEPTH * 4 + 1 }],
+    });
+  });
+
+  it("fails hostile input as a value instead of overflowing the stack", () => {
+    expect(parseQuery(open(100_000))).toMatchObject({
+      ok: false,
+      errors: [{ code: "query.too_deep" }],
+    });
+  });
+
+  it("counts depth per branch, not per query", () => {
+    const branch = `${open(MAX_QUERY_DEPTH)}a = 1${close(MAX_QUERY_DEPTH)}`;
+    expect(parseQuery(`${branch} AND ${branch}`).ok).toBe(true);
   });
 });
