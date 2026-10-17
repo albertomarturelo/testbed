@@ -36,8 +36,10 @@ the bundled skills), and the actor (human, agent, CI) is invisible to a process.
    `project` the `--project` value or the project containing `--cwd`
    (ADR [workspace-and-projects](2026-10-15-workspace-and-projects.md) §6).
 4. **Root:** the host finds the workspace from `--cwd` and invokes there; an
-   operation with `root: "cwd"` (only `init`) runs in `--cwd` without a
-   workspace. No workspace → `workspace.missing`, exit 2.
+   operation with `root: "cwd"` (only `init`) also works without one: it runs
+   at the workspace found above `--cwd`, else in `--cwd` itself, so a second
+   `init` in a subdirectory never nests a workspace. No workspace for any other
+   operation → `workspace.missing`, exit 2.
 5. **Actor:** `human` unless `CASEFILE_ACTOR` is `agent` or `ci`; skills and CI
    set it. The registry enforces `actor` as before.
 6. **Output:** `--json` prints the `Result` (`{ ok, value }` / `{ ok, errors }`)
@@ -75,6 +77,9 @@ the bundled skills), and the actor (human, agent, CI) is invisible to a process.
 - Read-only operations (`validate`, then `resolve`, `query`, `id next`) are core
   operations with `writes: []`; they read the workspace through core's loaders.
 - An input field named like a global option (`cwd`, `project`, `json`, `help`,
-  `version`) cannot be rendered unless it is a host input; the CLI rejects it.
+  `version`) cannot be rendered unless it is a host input; the CLI rejects it,
+  naming the clash, when the command is invoked.
+- `--project` is a global flag: operations without a `project` host input
+  ignore it.
 - Output formatting is generic and plain; nicer output for one operation means
   a better-shaped output, not CLI code.

@@ -68,8 +68,8 @@ function entry(key: string, value: unknown, indent: string): string[] {
 
 function diagnostic(d: Diagnostic, indent = ""): string[] {
   const at = [d.path, d.line, d.column].filter((part) => part !== undefined).join(":");
-  const field = d.field === undefined ? "" : ` [${d.field}]`;
-  const head = [d.severity ?? "error", d.code, `${at}${field}`, d.message].filter(Boolean);
+  const where = [at, d.field === undefined ? "" : `[${d.field}]`].filter(Boolean).join(" ");
+  const head = [d.severity ?? "error", d.code, where, d.message].filter(Boolean);
   return [`${indent}${head.join("  ")}`, ...(d.hint ? [`${indent}  hint: ${d.hint}`] : [])];
 }
 

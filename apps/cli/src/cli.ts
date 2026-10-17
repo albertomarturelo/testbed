@@ -58,9 +58,12 @@ export async function run(
   const root = located.ok ? located.value : null;
   const host = await openRegistry(root);
   const commands: Command[] = [];
+  /** Operations the CLI cannot render (ADR cli-generic-host): reported, never hidden. */
+  const rejected: { words: string[]; errors: CasefileError[] }[] = [];
   for (const operation of host.registry.list()) {
     const command = toCommand(operation);
     if (command.ok) commands.push(command.value);
+    else rejected.push({ words: operation.name.split("-"), errors: command.errors });
   }
 
   const [first] = argv;
@@ -80,8 +83,16 @@ export async function run(
     );
   }
   const matched = matchCommand(commands, argv);
+  const blocked = rejected.find(
+    ({ words }) =>
+      words.every((word, i) => argv[i] === word) &&
+      words.length > (matched?.command.words.length ?? 0),
+  );
+  if (blocked !== undefined) return result(fail(...blocked.errors), argv.includes("--json"));
   if (matched === null) {
-    const notes = host.errors.map((e) => `note: ${e.message}`);
+    const notes = [...host.errors, ...rejected.flatMap((r) => r.errors)].map(
+      (e) => `note: ${e.message}`,
+    );
     return {
       code: 1,
       stdout: "",
@@ -110,7 +121,8 @@ export async function run(
       json,
     );
   }
-  const invokeRoot = command.operation.root === "cwd" ? cwd : root;
+  // `root: "cwd"` (init) runs at an existing workspace rather than nesting one.
+  const invokeRoot = root ?? (command.operation.root === "cwd" ? cwd : null);
   if (invokeRoot === null) return result(located as Result<never>, json);
 
   for (const field of command.hosts) {

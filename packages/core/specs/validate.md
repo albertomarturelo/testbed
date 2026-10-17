@@ -12,7 +12,7 @@ writes.
 
 | Field | Type | Meaning |
 |---|---|---|
-| `project` | project name | Only that project's findings, plus the workspace-level ones (`casefile.yaml`, `.casefile/`). Filled by the host from `--project` or the project containing `--cwd`; absent means every project. |
+| `project` | project name | Only that project's findings, plus the workspace-level ones (`casefile.yaml`, `.casefile/`). Filled by the host from `--project` or the project containing `--cwd`; absent means every project. Ignored when `casefile.yaml` cannot be read: its findings come back whole. |
 
 ## Behaviour
 

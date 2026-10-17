@@ -52,8 +52,10 @@ export const validateOperation = defineOperation({
     });
     let projects = workspace.projects;
 
-    if (input.project !== undefined) {
-      const entries = workspace.config?.projects ?? [];
+    // Without a readable casefile.yaml there are no projects to select: its
+    // findings are the task, so they come back unfiltered.
+    if (input.project !== undefined && workspace.config !== null) {
+      const entries = workspace.config.projects;
       const entry = entries.find((p) => p.name === input.project);
       if (entry === undefined) {
         return fail({

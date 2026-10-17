@@ -1,7 +1,12 @@
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { DEMO_EXPECTED, DEMO_MONOREPO_ROOT, DEMO_ROOT } from "../demo.fixture.js";
+import {
+  DEMO_EXPECTED,
+  DEMO_MONOREPO_EXPECTED,
+  DEMO_MONOREPO_ROOT,
+  DEMO_ROOT,
+} from "../demo.fixture.js";
 import { createRegistry } from "./registry.js";
 import { validateOperation } from "./validate.js";
 
@@ -56,8 +61,18 @@ describe("validate operation", () => {
   it("counts only the selected project", async () => {
     const web = await validate(DEMO_MONOREPO_ROOT, { project: "web" });
     const all = await validate(DEMO_MONOREPO_ROOT);
-    expect(web).toMatchObject({ ok: true, value: { projects: 1, cases: 2 } });
-    expect(all).toMatchObject({ ok: true, value: { projects: 2, cases: 3 } });
+    const refs = DEMO_MONOREPO_EXPECTED.caseRefs;
+    const webCases = refs.filter((ref) => ref.startsWith("web/")).length;
+    expect(web).toMatchObject({ ok: true, value: { projects: 1, cases: webCases } });
+    expect(all).toMatchObject({ ok: true, value: { projects: 2, cases: refs.length } });
+  });
+
+  it("returns config findings whole when casefile.yaml cannot be read, even with a project", async () => {
+    const root = join(BROKEN, "config-yaml-invalid");
+    const all = await validate(root);
+    const named = await validate(root, { project: "web" });
+    expect(all.ok).toBe(false);
+    expect(named).toEqual(all);
   });
 
   it("fails on an unknown project", async () => {

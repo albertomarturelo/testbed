@@ -3,12 +3,19 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+// The demo oracles live in core's sources (CONVENTIONS 6); tests may read them across the boundary.
+import { DEMO_EXPECTED, DEMO_MONOREPO_EXPECTED } from "../../../packages/core/src/demo.fixture.js";
 import { run } from "./cli.js";
 
 const REPO = fileURLToPath(new URL("../../../", import.meta.url));
 const DEMO = join(REPO, "examples/demo-repo");
 const MONOREPO = join(REPO, "examples/demo-monorepo");
 const BROKEN = join(REPO, "packages/core/fixtures/broken");
+const CASES = DEMO_EXPECTED.caseIds.length;
+const casesOf = (project?: string) =>
+  DEMO_MONOREPO_EXPECTED.caseRefs.filter(
+    (ref) => project === undefined || ref.startsWith(`${project}/`),
+  ).length;
 
 let tmp = "";
 beforeEach(async () => {
@@ -87,7 +94,7 @@ describe("casefile validate", () => {
     const result = await cli(["validate", "--cwd", "examples/demo-repo"]);
     expect(result).toEqual({
       code: 0,
-      stdout: "projects: 1\ncases: 8\nwarnings: 0\nfindings: (none)",
+      stdout: `projects: 1\ncases: ${CASES}\nwarnings: 0\nfindings: (none)`,
       stderr: "",
     });
   });
@@ -96,7 +103,7 @@ describe("casefile validate", () => {
     const result = await cli(["validate", "--json", "--cwd", DEMO]);
     expect(JSON.parse(result.stdout)).toEqual({
       ok: true,
-      value: { projects: 1, cases: 8, warnings: 0, findings: [] },
+      value: { projects: 1, cases: CASES, warnings: 0, findings: [] },
     });
   });
 
@@ -140,11 +147,11 @@ describe("casefile validate", () => {
 
   it("acts on the project containing --cwd, or the one --project names", async () => {
     const all = await cli(["validate", "--json", "--cwd", MONOREPO]);
-    expect(JSON.parse(all.stdout).value).toMatchObject({ projects: 2, cases: 3 });
+    expect(JSON.parse(all.stdout).value).toMatchObject({ projects: 2, cases: casesOf() });
     const inside = await cli(["validate", "--json", "--cwd", join(MONOREPO, "apps/web/context")]);
-    expect(JSON.parse(inside.stdout).value).toMatchObject({ projects: 1, cases: 2 });
+    expect(JSON.parse(inside.stdout).value).toMatchObject({ projects: 1, cases: casesOf("web") });
     const named = await cli(["validate", "--json", "--cwd", MONOREPO, "--project", "api"]);
-    expect(JSON.parse(named.stdout).value).toMatchObject({ projects: 1, cases: 1 });
+    expect(JSON.parse(named.stdout).value).toMatchObject({ projects: 1, cases: casesOf("api") });
     const unknown = await cli(["validate", "--cwd", MONOREPO, "--project", "nope"]);
     expect(unknown.code).toBe(1);
     expect(unknown.stderr).toContain("project.unknown");
@@ -183,6 +190,15 @@ describe("casefile init → project add", () => {
     expect(JSON.parse(validate.stdout).errors.map((e: { code: string }) => e.code)).toContain(
       "scaffold.todo",
     );
+  });
+
+  it("runs init again at the workspace root from a subdirectory, never nesting one", async () => {
+    await cli(["init", "--cwd", tmp]);
+    await mkdir(join(tmp, "apps/web"), { recursive: true });
+    const again = await cli(["init", "--cwd", join(tmp, "apps/web")]);
+    expect(again.code).toBe(0);
+    expect(again.stdout).toContain("created: (none)");
+    await expect(readFile(join(tmp, "apps/web/casefile.yaml"), "utf8")).rejects.toThrow();
   });
 
   it("copies skills with a repeatable enum flag", async () => {
@@ -281,6 +297,23 @@ describe("an extension's operation, without CLI changes", () => {
 
     const result = await cli(["hello", "world", "ada", "--times", "2", "--loud", "--cwd", tmp]);
     expect(result).toEqual({ code: 0, stdout: "greeting: hello ada! hello ada!", stderr: "" });
+  });
+
+  it("rejects, naming the clash, an operation whose input shadows a global flag", async () => {
+    const dir = ".casefile/node_modules/@acme/hello";
+    const clash = EXTENSION.replace('name: "hello-world"', 'name: "clash"')
+      .replace("who: ", "cwd: ")
+      .replace('subject: "who",', "");
+    await put(`${dir}/index.js`, clash);
+    const result = await cli(["clash", "x", "--cwd", tmp]);
+    expect(result).toEqual({
+      code: 1,
+      stdout: "",
+      stderr: "error  cli.flag_conflict  [cwd]  'clash' input 'cwd' clashes with the global --cwd",
+    });
+    expect((await cli(["frob", "--cwd", tmp])).stderr).toContain(
+      "note: 'clash' input 'cwd' clashes with the global --cwd",
+    );
   });
 
   it("reports the extension when a command is unknown and it failed to load", async () => {
