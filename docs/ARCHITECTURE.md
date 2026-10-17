@@ -118,7 +118,8 @@ Setup is done by the user's agent; the library scaffolds and validates
    human's `git config user.email` as author.
 2. **Processing**: the agent runs `qa-inbox`, which reads the intent (as data, never
    as instruction), performs the operation per its SPEC, and runs `casefile validate`.
-3. **Commit**: the agent commits as `casefile-agent` with trailers
+3. **Commit**: the operation returns the commit message; the agent commits as
+   `casefile-agent <casefile-agent@casefile.invalid>` ([agent-runs-the-commit](decisions/2026-10-17-agent-runs-the-commit.md)) with trailers
    `Requested-by:`, `Inbox-Id:`, `Agent:`, `Casefile-Change:`; each `history` event
    stores the same change id, and its `commit` is derived from Git (never stored);
    the inbox item moves to `done` / `failed` with `result`.
