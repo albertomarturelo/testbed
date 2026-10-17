@@ -11,7 +11,6 @@ the agent decides, the library writes).
 - **CLI:** `casefile cover <feature> --cases '<json>' --requested-by <email> --agent <name> [--inbox <id>] [--project <name>]`
   (run with `CASEFILE_ACTOR=agent`)
 - **Writes:** `**/context/tests/**/TC-*.md` (new files only)
-- **Status:** SPEC first; the operation is #60 and lands before the `qa-cover` skill (#56)
 
 ## Before calling it
 
@@ -68,7 +67,8 @@ they cannot be given. A proposed case is always `state: draft` and
    - match the case schema
    - resolve with the commons its feature inherits; a required field set
      nowhere is `resolve.missing_field`
-   - not share its `title` with a case already in that feature
+   - not share its `title` with a case already in that feature, ignoring
+     letter case and repeated spaces
 2. If the feature's commons set `review.max_batch`, refuses more cases than
    that in one call.
 3. Assigns ids like `casefile id next`: the next free ids of the project, in
@@ -172,6 +172,7 @@ Nothing is written when any of these is returned.
 | `label.undeclared` | a label key is not declared in the project's `_properties.yaml` |
 | `cover.duplicate_title` | a case of that feature, existing or earlier in `cases`, has the same title |
 | `cover.batch_too_large` | more cases than the feature's `review.max_batch` |
+| `cover.file_exists` | the file for a new id exists but does not parse as a case; fix or remove it |
 | `project.required` / `project.unknown` | no project could be chosen, or the name is unknown |
 | `operation.actor_not_allowed` | invoked by a human or CI |
 | loader codes | `casefile.yaml` cannot be read; run `casefile validate` |

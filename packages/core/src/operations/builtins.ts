@@ -1,3 +1,4 @@
+import { coverOperation } from "./cover.js";
 import { idNextOperation } from "./id-next.js";
 import { initOperation } from "./init.js";
 import type { Operation } from "./operation.js";
@@ -16,4 +17,5 @@ export const builtinOperations: readonly Operation[] = [
   queryOperation,
   idNextOperation,
   overviewOperation,
+  coverOperation,
 ];
