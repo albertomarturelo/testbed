@@ -37,6 +37,10 @@ describe("loadWorkspace on examples/demo-repo (one project at `.`)", async () =>
       "smoke",
     ]);
   });
+
+  it("loads the release policy", () => {
+    expect(project?.policy?.gates.map((g) => g.name)).toEqual(Object.keys(DEMO_EXPECTED.gates));
+  });
 });
 
 describe("loadWorkspace on examples/demo-monorepo (two projects)", async () => {
@@ -64,6 +68,10 @@ describe("loadWorkspace on examples/demo-monorepo (two projects)", async () => {
       workspace.projects.map((p) => [p.name, p.runs.map((r) => r.event.run_id)]),
     );
     expect(runs).toEqual({ web: ["2026-10-14-ci-web"], api: ["2026-10-14-ci-api"] });
+  });
+
+  it("has no release policy where none is written", () => {
+    expect(workspace.projects.map((p) => p.policy)).toEqual([null, null]);
   });
 });
 
@@ -158,6 +166,17 @@ describe("loadWorkspace on broken workspaces", () => {
     const workspace = await loadWorkspace(root);
     expect(workspace.errors).toEqual([]);
     expect(workspace.projects[0]?.cases).toEqual([]);
+  });
+
+  it("reports an invalid release policy at the project's path", async () => {
+    await fresh();
+    await put("casefile.yaml", "version: 1\nprojects: [{ name: app, path: apps/app }]\n");
+    await put("apps/app/context/releases/policy.yaml", "gates: []\n");
+    const workspace = await loadWorkspace(root);
+    expect(workspace.projects[0]?.policy).toBeNull();
+    expect(workspace.errors.map((e) => `${e.path} ${e.code}`)).toEqual([
+      "apps/app/context/releases/policy.yaml schema.invalid",
+    ]);
   });
 });
 

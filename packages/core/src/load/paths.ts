@@ -6,6 +6,9 @@ export const CONFIG_FILE = "casefile.yaml";
 /** Where a project keeps its cases, relative to the project directory. */
 export const TESTS_DIR = "context/tests";
 
+/** A project's release policy, relative to the project directory (ADR release-gate-evaluation). */
+export const POLICY_FILE = "context/releases/policy.yaml";
+
 /**
  * Canonical form of a project path from `casefile.yaml`: POSIX-normalized, no
  * trailing `/`, `.` for the workspace root. `apps/web/` and `./apps//web` both

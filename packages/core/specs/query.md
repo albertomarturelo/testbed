@@ -28,8 +28,8 @@ priority <= P1 AND NOT state IN (retired, draft)
 surfaces CONTAINS ios OR project = api
 ```
 
-Context variables (`release.changed_features`, `release.build`) only have values
-inside a gate (#47); here they are `query.unknown_variable`.
+Context variables (`release.name`, `release.build`) only have values inside a
+gate (#47); here they are `query.unknown_variable`.
 
 ## Output
 

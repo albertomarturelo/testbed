@@ -1,0 +1,5 @@
+gates:
+  - name: smoke
+    scope: labels.smoke = true
+    require:
+      executed: 120

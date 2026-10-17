@@ -27,3 +27,4 @@
 | [2026-10-15-agent-driven-setup](2026-10-15-agent-driven-setup.md) | Setup is driven by the agent; the library scaffolds and validates | Accepted | 2026-10-15 |
 | [2026-10-15-casefile-toolchain-dir](2026-10-15-casefile-toolchain-dir.md) | casefile and its extensions are pinned in `.casefile/` | Accepted | 2026-10-15 |
 | [2026-10-17-cli-generic-host](2026-10-17-cli-generic-host.md) | The CLI renders the registry with fixed, generic rules | Accepted | 2026-10-17 |
+| [2026-10-17-release-gate-evaluation](2026-10-17-release-gate-evaluation.md) | How a release gate is evaluated | Accepted | 2026-10-17 |

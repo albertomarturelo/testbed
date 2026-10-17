@@ -1,7 +1,14 @@
 import { parse, YAMLParseError } from "yaml";
 import type { z } from "zod";
 import { type CasefileError, fail, ok, type Result } from "../errors.js";
-import { CommonFile, Config, PropertiesFile, RunEvent, TestCaseFile } from "../schema/index.js";
+import {
+  CommonFile,
+  Config,
+  PropertiesFile,
+  ReleasePolicy,
+  RunEvent,
+  TestCaseFile,
+} from "../schema/index.js";
 import { splitFrontmatter } from "./frontmatter.js";
 
 // Pure parsers: file text in, typed value or located errors out (CONVENTIONS #4, #7).
@@ -116,6 +123,10 @@ export function parseConfigFile(path: string, text: string): Result<Config> {
 
 export function parsePropertiesFile(path: string, text: string): Result<PropertiesFile> {
   return parseYamlFile(PropertiesFile, path, text);
+}
+
+export function parsePolicyFile(path: string, text: string): Result<ReleasePolicy> {
+  return parseYamlFile(ReleasePolicy, path, text);
 }
 
 /** A run event and where it is stored, so findings can point at its line. */

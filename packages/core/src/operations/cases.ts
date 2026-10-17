@@ -17,7 +17,7 @@ export async function loadWorkspaceCases(root: string): Promise<Result<Workspace
   if (workspace.config === null) return fail(...workspace.errors);
   const { extensions } = await loadExtensions(root, workspace.config.extensions ?? []);
   const resolved = resolveWorkspace(workspace, {
-    // Commit lookup arrives with the git adapter (#10); until then it is unknown.
+    // Commit lookup arrives with the git adapter (#51); until then it is unknown.
     commitFor: () => null,
     extensionLayers: extensionLayers(extensions),
   });

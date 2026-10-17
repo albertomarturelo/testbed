@@ -1,17 +1,24 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import { dirname, isAbsolute, join, posix, relative, resolve, sep } from "node:path";
 import { type CasefileError, fail, ok, type Result } from "../errors.js";
-import type { CommonFile, Config, ProjectEntry, PropertiesFile } from "../schema/index.js";
+import type {
+  CommonFile,
+  Config,
+  ProjectEntry,
+  PropertiesFile,
+  ReleasePolicy,
+} from "../schema/index.js";
 import {
   type LoadedCase,
   type LoadedRun,
   parseCaseFile,
   parseCommonFile,
   parseConfigFile,
+  parsePolicyFile,
   parsePropertiesFile,
   parseRunFile,
 } from "./parse.js";
-import { CONFIG_FILE, normalizeProjectPath, TESTS_DIR } from "./paths.js";
+import { CONFIG_FILE, normalizeProjectPath, POLICY_FILE, TESTS_DIR } from "./paths.js";
 
 // Paths in loaded data are workspace-relative and POSIX (ADR workspace-and-projects).
 
@@ -26,6 +33,8 @@ export type LoadedProject = {
   runs: LoadedRun[];
   /** `context/tests/_properties.yaml`; `null` when absent or invalid. */
   properties: PropertiesFile | null;
+  /** `context/releases/policy.yaml`; `null` when absent or invalid. */
+  policy: ReleasePolicy | null;
   /** Whether `<path>/context/tests/` is a directory; the validator requires it. */
   hasTestsDir: boolean;
 };
@@ -51,7 +60,8 @@ const PROPERTIES_FILE = "_properties.yaml";
 
 /**
  * Filesystem adapter: reads `casefile.yaml` at `root`, then each project's
- * commons, `_properties.yaml`, cases and run events. `.inbox/` is not read here.
+ * commons, `_properties.yaml`, cases, run events and release policy. `.inbox/`
+ * is not read here.
  */
 export async function loadWorkspace(root: string): Promise<LoadedWorkspace> {
   const workspace: LoadedWorkspace = { root, config: null, projects: [], errors: [] };
@@ -118,6 +128,7 @@ export async function loadProject(
     cases: [],
     runs: [],
     properties: null,
+    policy: null,
     hasTestsDir: false,
   };
   const errors: CasefileError[] = [];
@@ -145,6 +156,11 @@ export async function loadProject(
       errors.push(...parsed.errors);
     } else collect(parseCaseFile(path, text), (c) => project.cases.push(c));
   }
+
+  const policyPath = posix.join(projectPath, POLICY_FILE);
+  const policyText = await readText(join(root, policyPath));
+  if (policyText !== null)
+    collect(parsePolicyFile(policyPath, policyText), (p) => (project.policy = p));
   return { value: project, errors };
 }
 
