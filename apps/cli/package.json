@@ -17,8 +17,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json",
-    "prepack": "rm -rf skills && cp -R ../../skills skills",
-    "postpack": "rm -rf skills"
+    "prepack": "node -e \"const fs=require('node:fs');fs.rmSync('skills',{recursive:true,force:true});fs.cpSync('../../skills','skills',{recursive:true})\"",
+    "postpack": "node -e \"require('node:fs').rmSync('skills',{recursive:true,force:true})\""
   },
   "dependencies": {
     "@casefile/core": "workspace:*"

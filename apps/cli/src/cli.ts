@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
-import { resolve } from "node:path";
+import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   type Actor,
@@ -32,12 +32,21 @@ const pkg = createRequire(import.meta.url)("../package.json") as { version: stri
 
 /**
  * Skills `init` offers (ADR agent-driven-setup): bundled into the package as
- * `skills/` when it is packed, else the repository's `skills/` (monorepo dev).
+ * `skills/` when it is packed. Only when this CLI runs from its own monorepo
+ * (`<root>/apps/cli`, with `pnpm-workspace.yaml` at the root) does it fall back
+ * to the repository's `skills/`; an installed copy never reads a directory
+ * outside its package.
  */
-const PACKED_SKILLS = fileURLToPath(new URL("../skills/", import.meta.url));
-const SKILLS_DIR = existsSync(PACKED_SKILLS)
-  ? PACKED_SKILLS
-  : fileURLToPath(new URL("../../../skills/", import.meta.url));
+const SKILLS_DIR = skillsDir(fileURLToPath(new URL("../", import.meta.url)));
+
+export function skillsDir(packageDir: string): string {
+  const packed = join(packageDir, "skills");
+  const root = resolve(packageDir, "../..");
+  const inMonorepo =
+    resolve(packageDir) === join(root, "apps", "cli") &&
+    existsSync(join(root, "pnpm-workspace.yaml"));
+  return !existsSync(packed) && inMonorepo ? join(root, "skills") : packed;
+}
 
 const ACTORS: readonly Actor[] = ["human", "agent", "ci"];
 

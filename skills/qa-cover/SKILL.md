@@ -31,12 +31,13 @@ CLI the human installed. Never run `npx casefile`: the npm package named
    already verifies a case, set `automation.ref` as the SPEC describes. Fill
    `duplicates_checked_against` with the ids you compared against. Ask the
    human once if the scope is unclear; otherwise do not ask.
-4. **Write** with one call:
+4. **Write** with one call. Put the `ProposedCase[]` JSON in a file first:
+   inline JSON breaks on the first apostrophe in a title or a step.
 
    ```bash
    CASEFILE_ACTOR=agent casefile cover <feature> --json \
      --requested-by "$(git config user.email)" --agent <your name> \
-     --cases '<ProposedCase[] as JSON>'
+     --cases "$(cat <cases file>)"
    ```
 
    On an error, nothing was written: fix the input and call again. If you get
