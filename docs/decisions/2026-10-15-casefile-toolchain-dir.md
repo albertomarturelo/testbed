@@ -72,7 +72,12 @@ itself is always required; the open question is only where exact versions live.
   documents.
 - #25: `init` always writes `.casefile/`; extension loading reads only
   `.casefile/node_modules`.
-- #11: the CLI delegates to the pinned version.
+- #46 (was #11): the CLI delegates to the pinned version. The loop guard is
+  `CASEFILE_DELEGATED=<version>`. An exact pin equal to the running version needs
+  no install (the right casefile is already running, so setup is not blocked
+  before `npm install`); operations with `root: "cwd"` (`init`, ADR
+  [cli-generic-host](2026-10-17-cli-generic-host.md)) never delegate. The
+  decision is core's `toolchainDelegation`; the re-exec is the CLI's.
 - #9 (environment level): `extension.not_installed` (listed but not installed in
   `.casefile/`), `toolchain.not_installed`, and a warning `toolchain.unpinned`
   when `.casefile/package.json` does not pin casefile.
