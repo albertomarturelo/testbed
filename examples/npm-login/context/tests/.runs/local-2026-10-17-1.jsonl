@@ -1,0 +1,6 @@
+{"run_id":"local-2026-10-17-1","case_id":"TC-0001","status":"passed","executor":"agent:claude-code","at":"2026-10-17T19:23:06Z","duration_ms":599,"automation_ref":"login.spec.ts::shows the sign-in form"}
+{"run_id":"local-2026-10-17-1","case_id":"TC-0002","status":"failed","executor":"agent:claude-code","at":"2026-10-17T19:23:06Z","duration_ms":30018,"automation_ref":"login.spec.ts::blocks an empty submit in the browser"}
+{"run_id":"local-2026-10-17-1","case_id":"TC-0003","status":"failed","executor":"agent:claude-code","at":"2026-10-17T19:23:06Z","duration_ms":5509,"automation_ref":"login.spec.ts::masks the password and shows it on request"}
+{"run_id":"local-2026-10-17-1","case_id":"TC-0004","status":"passed","executor":"agent:claude-code","at":"2026-10-17T19:23:06Z","duration_ms":493,"automation_ref":"login.spec.ts::moves through the form with the keyboard"}
+{"run_id":"local-2026-10-17-1","case_id":"TC-0005","status":"passed","executor":"agent:claude-code","at":"2026-10-17T19:23:06Z","duration_ms":510,"automation_ref":"login.spec.ts::labels every field of the form"}
+{"run_id":"local-2026-10-17-1","case_id":"TC-0006","status":"failed","executor":"agent:claude-code","at":"2026-10-17T19:23:06Z","duration_ms":5217,"automation_ref":"login.spec.ts::links to password recovery and sign-up"}
