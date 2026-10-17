@@ -6,7 +6,7 @@ import { findWorkspaceRoot } from "@casefile/core";
 import { createUiServer } from "./server.js";
 
 /** Default port of the local UI (ADR local-ui-stack §2). */
-export const DEFAULT_PORT = 4321;
+const DEFAULT_PORT = 4321;
 
 const USAGE = `Usage: casefile-web [--cwd <dir>] [--port <n>]
 

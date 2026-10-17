@@ -47,4 +47,10 @@ export const DEMO_MONOREPO_EXPECTED = {
   derivedAutomated: ["api/TC-0001", "web/TC-0001"],
   /** Commons `web/TC-0001` inherits from, outermost first. */
   webTc0001CommonsChain: ["casefile.yaml", "apps/web/context/tests/_common.yaml"],
+  /** Feature and latest run of each case, as `overview` lists them; `null`: never ran. */
+  overview: {
+    "api/TC-0001": { feature: "orders", last_run: "passed", last_run_at: "2026-10-14T07:05:00Z" },
+    "web/TC-0001": { feature: "login", last_run: "passed", last_run_at: "2026-10-14T07:00:00Z" },
+    "web/TC-0002": { feature: "login", last_run: null, last_run_at: null },
+  },
 } as const;

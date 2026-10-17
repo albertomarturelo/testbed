@@ -271,16 +271,14 @@ describe("overview operation", () => {
     expect(value.cases.map((c) => c.ref).sort()).toEqual([...DEMO_MONOREPO_EXPECTED.caseRefs]);
     const automated = value.cases.filter((c) => c.automation === "automated").map((c) => c.ref);
     expect(automated.sort()).toEqual([...DEMO_MONOREPO_EXPECTED.derivedAutomated]);
-    expect(value.cases.find((c) => c.ref === "web/TC-0001")).toMatchObject({
-      feature: "login",
-      last_run: "passed",
-      last_run_at: "2026-10-14T07:00:00Z",
-    });
-    // A case that never ran has no last run.
-    expect(value.cases.find((c) => c.ref === "web/TC-0002")).toMatchObject({
-      last_run: null,
-      last_run_at: null,
-    });
+    const rows = Object.fromEntries(
+      value.cases.map(({ ref, feature, last_run, last_run_at }) => [
+        ref,
+        { feature, last_run, last_run_at },
+      ]),
+    );
+    // A case that never ran has no last run (`web/TC-0002`).
+    expect(rows).toEqual(DEMO_MONOREPO_EXPECTED.overview);
   });
 
   it("keeps only the selected project", async () => {

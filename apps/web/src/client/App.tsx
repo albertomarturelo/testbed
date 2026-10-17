@@ -111,7 +111,7 @@ export function App() {
             {route.view === "case" ? (
               <CaseDetail key={`${route.ref}:${reload}`} caseRef={route.ref} />
             ) : route.view === "query" ? (
-              <QueryView project={project} />
+              <QueryView key={project ?? ""} project={project} />
             ) : route.view === "validate" ? (
               <ValidateView key={reload} project={project} />
             ) : (
