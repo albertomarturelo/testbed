@@ -1,0 +1,6 @@
+# casefile workspace: run `casefile spec setup`.
+# Projects are added by the agent with `casefile project add <name> --path <path>`.
+version: 1
+projects:
+  - name: npm-login
+    path: .

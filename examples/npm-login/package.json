@@ -1,0 +1,11 @@
+{
+  "name": "npm-login-example",
+  "private": true,
+  "description": "A product repo whose front-end tests cover https://www.npmjs.com/login (casefile example, not affiliated with npm, Inc.)",
+  "scripts": {
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.0"
+  }
+}

@@ -1,0 +1,20 @@
+# Project-wide defaults for every case under this directory (`casefile spec commons`).
+# Replace each TODO with a decision; `casefile validate` lists the ones left.
+
+# Surfaces the product runs on, a non-empty list of:
+#   web, mobile-ios, mobile-android, backend, api, cli, desktop
+surfaces: [web]
+
+# Default test layer: e2e, integration, api, ui, unit, manual-exploratory
+layer: e2e
+
+# Default priority: P0, P1, P2, P3
+priority: P2
+
+automation:
+  # Whether cases may be automated by default: true, false
+  eligible: true
+
+review:
+  # How proposed cases are reviewed: required, post_hoc, auto
+  mode: required

@@ -1,0 +1,7 @@
+{
+  "private": true,
+  "description": "casefile toolchain of this workspace; install with npm --prefix .casefile",
+  "dependencies": {
+    "@casefile/cli": "0.0.0"
+  }
+}
