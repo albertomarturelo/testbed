@@ -102,6 +102,16 @@ describe("delegation to the pinned casefile", () => {
     expect(JSON.parse(json.result.stdout).errors[0].code).toBe("toolchain.not_installed");
   });
 
+  it("still prints the version and help when the pin is not installed", async () => {
+    await pin("0.4.1");
+    expect((await cli(["--version"])).result).toEqual({ code: 0, stdout: RUNNING, stderr: "" });
+    expect((await cli(["--help"])).result.code).toBe(0);
+    expect((await cli([])).result.code).toBe(0);
+    // Installed, they delegate like any command: the pinned version answers.
+    await install("0.4.1");
+    expect((await cli(["--version"])).calls).toHaveLength(1);
+  });
+
   it("never delegates init, nor outside a workspace or without a pin", async () => {
     await pin("0.4.1");
     await install("0.4.1");

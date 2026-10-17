@@ -58,7 +58,9 @@ export async function run(
 ): Promise<CliResult> {
   // The pinned casefile runs, whatever binary was invoked (ADR casefile-toolchain-dir §4).
   const plan = await planDelegation(argv, environment.cwd, environment.env, pkg.version);
-  if (plan.kind === "fail") return result(fail(...plan.errors), argv.includes("--json"));
+  // Saying which casefile runs, and how to use it, works even before the install.
+  const local = argv[0] === undefined || ["-h", "--help", "-v", "--version"].includes(argv[0]);
+  if (plan.kind === "fail" && !local) return result(fail(...plan.errors), argv.includes("--json"));
   if (plan.kind === "delegate") {
     return { code: (environment.reexec ?? reexec)(plan, argv), stdout: "", stderr: "" };
   }
