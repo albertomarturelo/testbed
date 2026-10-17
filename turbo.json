@@ -4,7 +4,7 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "inputs": ["src/**", "tsconfig*.json", "package.json"],
+      "inputs": ["src/**", "tsconfig*.json", "package.json", "vite.config.ts"],
       "outputs": ["dist/**"]
     },
     "typecheck": {

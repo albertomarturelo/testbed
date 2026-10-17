@@ -11,6 +11,7 @@ import {
 } from "../demo.fixture.js";
 import { nextCaseId } from "../ids.js";
 import { idNextOperation } from "./id-next.js";
+import { overviewOperation } from "./overview.js";
 import { queryOperation } from "./query.js";
 import { createRegistry } from "./registry.js";
 import { resolveOperation } from "./resolve.js";
@@ -18,7 +19,9 @@ import { resolveOperation } from "./resolve.js";
 const BROKEN = fileURLToPath(new URL("../../fixtures/broken/", import.meta.url));
 
 const registry = createRegistry();
-for (const op of [resolveOperation, queryOperation, idNextOperation]) registry.register(op);
+for (const op of [resolveOperation, queryOperation, idNextOperation, overviewOperation]) {
+  registry.register(op);
+}
 const invoke = (name: string, root: string, input: Record<string, unknown> = {}) =>
   registry.invoke(name, input, { root, actor: "agent" });
 
@@ -246,5 +249,98 @@ describe("id-next operation", () => {
     expect(await invoke("id-next", join(BROKEN, "config-yaml-invalid"))).toMatchObject({
       ok: false,
     });
+  });
+});
+
+describe("overview operation", () => {
+  type Overview = {
+    projects: { name: string; path: string; cases: number; unresolved: number }[];
+    cases: Record<string, string | null>[];
+  };
+  const overview = async (root: string, input: Record<string, unknown> = {}) => {
+    const result = await invoke("overview", root, input);
+    if (!result.ok) throw new Error(result.errors[0]?.message);
+    return result.value as Overview;
+  };
+
+  it("lists every project and its resolved cases with feature, automation and last run", async () => {
+    const value = await overview(DEMO_MONOREPO_ROOT);
+    expect(Object.fromEntries(value.projects.map((p) => [p.name, p.path]))).toEqual(
+      DEMO_MONOREPO_EXPECTED.projects,
+    );
+    expect(value.cases.map((c) => c.ref).sort()).toEqual([...DEMO_MONOREPO_EXPECTED.caseRefs]);
+    const automated = value.cases.filter((c) => c.automation === "automated").map((c) => c.ref);
+    expect(automated.sort()).toEqual([...DEMO_MONOREPO_EXPECTED.derivedAutomated]);
+    expect(value.cases.find((c) => c.ref === "web/TC-0001")).toMatchObject({
+      feature: "login",
+      last_run: "passed",
+      last_run_at: "2026-10-14T07:00:00Z",
+    });
+    // A case that never ran has no last run.
+    expect(value.cases.find((c) => c.ref === "web/TC-0002")).toMatchObject({
+      last_run: null,
+      last_run_at: null,
+    });
+  });
+
+  it("keeps only the selected project", async () => {
+    const value = await overview(DEMO_MONOREPO_ROOT, { project: "api" });
+    expect(value.projects.map((p) => p.name)).toEqual(["api"]);
+    expect(value.cases.map((c) => c.ref)).toEqual(["api/TC-0001"]);
+    const result = await invoke("overview", DEMO_MONOREPO_ROOT, { project: "nope" });
+    expect(result).toMatchObject({ ok: false, errors: [{ code: "project.unknown" }] });
+  });
+
+  it("takes each case's latest run by time", async () => {
+    await put("casefile.yaml", "version: 1\nprojects:\n  - { name: app, path: . }\n");
+    await put(
+      "context/tests/_common.yaml",
+      "surfaces: [web]\nlayer: e2e\npriority: P2\nautomation:\n  eligible: true\n",
+    );
+    await put(
+      "context/tests/login/TC-0001.md",
+      [
+        "---",
+        "id: TC-0001",
+        "feature: login",
+        "title: Sign in",
+        "state: active",
+        "origin: agent",
+        "steps:",
+        "  - do: Sign in",
+        "    expect: The home page opens",
+        "history:",
+        '  - at: "2026-10-05T09:00:00Z"',
+        "    by: qa@acme.example",
+        "    via: cli:cover",
+        "    change: 4c1a2b3d-1e2f-4a5b-8c6d-7e8f9a0b1c01",
+        "    event: created",
+        "---",
+        "",
+      ].join("\n"),
+    );
+    const event = (status: string, at: string) =>
+      JSON.stringify({ run_id: "r1", case_id: "TC-0001", status, executor: "human:qa", at });
+    // The later event is written first: order in the file does not decide.
+    await put(
+      "context/tests/.runs/r1.jsonl",
+      `${event("failed", "2026-10-02T00:00:00Z")}\n${event("passed", "2026-10-01T00:00:00Z")}\n`,
+    );
+    const value = await overview(tmp);
+    expect(value.cases).toEqual([
+      expect.objectContaining({
+        ref: "app/TC-0001",
+        feature: "login",
+        last_run: "failed",
+        last_run_at: "2026-10-02T00:00:00Z",
+      }),
+    ]);
+    expect(value.projects).toEqual([{ name: "app", path: ".", cases: 1, unresolved: 0 }]);
+  });
+
+  it("counts cases that do not resolve and leaves them out", async () => {
+    const value = await overview(join(BROKEN, "resolve-missing-field"));
+    expect(value.cases).toEqual([]);
+    expect(value.projects).toEqual([{ name: "web", path: ".", cases: 0, unresolved: 1 }]);
   });
 });

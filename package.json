@@ -13,7 +13,8 @@
     "coverage": "vitest run --coverage",
     "lint": "biome check . && node scripts/check-boundaries.mjs",
     "format": "biome check --write .",
-    "casefile": "node apps/cli/dist/bin.js"
+    "casefile": "node apps/cli/dist/bin.js",
+    "ui": "node apps/web/dist/server/bin.js"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",

@@ -27,7 +27,8 @@ primitives, with components copied into the app rather than installed.
    and has no operation logic. The actor is `human`. In F1 it only invokes
    operations with `writes: []`; anything that writes returns `ui.read_only`
    until the UI writes `.inbox/` intents
-   ([write-ownership](2026-10-15-write-ownership.md)).
+   ([write-ownership](2026-10-15-write-ownership.md)). A request whose `Host`
+   is not localhost is refused (DNS rebinding; added by #54).
 3. **Freshness:** each request runs the operation, which loads the workspace from
    files ([files-are-source-of-truth](2026-10-15-files-are-source-of-truth.md)).
    There is no cache until the #26 index lands; the server then reads it instead.
