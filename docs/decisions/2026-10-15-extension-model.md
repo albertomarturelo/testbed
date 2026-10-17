@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted — 2026-10-15
+Accepted — 2026-10-15. Ingester contract refined by
+[ingester-contract](2026-10-17-ingester-contract.md): `parse(text, ctx) →
+IngestedResult[]`; core matches cases and writes the events.
 
 ## Context
 

@@ -37,6 +37,9 @@ format; built-in formats are described here.
    Events are compared without `at`, counting repeats: ingesting the same
    report twice writes nothing the second time, and a second shard of the
    same run adds only its own events. Existing lines are never changed.
+   Shards ingested in separate CI checkouts each append to the same file and
+   their commits conflict: ingest all shards from one job, or give each shard
+   its own run id (`9137-1`, `9137-2`).
 
 ```json 9137.jsonl
 {"run_id":"9137","case_id":"TC-0001","status":"passed","executor":"ci:github-actions","at":"2026-10-17T09:12:03Z","build":"web-2.1.0+9","duration_ms":1204,"automation_ref":"login.spec.ts::signs in with valid credentials"}

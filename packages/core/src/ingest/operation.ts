@@ -1,6 +1,6 @@
 import { posix } from "node:path";
 import { z } from "zod";
-import { type CasefileError, fail, ok } from "../errors.js";
+import { type CasefileError, fail, ok, type Result } from "../errors.js";
 import { TESTS_DIR } from "../load/paths.js";
 import { loadWorkspace } from "../load/workspace.js";
 import { requireProject } from "../operations/cases.js";
@@ -76,7 +76,15 @@ export function ingestOperation(ingester: Ingester): Operation {
           message: `${input.report} does not exist (report paths are relative to the workspace root)`,
         });
       }
-      const parsed = await ingester.parse(text, { path: input.report });
+      const parsed: unknown = await ingester.parse(text, { path: input.report });
+      // An extension's ingester is not type-checked: only a well-formed Result passes.
+      if (!isResultList(parsed)) {
+        return fail({
+          code: "ingest.invalid_result",
+          path: input.report,
+          message: `ingester '${ingester.format}' returned neither { ok: true, value: [...] } nor { ok: false, errors: [...] }`,
+        });
+      }
       if (!parsed.ok) return parsed;
       const results: IngestedResult[] = [];
       const errors: CasefileError[] = [];
@@ -169,6 +177,13 @@ export function ingestOperation(ingester: Ingester): Operation {
       });
     },
   });
+}
+
+function isResultList(value: unknown): value is Result<unknown[]> {
+  if (value === null || typeof value !== "object") return false;
+  const result = value as { ok?: unknown; value?: unknown; errors?: unknown };
+  if (result.ok === true) return Array.isArray(result.value);
+  return result.ok === false && Array.isArray(result.errors);
 }
 
 /**

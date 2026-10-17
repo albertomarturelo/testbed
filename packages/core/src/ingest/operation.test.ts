@@ -138,6 +138,12 @@ describe("ingest junit", () => {
     ]);
   });
 
+  it("skips run-file lines that are not events when it compares, and keeps them", async () => {
+    await put(`${RUNS}/pw-1.jsonl`, "not json\n[1]\n");
+    expect(await ingested()).toMatchObject({ appended: 1 });
+    expect((await read(`${RUNS}/pw-1.jsonl`)).startsWith("not json\n[1]\n{")).toBe(true);
+  });
+
   it("keeps identical results within one report (one per Playwright project)", async () => {
     const one = `<testsuite name="login.spec.ts" timestamp="2026-10-17T09:12:03Z" hostname="%s"><testcase name="signs in with valid credentials" classname="login.spec.ts" time="1"/></testsuite>`;
     await put(
@@ -278,6 +284,27 @@ describe("an extension's ingester", () => {
       ok: false,
       errors: [{ code: "ingest.invalid_result", path: "results.txt", field: "results.0.status" }],
     });
+  });
+
+  it.each([
+    ["an array", "[{ ref, status }]"],
+    ["ok without a list", "{ ok: true, value: 3 }"],
+    ["a failure without errors", "{ ok: false }"],
+  ])("cannot pass off %s as its Result", async (_, value) => {
+    await install(
+      LINES.replace(
+        /return \{ ok: true[\s\S]*?\) \};/,
+        `const ref = "", status = ""; return ${value};`,
+      ),
+    );
+    const host = await openRegistry(root);
+    await put("results.txt", "x\n");
+    const result = await host.registry.invoke(
+      "ingest-lines",
+      { ...base, report: "results.txt", run: "lines-1" },
+      { root, actor: "ci" },
+    );
+    expect(result).toMatchObject({ ok: false, errors: [{ code: "ingest.invalid_result" }] });
   });
 
   it("is refused at load when it is not an ingester", async () => {
