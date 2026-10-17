@@ -39,6 +39,12 @@ export type Operation<I extends z.ZodType = z.ZodType, O extends z.ZodType = z.Z
   spec: string;
   /** The input field that is the operation's subject, a CLI positional (ADR cli-repo-location). */
   subject?: string;
+  /**
+   * `cwd`: the host invokes it in the directory it was given, without locating a
+   * workspace (only `init`, which creates one). Default: the workspace root
+   * (ADR cli-generic-host).
+   */
+  root?: "cwd";
   run(input: z.infer<I>, context: OperationContext): Promise<Result<z.infer<O>>>;
 };
 

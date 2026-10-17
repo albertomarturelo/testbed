@@ -31,7 +31,8 @@ Codex uses `$name`). See [cfd-workflow-tooling](docs/decisions/2026-10-15-cfd-wo
 - Typecheck: `pnpm typecheck`
 - Test: `pnpm test` · coverage: `pnpm coverage`
 - Lint: `pnpm lint` (Biome + app boundary check) · fix: `pnpm format`
-- CLI from source (after build): `pnpm casefile <command>`
+- CLI from source (after build): `pnpm casefile <command>` — runs at the repo root, so pass
+  `--cwd <dir>`; or `node apps/cli/dist/bin.js <command>` from any directory
 
 ## Standing rules
 

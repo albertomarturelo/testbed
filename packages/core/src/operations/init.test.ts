@@ -43,6 +43,10 @@ describe("init", () => {
         created: ["casefile.yaml", ".casefile/package.json", ".casefile/.gitignore"],
         kept: [],
         skillsOffered: [],
+        next: [
+          expect.stringContaining("/casefile-setup"),
+          expect.stringContaining("gpg.format ssh"),
+        ],
       },
     });
     const config = parseConfigFile("casefile.yaml", await read("casefile.yaml"));
@@ -66,6 +70,7 @@ describe("init", () => {
       created: [],
       kept: ["casefile.yaml", ".casefile/package.json", ".casefile/.gitignore"],
       skillsOffered: [],
+      next: expect.any(Array),
     });
   });
 
@@ -79,6 +84,11 @@ describe("init", () => {
   it("only offers the skills when no target is chosen", async () => {
     const result = await init({ skills: [...SKILLS, { path: "README.md", text: "# skills\n" }] });
     expect(result.ok && result.value.skillsOffered).toEqual(["casefile-setup", "qa-bootstrap"]);
+    // Offered skills come first in the advice, with the command that copies them.
+    expect(result.ok && result.value.next[0]).toContain(
+      "casefile init --skills-into .claude/skills",
+    );
+    expect(result.ok && result.value.next).toHaveLength(3);
     await expect(read(".claude/skills/casefile-setup/SKILL.md")).rejects.toThrow();
     await expect(read(".agents/skills/casefile-setup/SKILL.md")).rejects.toThrow();
   });

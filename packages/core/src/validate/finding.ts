@@ -25,7 +25,7 @@ export type FindingCodeInfo = {
   hint?: string;
 };
 
-const ADD_PROJECT = "register it with `casefile project add <name> <path>`";
+const ADD_PROJECT = "register it with `casefile project add <name> --path <path>`";
 
 /**
  * Every code `validate` can report, with its severity (input for

@@ -55,7 +55,7 @@ renders the registry: CLI commands, MCP tools, inbox `kind`s, web screens. See
 | Path | Responsibility | Phase |
 |---|---|---|
 | `packages/core` | Schemas (JSON Schema 2020-12 + Zod), file loader (`yaml` + frontmatter splitter in core), inheritance resolver, query DSL (parser + evaluator), in-memory index with watcher, validator, id generator, Git utilities, gate evaluation, operation/extension registry, built-in operations and ingesters | F0 |
-| `apps/cli` | Generic host: renders the registry as commands; `init`, `project add`, `validate --json`, `resolve`, `query`, `id next`, `gates`, `spec` working in F0; published to npm as `casefile` (includes `casefile mcp`) | F0 |
+| `apps/cli` | Generic host ([cli-generic-host](decisions/2026-10-17-cli-generic-host.md)): renders the registry as commands; `init`, `project add`, `validate --json`, `resolve`, `query`, `id next`, `gates`, `spec` working in F0; published to npm as `casefile` (includes `casefile mcp`) | F0 |
 | `apps/mcp` | Generic host: MCP server (stdio + Streamable HTTP), token scopes; `cases.search`, `coverage.query` real, the rest typed stubs | F0 skeleton / F2 full |
 | `apps/web` | README only: Inbox, Explorer, Release screens + `.inbox` contract | F1 |
 | `packages/bridge-*` | README only: field mapping + `Bridge { push, pull, import(dryRun) }` | F2 |
@@ -104,7 +104,7 @@ Setup is done by the user's agent; the library scaffolds and validates
    casefile, and skills offered
    ([casefile-toolchain-dir](decisions/2026-10-15-casefile-toolchain-dir.md)).
 2. Agent, `/casefile-setup`: reads `casefile spec setup`, explores the repo, confirms
-   the plan with the human once, runs `casefile project add <name> <path>` per project.
+   the plan with the human once, runs `casefile project add <name> --path <path>` per project.
 3. The scaffold leaves `TODO` markers; `casefile validate --json` lists them as
    `scaffold.todo` with hints. The agent fixes and re-validates until exit 0.
 4. Agent, `qa-bootstrap` per project: feature tree, commons, existing tests mapped

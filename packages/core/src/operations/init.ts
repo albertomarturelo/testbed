@@ -21,9 +21,9 @@ const SkillFile = z.strictObject({
 
 const InitInput = z.strictObject({
   /** The casefile version running `init`; the host knows it, core does not look it up. */
-  casefileVersion: ExactVersion,
+  casefileVersion: ExactVersion.meta({ host: "version" }),
   /** The skills shipped in the published package, read by the host (`readSkillBundle`). */
-  skills: z.array(SkillFile).default([]),
+  skills: z.array(SkillFile).default([]).meta({ host: "skills" }),
   /** Where to copy them; empty means only offer them. */
   skillsInto: z.array(SkillTarget).default([]),
 });
@@ -35,15 +35,23 @@ const InitOutput = z.strictObject({
   kept: z.array(z.string()),
   /** Skill names in the bundle, for the host to offer when `skillsInto` was empty. */
   skillsOffered: z.array(z.string()),
+  /** What the human does next (ADR cli-generic-host): copy skills, `/casefile-setup`, signing. */
+  next: z.array(z.string()),
 });
 
 const CONFIG_TEXT = `# casefile workspace: run \`casefile spec setup\`.
-# Projects are added by the agent with \`casefile project add <name> <path>\`.
+# Projects are added by the agent with \`casefile project add <name> --path <path>\`.
 version: 1
 projects: []
 `;
 
 const TOOLCHAIN_GITIGNORE = "node_modules/\n";
+
+/** Always advised after `init` (ADR agent-driven-setup, git-is-identity). */
+const NEXT = [
+  "Run /casefile-setup in your agent: it reads `casefile spec setup`, registers each project and loops on `casefile validate --json` until it passes.",
+  "Sign your commits with SSH so every change to a case has a verifiable author: git config gpg.format ssh && git config user.signingkey ~/.ssh/id_ed25519.pub && git config commit.gpgsign true",
+];
 
 function toolchainPackage(version: string): string {
   const pkg = {
@@ -72,6 +80,7 @@ export const initOperation = defineOperation({
     ...SkillTarget.options.map((target) => `${target}/**`),
   ],
   spec: "specs/init.md",
+  root: "cwd",
   async run(input, context) {
     const created: string[] = [];
     const kept: string[] = [];
@@ -90,11 +99,14 @@ export const initOperation = defineOperation({
     const names = [
       ...new Set(input.skills.flatMap((file) => /^([^/]+)\//.exec(file.path)?.slice(1) ?? [])),
     ];
-    return ok({
-      created,
-      kept,
-      skillsOffered: input.skillsInto.length === 0 ? names.sort() : [],
-    });
+    const skillsOffered = input.skillsInto.length === 0 ? names.sort() : [];
+    const copy =
+      skillsOffered.length === 0
+        ? []
+        : [
+            `Copy the shipped skills (${skillsOffered.join(", ")}) where your agent reads them: casefile init --skills-into .claude/skills (or .agents/skills).`,
+          ];
+    return ok({ created, kept, skillsOffered, next: [...copy, ...NEXT] });
   },
 });
 

@@ -57,7 +57,7 @@ review:
 const KEEP = ".gitkeep";
 
 /**
- * `casefile project add <name> <path>` (ADR agent-driven-setup): registers a
+ * `casefile project add <name> --path <path>` (ADR agent-driven-setup, cli-generic-host): registers a
  * project in `casefile.yaml`, keeping its comments and key order, and scaffolds
  * `<path>/context/tests/`. Same arguments again is a no-op; a name or path that
  * clashes with another project is an error value.
