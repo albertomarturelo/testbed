@@ -49,6 +49,7 @@ describe("openRegistry", () => {
       "project-add",
       "query",
       "resolve",
+      "runs",
       "validate",
     ]);
     expect(host.specs.get("init")).toBe(join(CORE_PACKAGE_DIR, "specs/init.md"));
@@ -80,6 +81,7 @@ describe("openRegistry", () => {
       "project-add",
       "query",
       "resolve",
+      "runs",
       "validate",
     ]);
     expect(host.specs.get("hello")).toBe(

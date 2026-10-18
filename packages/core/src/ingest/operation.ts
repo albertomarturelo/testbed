@@ -5,7 +5,7 @@ import { TESTS_DIR } from "../load/paths.js";
 import { loadWorkspace } from "../load/workspace.js";
 import { requireProject } from "../operations/cases.js";
 import { defineOperation, type Operation } from "../operations/operation.js";
-import { Executor, FileSafeId, RunEvent, RunStatus, Slug } from "../schema/index.js";
+import { Executor, FileSafeId, NOTE_MAX, RunEvent, RunStatus, Slug } from "../schema/index.js";
 import { IngestedResult, type Ingester } from "./ingester.js";
 
 const IngestInput = z.strictObject({
@@ -128,6 +128,7 @@ export function ingestOperation(ingester: Ingester): Operation {
             duration_ms: result.duration_ms,
             evidence: result.evidence,
             automation_ref: result.ref,
+            note: bounded(result.note),
           });
           if (event.success) events.push(event.data);
           else {
@@ -203,7 +204,9 @@ type Merged = Omit<IngestedResult, "source">;
  * `at`; as separate events, a gate's tie-break by file order could let
  * "chromium passed" hide "firefox failed". Merged: the worst status, the
  * latest `at`, the longest duration, and one `result:<status>` evidence entry
- * per source, in report order. Refs come in order of first appearance.
+ * per source, in report order. The note joins the distinct notes of the results
+ * with the merged status (ADR run-event-note §3). Refs come in order of first
+ * appearance.
  */
 function mergeByRef(results: readonly IngestedResult[]): Merged[] {
   const groups = new Map<string, IngestedResult[]>();
@@ -220,6 +223,7 @@ function mergeByRef(results: readonly IngestedResult[]): Merged[] {
       undefined,
     );
     const durations = group.flatMap((r) => (r.duration_ms === undefined ? [] : [r.duration_ms]));
+    const notes = new Set(group.flatMap((r) => (r.status === status && r.note ? [r.note] : [])));
     const evidence = group.flatMap((r, i) => [
       ...(r.evidence ?? []),
       { kind: `result:${r.status}`, ref: r.source ?? `#${i + 1}` },
@@ -230,8 +234,17 @@ function mergeByRef(results: readonly IngestedResult[]): Merged[] {
       ...(at === undefined ? {} : { at }),
       ...(durations.length === 0 ? {} : { duration_ms: Math.max(...durations) }),
       evidence,
+      ...(notes.size === 0 ? {} : { note: [...notes].join("\n\n") }),
     };
   });
+}
+
+/** A note cut to `NOTE_MAX` characters, the last one `…` (ADR run-event-note §2). */
+function bounded(note: string | undefined): string | undefined {
+  if (note === undefined || note.length <= NOTE_MAX) return note;
+  // `max` counts UTF-16 units, like `length`; a pair is not split.
+  const cut = note.slice(0, NOTE_MAX - 1).replace(/[\uD800-\uDBFF]$/, "");
+  return `${cut}…`;
 }
 
 /**

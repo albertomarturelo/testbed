@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -15,11 +15,18 @@ import { overviewOperation } from "./overview.js";
 import { queryOperation } from "./query.js";
 import { createRegistry } from "./registry.js";
 import { resolveOperation } from "./resolve.js";
+import { runsOperation } from "./runs.js";
 
 const BROKEN = fileURLToPath(new URL("../../fixtures/broken/", import.meta.url));
 
 const registry = createRegistry();
-for (const op of [resolveOperation, queryOperation, idNextOperation, overviewOperation]) {
+for (const op of [
+  resolveOperation,
+  queryOperation,
+  idNextOperation,
+  overviewOperation,
+  runsOperation,
+]) {
   registry.register(op);
 }
 const invoke = (name: string, root: string, input: Record<string, unknown> = {}) =>
@@ -340,5 +347,66 @@ describe("overview operation", () => {
     const value = await overview(join(BROKEN, "resolve-missing-field"));
     expect(value.cases).toEqual([]);
     expect(value.projects).toEqual([{ name: "web", path: ".", cases: 0, unresolved: 1 }]);
+  });
+});
+
+describe("runs operation", () => {
+  type Runs = { ref: string; runs: { status: string; at: string; note?: string; path: string }[] };
+  const runs = async (root: string, input: Record<string, unknown>) => {
+    const result = await invoke("runs", root, input);
+    if (!result.ok) throw new Error(JSON.stringify(result.errors));
+    return result.value as Runs;
+  };
+
+  it("lists a qualified case's events from its own project, and none for a case that never ran", async () => {
+    const value = await runs(DEMO_MONOREPO_ROOT, { ref: "api/TC-0001" });
+    expect(value.ref).toBe("api/TC-0001");
+    expect(value.runs.length).toBeGreaterThan(0);
+    for (const run of value.runs)
+      expect(run.path).toMatch(/^services\/api\/context\/tests\/\.runs\//);
+    expect(await runs(DEMO_MONOREPO_ROOT, { ref: "web/TC-0002" })).toEqual({
+      ref: "web/TC-0002",
+      runs: [],
+    });
+  });
+
+  it("refuses an unknown or ambiguous case like resolve", async () => {
+    expect(await invoke("runs", DEMO_MONOREPO_ROOT, { ref: "TC-0001" })).toMatchObject({
+      ok: false,
+      errors: [{ code: "case.ambiguous" }],
+    });
+    expect(await invoke("runs", DEMO_MONOREPO_ROOT, { ref: "web/TC-0999" })).toMatchObject({
+      ok: false,
+      errors: [{ code: "case.unknown" }],
+    });
+  });
+
+  it("puts the newest first and, on a tie, the later line; a case that does not resolve still lists", async () => {
+    const root = join(tmp, "ws");
+    await mkdir(root);
+    await cp(join(BROKEN, "resolve-missing-field"), root, { recursive: true });
+    const event = (status: string, at: string, note?: string) =>
+      JSON.stringify({ run_id: "r", case_id: "TC-0001", status, executor: "ci:gh", at, note });
+    await mkdir(join(root, "context/tests/.runs"));
+    await writeFile(
+      join(root, "context/tests/.runs/a.jsonl"),
+      `${event("passed", "2026-10-01T00:00:00Z")}\n`,
+    );
+    await writeFile(
+      join(root, "context/tests/.runs/b.jsonl"),
+      [
+        event("failed", "2026-10-03T00:00:00Z", "first"),
+        event("failed", "2026-10-03T00:00:00Z", "second"),
+        event("passed", "2026-10-02T00:00:00Z"),
+        "",
+      ].join("\n"),
+    );
+    const value = await runs(root, { ref: "TC-0001" });
+    expect(value.runs.map((r) => [r.at.slice(0, 10), r.note ?? r.status, r.path])).toEqual([
+      ["2026-10-03", "second", "context/tests/.runs/b.jsonl"],
+      ["2026-10-03", "first", "context/tests/.runs/b.jsonl"],
+      ["2026-10-02", "passed", "context/tests/.runs/b.jsonl"],
+      ["2026-10-01", "passed", "context/tests/.runs/a.jsonl"],
+    ]);
   });
 });

@@ -92,4 +92,32 @@ export const NPM_LOGIN_EXPECTED = {
     "TC-0005": "passed",
     "TC-0006": "failed",
   },
+  /**
+   * Run events per case, newest first in `casefile runs`: the failures were
+   * ingested again after #68 with their notes (ADR run-event-note §6), so they
+   * have the noted event on top of the first one.
+   */
+  runCount: {
+    "TC-0001": 1,
+    "TC-0002": 2,
+    "TC-0003": 2,
+    "TC-0004": 1,
+    "TC-0005": 1,
+    "TC-0006": 2,
+    "TC-0007": 0,
+  },
+  /** Text in each failure's latest note; the page itself is in the attachment below. */
+  failureNotes: {
+    "TC-0002": "Test timeout of 30000ms exceeded.",
+    "TC-0003": 'Expected: "text"',
+    "TC-0006": "Error: element(s) not found",
+  },
+  /** Playwright's page snapshot of each failure, kept as `attachment` evidence. */
+  failureAttachments: {
+    "TC-0002": "test-results/login-blocks-an-empty-submit-in-the-browser-chromium/error-context.md",
+    "TC-0003":
+      "test-results/login-masks-the-password-and-shows-it-on-request-chromium/error-context.md",
+    "TC-0006":
+      "test-results/login-links-to-password-recovery-and-sign-up-chromium/error-context.md",
+  },
 } as const;

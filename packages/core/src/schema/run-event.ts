@@ -36,6 +36,9 @@ export const Triage = z.strictObject({
   note: z.string().optional(),
 });
 
+/** Longest `note` on a run event; ingest cuts longer ones (ADR run-event-note). */
+export const NOTE_MAX = 2000;
+
 /** One line of `context/tests/.runs/<run-id>.jsonl`. Append-only; corrections are new events. */
 export const RunEvent = z.strictObject({
   run_id: FileSafeId,
@@ -51,6 +54,8 @@ export const RunEvent = z.strictObject({
   step_results: z.array(StepResult).optional(),
   evidence: z.array(Evidence).optional(),
   automation_ref: z.string().min(1).optional(),
+  /** What the executor said about the result: a failure message, a tester's remark. */
+  note: z.string().min(1).max(NOTE_MAX).optional(),
   triage: Triage.optional(),
 });
 

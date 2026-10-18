@@ -8,6 +8,7 @@ import { overviewOperation } from "./overview.js";
 import { projectAddOperation } from "./project-add.js";
 import { queryOperation } from "./query.js";
 import { resolveOperation } from "./resolve.js";
+import { runsOperation } from "./runs.js";
 import { validateOperation } from "./validate.js";
 
 /** Core's own operations; hosts register them like any extension's (ADR extension-model). */
@@ -19,6 +20,7 @@ export const builtinOperations: readonly Operation[] = [
   queryOperation,
   idNextOperation,
   overviewOperation,
+  runsOperation,
   coverOperation,
   ingestOperation(junitIngester),
 ];

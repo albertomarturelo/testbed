@@ -27,6 +27,7 @@ export * from "./operations/project-add.js";
 export * from "./operations/query.js";
 export * from "./operations/registry.js";
 export * from "./operations/resolve.js";
+export * from "./operations/runs.js";
 export * from "./operations/spec.js";
 export * from "./operations/toolchain.js";
 export * from "./operations/validate.js";

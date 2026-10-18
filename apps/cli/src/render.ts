@@ -71,6 +71,13 @@ function entry(key: string, value: unknown, indent: string): string[] {
       ...Object.entries(value).flatMap(([k, v]) => entry(k, v, `${indent}  `)),
     ];
   }
+  if (typeof value === "string" && value.includes("\n")) {
+    // Multi-line text (a run's failure note) as a block under its key, so it keeps the indent.
+    return [
+      `${indent}${key}: |`,
+      ...value.split(/\r?\n/).map((line) => `${indent}  ${line}`.trimEnd()),
+    ];
+  }
   return [`${indent}${key}: ${scalar(value)}`];
 }
 
@@ -110,8 +117,14 @@ function table(rows: readonly Record<string, unknown>[], indent: string): string
   );
 }
 
+/** Scalars only, and no multi-line text: a table cell holds one line. */
 function isFlatRecord(value: unknown): value is Record<string, unknown> {
-  return isRecord(value) && Object.values(value).every((v) => v === null || typeof v !== "object");
+  return (
+    isRecord(value) &&
+    Object.values(value).every(
+      (v) => v === null || (typeof v !== "object" && !(typeof v === "string" && v.includes("\n"))),
+    )
+  );
 }
 
 function scalar(value: unknown): string {

@@ -7,6 +7,13 @@
       "runtimeArgs": ["ui", "--cwd", "examples/demo-monorepo"],
       "port": 4321,
       "url": "http://127.0.0.1:4321"
+    },
+    {
+      "name": "ui-npm-login",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["ui", "--cwd", "examples/npm-login", "--port", "4322"],
+      "port": 4322,
+      "url": "http://127.0.0.1:4322"
     }
   ]
 }

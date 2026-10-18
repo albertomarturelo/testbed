@@ -84,6 +84,7 @@ Try it from a clone of this repository:
 pnpm install && pnpm build
 node scripts/link-toolchain.mjs examples/npm-login
 pnpm casefile overview --cwd examples/npm-login
+pnpm casefile runs TC-0003 --cwd examples/npm-login
 pnpm ui --cwd examples/npm-login
 ```
 
@@ -159,6 +160,7 @@ Every command has `--help`, `--json` for scripts and agents, and a SPEC:
 | `casefile cover` | Writes the cases the agent proposes for a feature, as drafts |
 | `casefile ingest junit` | Turns a JUnit report into run events matched by `automation.ref` |
 | `casefile overview` | Every project with its cases, automation status and last run |
+| `casefile runs` | One case's run events, newest first, with why each one failed |
 | `casefile query` | Lists the cases a query selects (`priority = P1 and state = draft`) |
 | `casefile resolve` | Shows a case after inheritance, with where each value came from |
 | `casefile id next` | The next free case id of a project |
@@ -187,10 +189,10 @@ The reasons behind each one are in [docs/decisions](docs/decisions/_index.md).
 
 | Today (from source) | Next |
 |---|---|
-| `init`, `project add`, `validate`, `cover`, `overview`, `query`, `resolve`, `id next`, `spec` | Publish `@casefile/cli` to npm |
+| `init`, `project add`, `validate`, `cover`, `overview`, `runs`, `query`, `resolve`, `id next`, `spec` | Publish `@casefile/cli` to npm |
 | Skills `casefile-setup` and `qa-cover` | Skills `qa-bootstrap`, `qa-run`, `qa-release`, `qa-inbox`, `qa-review` |
-| `ingest junit` (Playwright, Surefire) | CTRF and Allure ingesters; marking environment-blocked results as `blocked` |
-| Read-only local UI (`pnpm ui`) | Run history and failure reasons in the UI; live reload; Inbox and Release screens |
+| `ingest junit` (Playwright, Surefire), keeping failure messages and attachments | CTRF and Allure ingesters; marking environment-blocked results as `blocked` |
+| Read-only local UI (`pnpm ui`), with each case's runs and why they failed | Live reload; Inbox and Release screens |
 | Release gate evaluation in core | `casefile gates` on the CLI and in the UI |
 | | MCP server; Zephyr and Xray bridges; a documented way for CI to commit its run files |
 
