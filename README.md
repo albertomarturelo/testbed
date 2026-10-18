@@ -194,7 +194,8 @@ The reasons behind each one are in [docs/decisions](docs/decisions/_index.md).
 | `ingest junit` (Playwright, Surefire), keeping failure messages and attachments | CTRF and Allure ingesters; marking environment-blocked results as `blocked` |
 | Read-only local UI (`pnpm ui`), with each case's runs and why they failed | Live reload; Inbox and Release screens |
 | Release gate evaluation in core | `casefile gates` on the CLI and in the UI |
-| | MCP server; Zephyr and Xray bridges; a documented way for CI to commit its run files |
+| | CI commits its run files to the branch it tested, as `casefile-ci` ([decided](docs/decisions/2026-10-17-ci-commits-run-files.md), #73) |
+| | MCP server; Zephyr and Xray bridges |
 
 Planned work is tracked in [issues](https://github.com/albertomarturelo/testbed/issues).
 
