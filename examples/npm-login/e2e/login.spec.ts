@@ -15,20 +15,22 @@ test("shows the sign-in form", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Sign In" })).toBeVisible();
 });
 
+// The page blocks an empty submit by disabling Sign In, so there is nothing to
+// click (#76).
 test("blocks an empty submit in the browser", async ({ page }) => {
-  await page.getByRole("button", { name: "Sign In" }).click();
+  await expect(page.getByLabel("Username")).toHaveValue("");
+  await expect(page.getByLabel("Password", { exact: true })).toHaveValue("");
+  await expect(page.getByRole("button", { name: "Sign In" })).toBeDisabled();
   await expect(page).toHaveURL(/\/login$/);
-  const missing = await page
-    .getByLabel("Username")
-    .evaluate((input: HTMLInputElement) => input.validity.valueMissing);
-  expect(missing).toBe(true);
 });
 
 test("masks the password and shows it on request", async ({ page }) => {
   const password = page.getByLabel("Password", { exact: true });
   await expect(password).toHaveAttribute("type", "password");
   await page.getByRole("button", { name: "Show password" }).click();
-  await expect(password).toHaveAttribute("type", "text");
+  // The page sets type="input", not "text". Browsers show an unknown type as
+  // text, and the `type` property then reads "text" (#76).
+  await expect.poll(() => password.evaluate((input: HTMLInputElement) => input.type)).toBe("text");
 });
 
 test("moves through the form with the keyboard", async ({ page }) => {

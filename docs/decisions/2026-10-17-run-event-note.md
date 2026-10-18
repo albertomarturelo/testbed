@@ -8,8 +8,9 @@ Accepted — 2026-10-17 (#68). Extends [ingester-contract](2026-10-17-ingester-c
 ## Context
 
 The first real case (#35) ingested three Playwright failures, and the UI could
-only say `failed`: the cause, a Cloudflare challenge page, was in the JUnit
-report and lost on ingest. ingester-contract left failure messages out because
+only say `failed`. Each cause was in the JUnit report and was lost on ingest:
+a Cloudflare challenge page for one, and a disabled button and an unexpected
+attribute value for the other two (#76). ingester-contract left failure messages out because
 a run event had no field for them, and attachments for "when the UI needs
 them". The UI now shows a case's run history (#68), and each failed run needs
 its reason next to it. A report's failure text can be a full stack trace or call
