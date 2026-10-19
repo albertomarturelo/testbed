@@ -34,3 +34,4 @@
 | [2026-10-17-ingester-contract](2026-10-17-ingester-contract.md) | How result ingesters plug in and what they write | Accepted | 2026-10-17 |
 | [2026-10-17-run-event-note](2026-10-17-run-event-note.md) | Why a run ended: a bounded `note` on run events, attachments as evidence | Accepted | 2026-10-17 |
 | [2026-10-17-ci-commits-run-files](2026-10-17-ci-commits-run-files.md) | CI commits its run files to the branch it tested | Accepted | 2026-10-17 |
+| [2026-10-19-authoring-loop-first](2026-10-19-authoring-loop-first.md) | The authoring loop is the product; runs and CI are a complement | Accepted | 2026-10-19 |
