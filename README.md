@@ -168,6 +168,9 @@ Every command has `--help`, `--json` for scripts and agents, and a SPEC:
 
 ## Principles
 
+- **Authoring first.** The product is a QA and an agent writing, maintaining and
+  reading cases from the code; a case is complete without a run. Results and
+  CI are a complement.
 - **Files are the source of truth.** No database, no hidden state: everything is
   recomputable from the repo.
 - **Git is identity.** Who changed a case and why comes from commits and
@@ -187,15 +190,13 @@ The reasons behind each one are in [docs/decisions](docs/decisions/_index.md).
 
 ## Today / Next
 
-| Today (from source) | Next |
+| Today (from source) | Next (ranked by the [authoring loop](docs/decisions/2026-10-19-authoring-loop-first.md)) |
 |---|---|
-| `init`, `project add`, `validate`, `cover`, `overview`, `runs`, `query`, `resolve`, `id next`, `spec` | Publish `@casefile/cli` to npm |
-| Skills `casefile-setup` and `qa-cover` | Skills `qa-bootstrap`, `qa-run`, `qa-release`, `qa-inbox`, `qa-review` |
-| `ingest junit` (Playwright, Surefire), keeping failure messages and attachments | CTRF and Allure ingesters; marking environment-blocked results as `blocked` |
-| Read-only local UI (`pnpm ui`), with each case's runs and why they failed | Live reload; Inbox and Release screens |
-| Release gate evaluation in core | `casefile gates` on the CLI and in the UI |
-| | CI commits its run files to the branch it tested, as `casefile-ci` ([decided](docs/decisions/2026-10-17-ci-commits-run-files.md), #73) |
-| | MCP server; Zephyr and Xray bridges |
+| `init`, `project add`, `validate`, `cover`, `overview`, `runs`, `query`, `resolve`, `id next`, `spec` | `review`: the agent edits, approves and retires a case on the QA's request (#83, #84) |
+| Skills `casefile-setup` and `qa-cover` | Skills `qa-bootstrap` (a project's feature tree and first drafts from its code) and `qa-review` (#85) |
+| Read-only local UI (`pnpm ui`): projects, feature tree, cases, each case's runs and why they failed | The case page reads as a document; coverage per feature; drafts awaiting review (#86, #87); live reload (#26) |
+| `ingest junit` (Playwright, Surefire), keeping failure messages and attachments | Publish `@casefile/cli` to npm |
+| Release gate evaluation in core | Complements, when the real case needs them: `run` for manual executions, CTRF and Allure, environment-blocked results, CI run files ([decided](docs/decisions/2026-10-17-ci-commits-run-files.md)), `casefile gates`, MCP, Zephyr and Xray bridges |
 
 Planned work is tracked in [issues](https://github.com/albertomarturelo/testbed/issues).
 
