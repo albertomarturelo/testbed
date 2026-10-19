@@ -33,9 +33,10 @@ const FINAL = new Set(["automated", "flaky", "retired"]);
 /**
  * What the human reads for a case's automation. A case linked to a test that no
  * CI or agent run reported yet is `linked`, not the `manual` it resolves to (ADR
- * write-ownership); one nobody can automate is `not eligible`.
+ * write-ownership): not "never ran", since a human may have run it by hand. One
+ * nobody can automate is `not eligible`.
  */
-export function automationKind(a: Automation): "status" | "linked" | "not_eligible" {
+function automationKind(a: Automation): "status" | "linked" | "not_eligible" {
   if (FINAL.has(a.status)) return "status";
   if (a.ref !== null) return "linked";
   return a.eligible ? "status" : "not_eligible";
@@ -52,7 +53,7 @@ export function AutomationBadge({ automation }: { automation: Automation }) {
           title={`Linked to ${automation.ref}; no CI or agent run reported it yet (${status})`}
         >
           <Link2 aria-hidden />
-          {"linked · no run"}
+          linked
         </Badge>
       );
     case "not_eligible":

@@ -56,6 +56,12 @@ describe("CaseList", () => {
       automation: "in_progress",
       automation_ref: "login.spec.ts::wip",
     }),
+    // A human run proves nothing: the case is still only linked.
+    row("TC-0006", "Linked, run by hand", {
+      automation_ref: "login.spec.ts::by hand",
+      last_run: "passed",
+      last_run_at: "2026-10-16T10:00:00Z",
+    }),
     row("TC-0004", "By hand", {}),
     row("TC-0005", "Needs an account", { eligible: false }),
   ];
@@ -65,8 +71,9 @@ describe("CaseList", () => {
   it("tells a linked case that never ran from manual and from not eligible", () => {
     render(<CaseList rows={rows} />);
     expect(automationCell("Proven")).toBe("automated");
-    expect(automationCell("Linked")).toBe("linked · no run");
-    expect(automationCell("Linked, in progress")).toBe("linked · no run");
+    expect(automationCell("Linked")).toBe("linked");
+    expect(automationCell("Linked, in progress")).toBe("linked");
+    expect(automationCell("Linked, run by hand")).toBe("linked");
     expect(automationCell("By hand")).toBe("manual");
     expect(automationCell("Needs an account")).toBe("not eligible");
     // The badge says which test is linked and what the case still resolves to.
