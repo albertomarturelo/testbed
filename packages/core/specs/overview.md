@@ -21,6 +21,8 @@ It never writes.
   "cases": [{ "ref": "web/TC-0001", "project": "web", "feature": "login",
               "title": "Sign in with valid credentials", "state": "active",
               "priority": "P1", "automation": "automated",
+              "automation_ref": "login.spec.ts::signs in with valid credentials",
+              "eligible": true,
               "last_run": "passed", "last_run_at": "2026-10-14T07:00:00Z" }] }
 ```
 
@@ -29,6 +31,10 @@ It never writes.
   (`checkout/payments`; ADR feature-tree-not-calendar).
 - `automation` is the resolved status: `automated` and `flaky` are derived from
   runs, never stored (ADR write-ownership).
+- `automation_ref` is the case's `automation.ref`, `null` when no test is linked;
+  `eligible` is the resolved `automation.eligible`. A case with a ref whose
+  `automation` is still `manual`, `candidate` or `in_progress` is linked to a
+  test that no CI or agent run has reported yet.
 - `last_run` / `last_run_at` are the status and time of the case's latest run
   event in its project's `.runs/`, whatever the status or executor; `null` when
   the case never ran. Release gates use their own rule (`casefile spec gates`

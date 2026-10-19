@@ -27,6 +27,8 @@ function row(ref: string, feature: string, title: string, automation: string, ru
     state: "active",
     priority: "P1",
     automation,
+    automation_ref: automation === "automated" ? `${feature}.spec.ts::${title}` : null,
+    eligible: true,
     last_run: run,
     last_run_at: run === null ? null : "2026-10-14T07:00:00Z",
   };

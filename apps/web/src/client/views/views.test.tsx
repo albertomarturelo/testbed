@@ -2,8 +2,9 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "@/App";
-import type { Result } from "@/api";
+import type { CaseRow, Result } from "@/api";
 import { CaseDetail } from "@/views/CaseDetail";
+import { CaseList } from "@/views/CaseList";
 import { QueryView } from "@/views/QueryView";
 import { ValidateView } from "@/views/ValidateView";
 
@@ -26,6 +27,91 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+});
+
+describe("CaseList", () => {
+  const row = (id: string, title: string, automation: Partial<CaseRow>): CaseRow => ({
+    ref: `web/${id}`,
+    project: "web",
+    feature: "login",
+    title,
+    state: "draft",
+    priority: "P2",
+    automation: "manual",
+    automation_ref: null,
+    eligible: true,
+    last_run: null,
+    last_run_at: null,
+    ...automation,
+  });
+  const rows = [
+    row("TC-0001", "Proven", {
+      automation: "automated",
+      automation_ref: "login.spec.ts::proven",
+      last_run: "failed",
+      last_run_at: "2026-10-17T19:23:06Z",
+    }),
+    row("TC-0002", "Linked", { automation_ref: "login.spec.ts::linked" }),
+    row("TC-0003", "Linked, in progress", {
+      automation: "in_progress",
+      automation_ref: "login.spec.ts::wip",
+    }),
+    // A human run proves nothing: the case is still only linked.
+    row("TC-0006", "Linked, run by hand", {
+      automation_ref: "login.spec.ts::by hand",
+      last_run: "passed",
+      last_run_at: "2026-10-16T10:00:00Z",
+    }),
+    row("TC-0004", "By hand", {}),
+    row("TC-0005", "Needs an account", { eligible: false }),
+  ];
+  const automationCell = (title: string) =>
+    screen.getByRole("link", { name: title }).closest("tr")?.querySelectorAll("td")[5]?.textContent;
+
+  it("tells a linked case that never ran from manual and from not eligible", () => {
+    render(<CaseList rows={rows} />);
+    expect(automationCell("Proven")).toBe("automated");
+    expect(automationCell("Linked")).toBe("linked");
+    expect(automationCell("Linked, in progress")).toBe("linked");
+    expect(automationCell("Linked, run by hand")).toBe("linked");
+    expect(automationCell("By hand")).toBe("manual");
+    expect(automationCell("Needs an account")).toBe("not eligible");
+    // The badge says which test is linked and what the case still resolves to.
+    expect(
+      screen.getAllByTitle(/^Linked to login\.spec\.ts::wip; .*\(in progress\)$/),
+    ).toHaveLength(1);
+  });
+
+  it("keeps case, title, automation and last run when the list is narrow", () => {
+    render(<CaseList rows={rows} />);
+    const table = screen.getByRole("table");
+    // Columns hide by the list's own width (a container query), not the viewport's.
+    expect(table.closest(".\\@container")).not.toBeNull();
+    const heads = screen.getAllByRole("columnheader");
+    const hidden = heads.filter((h) => h.classList.contains("hidden")).map((h) => h.textContent);
+    expect(hidden).toEqual(["Feature", "State", "Priority"]);
+    for (const h of heads.filter((h) => hidden.includes(h.textContent))) {
+      expect(h.classList.contains("@4xl:table-cell")).toBe(true);
+    }
+    // Every cell of a hidden column hides with it.
+    for (const tr of table.querySelectorAll("tbody tr")) {
+      const cells = [...tr.querySelectorAll("td")].map((td) => td.classList.contains("hidden"));
+      expect(cells).toEqual([false, false, true, true, true, false, false]);
+    }
+    // The title gives way and truncates instead of pushing Last run out.
+    const title = screen.getByRole("link", { name: "Needs an account" });
+    expect(title.classList.contains("truncate")).toBe(true);
+    expect(title.closest("td")?.classList.contains("max-w-0")).toBe(true);
+    // One project: the id is enough, the ref stays on hover.
+    expect(screen.getByRole("link", { name: "TC-0005" }).getAttribute("title")).toBe("web/TC-0005");
+  });
+
+  it("keeps the full ref when the list mixes projects", () => {
+    const api = { ...row("TC-0001", "Create an order", {}), ref: "api/TC-0001", project: "api" };
+    render(<CaseList rows={[...rows, api]} />);
+    expect(screen.getByRole("link", { name: "web/TC-0001" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "api/TC-0001" })).toBeTruthy();
+  });
 });
 
 describe("CaseDetail", () => {

@@ -33,6 +33,10 @@ const OverviewOutput = z.strictObject({
       state: z.string(),
       priority: z.string(),
       automation: z.string(),
+      /** The case's `automation.ref`, `null` when no test is linked. */
+      automation_ref: z.string().nullable(),
+      /** The resolved `automation.eligible`: `false` when nobody can automate it. */
+      eligible: z.boolean(),
       /** Status of the case's latest run event, `null` without one. */
       last_run: z.string().nullable(),
       last_run_at: z.string().nullable(),
@@ -73,6 +77,8 @@ export const overviewOperation = defineOperation({
             state: c.state,
             priority: c.priority,
             automation: c.automation.status,
+            automation_ref: c.automation.ref ?? null,
+            eligible: c.automation.eligible,
             last_run: run?.status ?? null,
             last_run_at: run?.at ?? null,
           };

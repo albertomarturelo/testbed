@@ -1,3 +1,4 @@
+import { Link2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 type Variant = "default" | "secondary" | "destructive" | "outline";
@@ -23,7 +24,49 @@ export function RunBadge({ status }: { status: string | null }) {
   return <Badge variant={RUN[status] ?? "outline"}>{status}</Badge>;
 }
 
+/** A case's resolved `automation`: its status, linked test (`null`: none) and eligibility. */
+export type Automation = { status: string; ref: string | null; eligible: boolean };
+
+/** Statuses that say all there is: proven by runs (`automated`, `flaky`) or `retired`. */
+const FINAL = new Set(["automated", "flaky", "retired"]);
+
+/**
+ * What the human reads for a case's automation. A case linked to a test that no
+ * CI or agent run reported yet is `linked`, not the `manual` it resolves to (ADR
+ * write-ownership): not "never ran", since a human may have run it by hand. One
+ * nobody can automate is `not eligible`.
+ */
+function automationKind(a: Automation): "status" | "linked" | "not_eligible" {
+  if (FINAL.has(a.status)) return "status";
+  if (a.ref !== null) return "linked";
+  return a.eligible ? "status" : "not_eligible";
+}
+
 /** The resolved `automation.status`; `automated`/`flaky` come from runs. */
-export function AutomationBadge({ status }: { status: string }) {
-  return <Badge variant={AUTOMATION[status] ?? "outline"}>{status.replace("_", " ")}</Badge>;
+export function AutomationBadge({ automation }: { automation: Automation }) {
+  const status = automation.status.replace("_", " ");
+  switch (automationKind(automation)) {
+    case "linked":
+      return (
+        <Badge
+          variant="secondary"
+          title={`Linked to ${automation.ref}; no CI or agent run reported it yet (${status})`}
+        >
+          <Link2 aria-hidden />
+          linked
+        </Badge>
+      );
+    case "not_eligible":
+      return (
+        <Badge
+          variant="outline"
+          className="border-dashed text-muted-foreground"
+          title="automation.eligible is false: nobody can automate it"
+        >
+          not eligible
+        </Badge>
+      );
+    default:
+      return <Badge variant={AUTOMATION[automation.status] ?? "outline"}>{status}</Badge>;
+  }
 }

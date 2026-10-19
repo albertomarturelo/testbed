@@ -23,6 +23,9 @@ export type CaseRow = {
   state: string;
   priority: string;
   automation: string;
+  /** `automation.ref`, `null` when no test is linked. */
+  automation_ref: string | null;
+  eligible: boolean;
   last_run: string | null;
   last_run_at: string | null;
 };

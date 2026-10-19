@@ -65,7 +65,7 @@ export function CaseDetail({ caseRef }: { caseRef: string }) {
           <span className="font-mono text-muted-foreground text-sm">{value.ref}</span>
           <Badge variant="outline">{String(c.state)}</Badge>
           <Badge variant="secondary">{String(c.priority)}</Badge>
-          <AutomationBadge status={automation.status} />
+          <AutomationBadge automation={{ ...automation, ref: automation.ref ?? null }} />
         </div>
         <h1 className="font-semibold text-2xl tracking-tight">{String(c.title)}</h1>
         <p className="font-mono text-muted-foreground text-xs">{value.path}</p>
@@ -78,8 +78,9 @@ export function CaseDetail({ caseRef }: { caseRef: string }) {
 
       <RunsCard caseRef={caseRef} />
 
+      {/* min-w-0: a grid item is as wide as its content otherwise, and overflows narrow screens. */}
       <div className="grid gap-4 xl:grid-cols-2">
-        <Card>
+        <Card className="min-w-0">
           <CardHeader>
             <CardTitle>Steps</CardTitle>
             {preconditions.length === 0 ? null : (
@@ -105,7 +106,7 @@ export function CaseDetail({ caseRef }: { caseRef: string }) {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="min-w-0">
           <CardHeader>
             <CardTitle>Inherited values</CardTitle>
             <CardDescription>Each value and the file it comes from.</CardDescription>
