@@ -8,6 +8,8 @@ import {
   DEMO_MONOREPO_EXPECTED,
   DEMO_MONOREPO_ROOT,
   DEMO_ROOT,
+  NPM_LOGIN_EXPECTED,
+  NPM_LOGIN_ROOT,
 } from "../demo.fixture.js";
 import { nextCaseId } from "../ids.js";
 import { idNextOperation } from "./id-next.js";
@@ -262,7 +264,7 @@ describe("id-next operation", () => {
 describe("overview operation", () => {
   type Overview = {
     projects: { name: string; path: string; cases: number; unresolved: number }[];
-    cases: Record<string, string | null>[];
+    cases: Record<string, string | boolean | null>[];
   };
   const overview = async (root: string, input: Record<string, unknown> = {}) => {
     const result = await invoke("overview", root, input);
@@ -341,6 +343,63 @@ describe("overview operation", () => {
       }),
     ]);
     expect(value.projects).toEqual([{ name: "app", path: ".", cases: 1, unresolved: 0 }]);
+  });
+
+  it("gives each case's linked test and whether it can be automated", async () => {
+    const value = await overview(NPM_LOGIN_ROOT);
+    const rows = new Map(value.cases.map((c) => [String(c.ref).split("/")[1], c]));
+    for (const id of NPM_LOGIN_EXPECTED.derivedAutomated) {
+      expect(rows.get(id)).toMatchObject({ automation: "automated", eligible: true });
+      expect(rows.get(id)?.automation_ref).toMatch(/^login\.spec\.ts::/);
+    }
+    for (const id of NPM_LOGIN_EXPECTED.manualNotEligible) {
+      expect(rows.get(id)).toMatchObject({
+        automation: "manual",
+        automation_ref: null,
+        eligible: false,
+      });
+    }
+  });
+
+  it("keeps a linked case manual until a CI or agent run reports its test", async () => {
+    await put("casefile.yaml", "version: 1\nprojects:\n  - { name: app, path: . }\n");
+    await put(
+      "context/tests/_common.yaml",
+      "surfaces: [web]\nlayer: e2e\npriority: P2\nautomation:\n  eligible: true\n",
+    );
+    await put(
+      "context/tests/login/TC-0001.md",
+      [
+        "---",
+        "id: TC-0001",
+        "feature: login",
+        "title: Sign in",
+        "state: draft",
+        "origin: agent",
+        "automation:",
+        "  ref: login.spec.ts::signs in",
+        "steps:",
+        "  - do: Sign in",
+        "    expect: The home page opens",
+        "history:",
+        '  - at: "2026-10-05T09:00:00Z"',
+        "    by: qa@acme.example",
+        "    via: cli:cover",
+        "    change: 4c1a2b3d-1e2f-4a5b-8c6d-7e8f9a0b1c01",
+        "    event: created",
+        "---",
+        "",
+      ].join("\n"),
+    );
+    const value = await overview(tmp);
+    expect(value.cases).toEqual([
+      expect.objectContaining({
+        automation: "manual",
+        automation_ref: "login.spec.ts::signs in",
+        eligible: true,
+        last_run: null,
+      }),
+    ]);
   });
 
   it("counts cases that do not resolve and leaves them out", async () => {
