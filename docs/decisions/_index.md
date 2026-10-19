@@ -5,7 +5,7 @@
 | [2026-10-15-initial-architecture](2026-10-15-initial-architecture.md) | Initial architecture | Accepted | 2026-10-15 |
 | [2026-10-15-files-are-source-of-truth](2026-10-15-files-are-source-of-truth.md) | Files are the source of truth | Accepted | 2026-10-15 |
 | [2026-10-15-git-is-identity](2026-10-15-git-is-identity.md) | Git is identity | Accepted | 2026-10-15 |
-| [2026-10-15-agent-is-sole-writer](2026-10-15-agent-is-sole-writer.md) | Agent is the sole writer of test files | Accepted | 2026-10-15 |
+| [2026-10-15-agent-is-sole-writer](2026-10-15-agent-is-sole-writer.md) | Agent is the sole writer of test files | Superseded by [human-writes-through-operations](2026-10-19-human-writes-through-operations.md) | 2026-10-15 |
 | [2026-10-15-no-vendor-llm](2026-10-15-no-vendor-llm.md) | Bring your own agent — no LLM in the framework | Accepted | 2026-10-15 |
 | [2026-10-15-feature-tree-not-calendar](2026-10-15-feature-tree-not-calendar.md) | Feature tree, not calendar | Accepted | 2026-10-15 |
 | [2026-10-15-single-query-dsl](2026-10-15-single-query-dsl.md) | Single query DSL | Accepted | 2026-10-15 |
@@ -35,3 +35,4 @@
 | [2026-10-17-run-event-note](2026-10-17-run-event-note.md) | Why a run ended: a bounded `note` on run events, attachments as evidence | Accepted | 2026-10-17 |
 | [2026-10-17-ci-commits-run-files](2026-10-17-ci-commits-run-files.md) | CI commits its run files to the branch it tested | Accepted | 2026-10-17 |
 | [2026-10-19-authoring-loop-first](2026-10-19-authoring-loop-first.md) | The authoring loop is the product; runs and CI are a complement | Accepted | 2026-10-19 |
+| [2026-10-19-human-writes-through-operations](2026-10-19-human-writes-through-operations.md) | The QA writes cases from the viewer through core operations | Accepted | 2026-10-19 |

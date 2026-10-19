@@ -24,7 +24,7 @@ orchestrates from a local UI without touching files.
 | Actor | Writes | Through |
 |---|---|---|
 | Agent (Claude Code, Codex) | Files under `context/tests/` (sole writer); `projects` and `commons` in `casefile.yaml` | Skills with limited scope, MCP, `casefile project add` |
-| Human QA | Intents (`.inbox/`); `casefile.yaml` `version`/`extensions` | Local UI (`pnpm ui` in F1; `casefile ui` after the publishing decision — [local-ui-stack](decisions/2026-10-17-local-ui-stack.md)), `casefile init` |
+| Human QA | Cases through `review`/`cover`, results through `run` ([human-writes-through-operations](decisions/2026-10-19-human-writes-through-operations.md)); intents (`.inbox/`, deferred); `casefile.yaml` `version`/`extensions` | Local UI (`pnpm ui` in F1; `casefile ui` after the publishing decision — [local-ui-stack](decisions/2026-10-17-local-ui-stack.md)), `casefile init` |
 | CI | Run results, validation verdicts | `casefile` CLI |
 | Release manager | Sign-offs | Readiness reports, `release sign` |
 

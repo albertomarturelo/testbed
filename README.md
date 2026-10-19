@@ -175,8 +175,8 @@ Every command has `--help`, `--json` for scripts and agents, and a SPEC:
   recomputable from the repo.
 - **Git is identity.** Who changed a case and why comes from commits and
   their trailers, not from accounts.
-- **The agent is the only writer of cases**, through operations with a limited
-  scope; humans express intent and review.
+- **Cases are written only through core operations**, by the agent or the QA
+  from the viewer; Git says who. Nobody hand-edits YAML.
 - **Bring your own agent.** casefile never calls an LLM.
 - **A feature tree, not a calendar.** Cases are organised by what they verify,
   not by sprint or test cycle.
@@ -194,9 +194,9 @@ The reasons behind each one are in [docs/decisions](docs/decisions/_index.md).
 |---|---|
 | `init`, `project add`, `validate`, `cover`, `overview`, `runs`, `query`, `resolve`, `id next`, `spec` | `review`: the agent edits, approves and retires a case on the QA's request (#83, #84) |
 | Skills `casefile-setup` and `qa-cover` | Skills `qa-bootstrap` (a project's feature tree and first drafts from its code) and `qa-review` (#85) |
-| Read-only local UI (`pnpm ui`): projects, feature tree, cases, each case's runs and why they failed | The case page reads as a document; coverage per feature; drafts awaiting review (#86, #87); live reload (#26) |
+| Read-only local UI (`pnpm ui`): projects, feature tree, cases, each case's runs and why they failed | The QA edits, approves and retires a case, records a result and creates one from the viewer (#91–#94, [decided](docs/decisions/2026-10-19-human-writes-through-operations.md)); the case page reads as a document; coverage per feature (#86, #87); live reload (#26) |
 | `ingest junit` (Playwright, Surefire), keeping failure messages and attachments | Publish `@casefile/cli` to npm |
-| Release gate evaluation in core | Complements, when the real case needs them: `run` for manual executions, CTRF and Allure, environment-blocked results, CI run files ([decided](docs/decisions/2026-10-17-ci-commits-run-files.md)), `casefile gates`, MCP, Zephyr and Xray bridges |
+| Release gate evaluation in core | Complements, when the real case needs them: CTRF and Allure, environment-blocked results, CI run files ([decided](docs/decisions/2026-10-17-ci-commits-run-files.md)), `casefile gates`, MCP, Zephyr and Xray bridges |
 
 Planned work is tracked in [issues](https://github.com/albertomarturelo/testbed/issues).
 

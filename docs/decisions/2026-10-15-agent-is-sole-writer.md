@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted — 2026-10-15 (from the founding brief)
+Superseded — 2026-10-19 by [human-writes-through-operations](2026-10-19-human-writes-through-operations.md): the QA writes through the same core operations as the agent. Accepted 2026-10-15 (from the founding brief).
 
 ## Context
 
