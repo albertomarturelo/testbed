@@ -26,7 +26,8 @@ a version is chosen, who decides to publish, and what CI checks before it does.
    minor; anything else bumps the patch.
 3. **A release is a PR, then a tag.** `node scripts/release.mjs set <x.y.z>`
    writes the version into both `package.json` files; it lands as
-   `chore(release): v<x.y.z>`. After it merges, the maintainer tags that
+   `chore(release): v<x.y.z>`, together with any README change the release
+   makes true (the README is the CLI's npm page, frozen per version). After it merges, the maintainer tags that
    commit `v<x.y.z>` on `main` and pushes the tag. Only the maintainer tags.
 4. **CI publishes, on the tag** (`.github/workflows/release.yml`):
    install with the lockfile → build, typecheck, lint, test →
