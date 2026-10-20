@@ -8,7 +8,7 @@ human-writes-through-operations). casefile rewrites the file, appends the
 edits a case file by hand.
 
 - **Actor:** agent, human
-- **CLI:** `casefile review <ref> [--set '<json>'] [--to <state>] [--note <text>] --requested-by <email> [--agent <name>] [--inbox <id>] [--base <change id>] [--project <name>] --json`
+- **CLI:** `casefile review <ref> [--set '<json>'] [--to <state>] [--note <text>] [--agent <name>] [--requested-by <email>] [--inbox <id>] [--base <change id>] [--project <name>] --json`
   (an agent runs it with `CASEFILE_ACTOR=agent`; read `commit` from the `--json` output)
 - **Writes:** `**/context/tests/**/TC-*.md` (the one case file)
 
@@ -31,11 +31,14 @@ edits a case file by hand.
 | `set` | object, optional | The fields to change, from the table below. Each one replaces the stored value; `null` removes it, so the case inherits it from its commons again. |
 | `to` | `draft`, `in_review`, `active`, `retired`, optional | The state to move to (see Transitions). |
 | `note` | text, optional | Why: written as the `note` of the `history` entries. |
-| `requestedBy` | email | `history[].by` and the `Requested-by:` trailer. An agent passes the human who asked (`git config user.email`, or the inbox item's author). For a human, the host fills it from the Git identity the commit is made with, so the entry and the commit name the same person. |
+| `identity` | email | Filled by the host from `git config user.email` in the workspace: the person at the keyboard, who asked the agent or edited in the viewer. |
+| `requestedBy` | email, optional | Agent only: the human who asked, when it is not `identity` (an inbox item's author). Refused for a human, so the entry and the commit always name the same person. |
 | `agent` | text | The agent applying it (`claude-code`): the `Agent:` trailer. Required for an agent, refused for a human. |
 | `inbox` | inbox item id, optional | When the request came through `.inbox/`. |
 | `base` | change id, optional | The `change` of the last `history` entry the caller read. |
 | `via` | text | Filled by the host: `cli:review` from the CLI, `ui:review` from the viewer. Written as `history[].via`. |
+
+`identity` and `via` are host inputs, never flags (ADR cli-generic-host).
 | `project` | project name | Filled by the host from `--project` or the project containing `--cwd`. |
 
 At least one of `set` and `to` is required.
@@ -49,7 +52,7 @@ Fields `set` accepts (the case schema decides their shape):
 | `preconditions`, `acceptance_ref`, `work_items` | yes | Whole lists. |
 | `surfaces`, `layer`, `priority` | yes | `null` inherits from the commons. |
 | `labels`, `data` | yes | Whole maps; label keys must be declared in `_properties.yaml`. |
-| `automation` | per key | Merged per key: `{ eligible?, ref?, status? }`. `status` is `manual`, `candidate` or `in_progress`; `automated` and `flaky` are derived from runs and never set (ADR write-ownership). `ref: null` unlinks the test. |
+| `automation` | per key | Merged per key: `{ eligible?, ref?, status? }`. `status` is `manual`, `candidate`, `in_progress` or `retired` (the test was dropped); `automated` and `flaky` are derived from runs and never set (ADR write-ownership). `ref: null` unlinks the test. |
 | `notes` | yes | Markdown that replaces the body of the file, below the frontmatter. Absent: the body is kept byte for byte. |
 
 `id`, `feature`, `origin`, `history`, `mirror` and `duplicates_checked_against`
@@ -62,10 +65,13 @@ cannot be set (`review.not_editable`). The state changes only through `to`.
 | `draft` | `in_review` | `review_requested` | request review of |
 | `draft`, `in_review` | `active` | `reviewed` | approve |
 | `in_review` | `draft` | `state_changed` | send back |
+| `draft`, `in_review` | `retired` | `retired` | reject |
 | `active` | `retired` | `retired` | retire |
 | `retired` | `draft` | `state_changed` | reopen |
 
-Any other pair, including moving to the state the case already has, is
+Cases are never deleted (`history` is append-only): a draft the QA does not
+want is rejected, and stays in the repository as `retired`. Any other pair,
+including moving to the state the case already has, is
 `review.invalid_transition`. Editing fields never changes the state: an
 `active` case whose steps change stays `active`.
 
@@ -84,7 +90,7 @@ Any other pair, including moving to the state the case already has, is
    - the changed case still resolves with its commons (`resolve.missing_field`).
 4. Generates **one change id** (a UUID) for the call.
 5. Appends to `history`, all with that change id, `at` = now (UTC),
-   `by` = `requestedBy`, `via` and `inbox?` and `note?`:
+   `by` = `requestedBy` when given, else `identity`, `via` and `inbox?` and `note?`:
    one `updated` entry when `set` changed something, then one entry for the
    transition when `to` is given. So one call writes one or two entries.
 6. Rewrites the frontmatter in the format `cover` writes (`casefile spec
@@ -93,7 +99,7 @@ Any other pair, including moving to the state the case already has, is
    are not kept. The body is kept byte for byte unless `set.notes` is given.
 7. **Does not commit.** It returns the commit to make, of that one file:
    - **agent:** `commit.author` is `casefile-agent <casefile-agent@casefile.invalid>`
-     and the message carries `Agent:`. Commit it as `casefile spec cover` says
+     and the message carries `Agent:`. `Requested-by:` is the same email as `by`. Commit it as `casefile spec cover` says
      (`git -c user.name=… -c user.email=… commit -F <message> -- <path>`).
    - **human:** there is no `commit.author` and no `Agent:` trailer. The commit
      is made with the human's own Git identity (`git commit -F <message> -- <path>`).
@@ -136,14 +142,14 @@ The draft `web/TC-0003` that `casefile spec cover` wrote. The QA reads it in
 the viewer and asks in the chat: "the email must stay filled in; approve it".
 
 ```bash
-CASEFILE_ACTOR=agent casefile review web/TC-0003 --to active \
-  --requested-by qa@acme.example --agent claude-code \
+CASEFILE_ACTOR=agent casefile review web/TC-0003 --to active --agent claude-code \
   --base 9d2f6a1e-3b4c-4d5e-8f90-1a2b3c4d5e6f --json --set '{
   "steps": [{ "do": "Submit a registered email with an empty password",
               "expect": "The form says the password is required, stays on the page and keeps the email" }] }'
 ```
 
-It rewrites `apps/web/context/tests/login/TC-0003.md`:
+The checkout's `git config user.email` is `qa@acme.example`, so that is
+`identity`. It rewrites `apps/web/context/tests/login/TC-0003.md`:
 
 ```markdown TC-0003.md
 ---
@@ -194,6 +200,8 @@ Nothing is written when any of these is returned.
 | `review.invalid_transition` | `to` is not allowed from the current state (Transitions) |
 | `review.stale` | `base` is not the change of the case's last `history` entry: read it again |
 | `review.agent_required` / `review.agent_not_allowed` | `agent` missing for an agent, or given by a human |
+| `review.requested_by_not_allowed` | `requestedBy` given by a human: their own identity is used |
+| `identity.missing` | the host found no `git config user.email` in the workspace |
 | `review.duplicate_title` | another case of the feature has that title |
 | `label.undeclared` | a label key is not declared in the project's `_properties.yaml` |
 | `resolve.missing_field` | after the change, a required field is set nowhere (e.g. `priority: null` with no commons value) |
