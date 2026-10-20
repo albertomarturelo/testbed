@@ -1,8 +1,11 @@
 node_modules/
 dist/
 coverage/
-# copied from skills/ when the CLI is packed (apps/cli prepack)
+# copied when the packages are packed (prepack; ADR release-process)
 apps/cli/skills/
+apps/cli/README.md
+apps/cli/LICENSE
+packages/core/LICENSE
 .turbo/
 *.log
 .DS_Store

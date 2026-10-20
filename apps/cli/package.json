@@ -2,8 +2,24 @@
   "name": "@casefile/cli",
   "version": "0.0.0",
   "description": "Test cases belong in the repository. Agent proposes, human decides.",
-  "private": true,
   "license": "MIT",
+  "keywords": [
+    "testing",
+    "test-cases",
+    "qa",
+    "test-management",
+    "ai-agent",
+    "cli"
+  ],
+  "homepage": "https://github.com/albertomarturelo/testbed#readme",
+  "bugs": {
+    "url": "https://github.com/albertomarturelo/testbed/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/albertomarturelo/testbed.git",
+    "directory": "apps/cli"
+  },
   "type": "module",
   "engines": {
     "node": ">=22"
@@ -18,8 +34,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json",
-    "prepack": "node -e \"const fs=require('node:fs');fs.rmSync('skills',{recursive:true,force:true});fs.cpSync('../../skills','skills',{recursive:true})\"",
-    "postpack": "node -e \"require('node:fs').rmSync('skills',{recursive:true,force:true})\""
+    "prepack": "node -e \"const fs=require('node:fs');fs.rmSync('skills',{recursive:true,force:true});fs.cpSync('../../skills','skills',{recursive:true});fs.cpSync('../../README.md','README.md');fs.cpSync('../../LICENSE','LICENSE')\"",
+    "postpack": "node -e \"const fs=require('node:fs');for(const p of ['skills','README.md','LICENSE'])fs.rmSync(p,{recursive:true,force:true})\""
   },
   "dependencies": {
     "@casefile/core": "workspace:*"

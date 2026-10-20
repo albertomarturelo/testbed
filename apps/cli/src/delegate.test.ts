@@ -6,7 +6,12 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { run } from "./cli.js";
 import { planDelegation, type Reexec, reexec } from "./delegate.js";
 
-const RUNNING = "0.0.0"; // apps/cli/package.json
+/** The running CLI's version: a release bumps it (ADR release-process). */
+const RUNNING = (
+  JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8")) as {
+    version: string;
+  }
+).version;
 
 let tmp = "";
 beforeEach(async () => {
@@ -95,7 +100,7 @@ describe("delegation to the pinned casefile", () => {
     expect(calls).toEqual([]);
     expect(result.code).toBe(1);
     expect(result.stderr).toContain(
-      "error  toolchain.not_installed  .casefile/package.json [dependencies.@casefile/cli]  @casefile/cli is not installed in .casefile/node_modules; this is casefile 0.0.0",
+      `error  toolchain.not_installed  .casefile/package.json [dependencies.@casefile/cli]  @casefile/cli is not installed in .casefile/node_modules; this is casefile ${RUNNING}`,
     );
     expect(result.stderr).toContain("hint: npm install --prefix .casefile --ignore-scripts");
     const json = await cli(["validate", "--json"]);

@@ -36,3 +36,4 @@
 | [2026-10-17-ci-commits-run-files](2026-10-17-ci-commits-run-files.md) | CI commits its run files to the branch it tested | Accepted | 2026-10-17 |
 | [2026-10-19-authoring-loop-first](2026-10-19-authoring-loop-first.md) | The authoring loop is the product; runs and CI are a complement | Accepted | 2026-10-19 |
 | [2026-10-19-human-writes-through-operations](2026-10-19-human-writes-through-operations.md) | The QA writes cases from the viewer through core operations | Accepted | 2026-10-19 |
+| [2026-10-20-release-process](2026-10-20-release-process.md) | Releases are tagged by the maintainer and published by CI | Accepted | 2026-10-20 |

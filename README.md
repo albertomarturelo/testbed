@@ -214,6 +214,14 @@ pnpm test
 pnpm lint
 ```
 
+**Releasing** ([ADR release-process](docs/decisions/2026-10-20-release-process.md)):
+`@casefile/core` and `@casefile/cli` share one version. Open a PR with
+`node scripts/release.mjs set <x.y.z>` (it also updates the examples' pins),
+titled `chore(release): v<x.y.z>`. After it merges, the maintainer tags that
+commit `v<x.y.z>` on `main` and pushes the tag; the Release workflow checks,
+packs, smoke-tests and publishes both with provenance. Running the workflow
+by hand is a dry run.
+
 ## License
 
 [MIT](LICENSE)
