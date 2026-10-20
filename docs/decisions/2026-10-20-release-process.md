@@ -34,8 +34,11 @@ a version is chosen, who decides to publish, and what CI checks before it does.
    on `main`) → `pnpm pack` both → smoke test: install the two tarballs in an
    empty directory, run `casefile --version` and `casefile init` in a temp Git
    repository → `npm publish <core.tgz>` then `<cli.tgz>`, `--access public
-   --provenance`. A manual run of the workflow does all of it with
-   `npm publish --dry-run`.
+   --provenance`, skipping a package npm already has at that version (a rerun
+   after a partial publish) → a GitHub release with generated notes, from a
+   separate job that alone may write to the repository. Only a pushed tag
+   publishes: a manual run, or a PR that touches packaging, does all of it with
+   `npm publish --dry-run` and without the token.
 5. **Auth and provenance:** the job authenticates with the secret `NPM_TOKEN`
    (a granular token that can only publish `@casefile/*`) and signs provenance
    through GitHub's OIDC (`id-token: write`), so each version on npm links to

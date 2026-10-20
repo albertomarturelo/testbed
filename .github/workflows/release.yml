@@ -30,7 +30,8 @@ jobs:
       contents: read
       id-token: write # npm provenance (ADR release-process §5)
     env:
-      PUBLISH: ${{ github.ref_type == 'tag' }}
+      # Only a pushed tag publishes; a manual run is a dry run even on a tag ref.
+      PUBLISH: ${{ github.event_name == 'push' && github.ref_type == 'tag' }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -72,17 +73,24 @@ jobs:
           grep -q "\"@casefile/cli\": \"$version\"" .casefile/package.json
       - name: Publish core, then the CLI
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # The token reaches the step only when it publishes.
+          NODE_AUTH_TOKEN: ${{ (github.event_name == 'push' && github.ref_type == 'tag') && secrets.NPM_TOKEN || '' }}
         run: |
+          version=$(node -p "require('./apps/cli/package.json').version")
           flags="--access public"
           if [ "$PUBLISH" = "true" ]; then flags="$flags --provenance"; else flags="$flags --dry-run"; fi
           for pkg in core cli; do
+            # A rerun after a partial publish skips what npm already has.
+            if [ "$PUBLISH" = "true" ] && npm view "@casefile/$pkg@$version" version > /dev/null 2>&1; then
+              echo "@casefile/$pkg@$version is already on npm: skipped"
+              continue
+            fi
             npm publish "$RUNNER_TEMP"/pack/casefile-$pkg-*.tgz $flags
           done
 
   github-release:
     needs: publish
-    if: github.ref_type == 'tag'
+    if: github.event_name == 'push' && github.ref_type == 'tag'
     runs-on: ubuntu-latest
     permissions:
       contents: write
