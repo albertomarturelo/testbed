@@ -59,7 +59,8 @@ listed here are not accepted:
 
 `id`, `feature`, `state`, `origin` and `history` are casefile's to write, so
 they cannot be given. A proposed case is always `state: draft` and
-`origin: agent`. Moving it on is a review (`casefile spec review`, #12).
+`origin: agent`. Changing, approving or retiring it is a review
+(`casefile spec review`).
 
 ## Behaviour
 

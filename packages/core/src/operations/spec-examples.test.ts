@@ -30,11 +30,12 @@ const examples = (
 ).flat();
 
 describe("SPEC examples", () => {
-  it("include the setup and cover examples", () => {
+  it("include the setup, cover and review examples", () => {
     const named = examples.map((e) => `${e.spec}:${e.name}`);
     expect(named).toContain("setup.md:casefile.yaml");
     expect(named).toContain("setup.md:_common.yaml");
     expect(named).toContain("cover.md:TC-0003.md");
+    expect(named).toContain("review.md:TC-0003.md");
     expect(named).toContain("ingest.md:9137.jsonl");
   });
 

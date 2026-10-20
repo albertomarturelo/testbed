@@ -97,8 +97,8 @@ Run every casefile command below with `CASEFILE_ACTOR=agent`.
    `Requested-by: <the human's git email>` and `Agent: <your name>`. Commit
    only those paths (`git commit -F <message> -- <paths>`), never what the
    human had staged. The skills `init` copied are the human's to commit.
-9. **Offer the next step and stop.** Offer `qa-bootstrap` for each project
-   (ADR agent-driven-setup). Until that skill ships (#14), offer
+9. **Offer the next step and stop.** Offer `/qa-bootstrap` for each project
+   (`casefile spec bootstrap`). Until that skill ships (#85), offer
    `/qa-cover <feature>` for the feature the human cares about first instead.
    Do not propose cases yourself during setup.
 
