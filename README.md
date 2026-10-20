@@ -2,8 +2,10 @@
 
 **Your test cases live in your repo, next to the code they verify. Your AI agent writes and maintains them; you review.**
 
-> **Preview.** casefile is under active development and not yet published to npm.
-> Everything below marked *Today* works from source; *Next* is planned, not built.
+> **Preview (`0.x`).** casefile is under active development: a breaking change
+> bumps the minor version. The CLI is on npm as `@casefile/cli`; the viewer
+> still runs from a clone of this repository. *Today* works; *Next* is planned,
+> not built.
 
 ## What it does
 
@@ -96,18 +98,23 @@ explains every step, what each case shows and the gaps it found.
 casefile needs Node 22+ and Git. Your product's `package.json` is never
 touched: casefile pins itself in its own `.casefile/` directory.
 
-### Once it's published (Next)
+### Install
+
+From your repository's root:
 
 ```bash
 npx @casefile/cli init --skills-into .claude/skills
 ```
 
 Use `.agents/skills` instead for Codex. Never `npx casefile`: that npm name is
-an unrelated package.
+an unrelated package. `init` pins `@casefile/cli` in `.casefile/package.json`;
+the setup skill installs it there (`npm install --prefix .casefile
+--ignore-scripts`), so every clone of your repository runs the same version.
 
-### Today, from source
+### From source
 
-Until the first npm release, build casefile once and link it into your repo:
+To try what is on `main` before it is released, build casefile once and link
+it into your repo:
 
 ```bash
 git clone https://github.com/albertomarturelo/testbed.git casefile
@@ -122,8 +129,8 @@ node ../casefile/scripts/link-toolchain.mjs .
 ```
 
 `link-toolchain` stands in for the `npm install --prefix .casefile` step of the
-setup until `@casefile/cli` is on npm; tell your agent the toolchain is already
-linked, and it runs as `.casefile/node_modules/.bin/casefile`.
+setup; tell your agent the toolchain is already linked, and it runs as
+`.casefile/node_modules/.bin/casefile`.
 
 ### Then, in your agent
 
@@ -146,9 +153,10 @@ repository (the toolchain `init` pinned); the skills already call it that way.
      --run local-1 --executor agent:claude-code
    ```
 
-4. **Look at it**: `pnpm ui --cwd /absolute/path/to/your-repo` from the
-   casefile clone, then open <http://127.0.0.1:4321>; or `casefile overview` in
-   the terminal.
+4. **Look at it**: `casefile overview` in the terminal. The viewer is not in
+   the npm package yet: from a clone of this repository (built as in *From
+   source*), run `pnpm ui --cwd /absolute/path/to/your-repo` and open
+   <http://127.0.0.1:4321>.
 
 Every command has `--help`, `--json` for scripts and agents, and a SPEC:
 
@@ -190,12 +198,13 @@ The reasons behind each one are in [docs/decisions](docs/decisions/_index.md).
 
 ## Today / Next
 
-| Today (from source) | Next (ranked by the [authoring loop](docs/decisions/2026-10-19-authoring-loop-first.md)) |
+| Today (`0.1.0`) | Next (ranked by the [authoring loop](docs/decisions/2026-10-19-authoring-loop-first.md)) |
 |---|---|
 | `init`, `project add`, `validate`, `cover`, `overview`, `runs`, `query`, `resolve`, `id next`, `spec` | `review`: the agent edits, approves and retires a case on the QA's request (#83, #84) |
 | Skills `casefile-setup` and `qa-cover` | Skills `qa-bootstrap` (a project's feature tree and first drafts from its code) and `qa-review` (#85) |
 | Read-only local UI (`pnpm ui`): projects, feature tree, cases, each case's runs and why they failed | The QA edits, approves and retires a case, records a result and creates one from the viewer (#91–#94, [decided](docs/decisions/2026-10-19-human-writes-through-operations.md)); the case page reads as a document; coverage per feature (#86, #87); live reload (#26) |
-| `ingest junit` (Playwright, Surefire), keeping failure messages and attachments | Publish `@casefile/cli` to npm |
+| `@casefile/cli` and `@casefile/core` on npm, published by CI with provenance ([release process](docs/decisions/2026-10-20-release-process.md)) | `casefile ui`: the viewer from the installed CLI, without a clone |
+| `ingest junit` (Playwright, Surefire), keeping failure messages and attachments | |
 | Release gate evaluation in core | Complements, when the real case needs them: CTRF and Allure, environment-blocked results, CI run files ([decided](docs/decisions/2026-10-17-ci-commits-run-files.md)), `casefile gates`, MCP, Zephyr and Xray bridges |
 
 Planned work is tracked in [issues](https://github.com/albertomarturelo/testbed/issues).
