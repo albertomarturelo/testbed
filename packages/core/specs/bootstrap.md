@@ -72,9 +72,11 @@ Run every casefile command with `CASEFILE_ACTOR=agent`.
    when it exits 0; after 5 rounds that still fail, report what is left.
 7. **Report and stop.** Tell the human, per feature: the case refs written,
    the ones linked to a test, the ones not eligible, and the questions you
-   could not answer from the code. Point them to the viewer (`pnpm ui --cwd
-   <workspace>`) to read the drafts, and offer `/qa-review` to change, approve
-   or retire them (`casefile spec review`). Do not approve anything yourself.
+   could not answer from the code. Point them to the viewer to read the
+   drafts (today it starts from a casefile checkout, `pnpm ui --cwd
+   <workspace>`; `casefile ui` comes with the npm release), and offer
+   `/qa-review` to change, approve or retire them (`casefile spec review`).
+   Do not approve anything yourself.
 
 ## Example: npm-login
 

@@ -31,7 +31,7 @@ edits a case file by hand.
 | `set` | object, optional | The fields to change, from the table below. Each one replaces the stored value; `null` removes it, so the case inherits it from its commons again. |
 | `to` | `draft`, `in_review`, `active`, `retired`, optional | The state to move to (see Transitions). |
 | `note` | text, optional | Why: written as the `note` of the `history` entries. |
-| `requestedBy` | email | The human who asked (agent), or the human who made the change (human). `history[].by` and the `Requested-by:` trailer. |
+| `requestedBy` | email | `history[].by` and the `Requested-by:` trailer. An agent passes the human who asked (`git config user.email`, or the inbox item's author). For a human, the host fills it from the Git identity the commit is made with, so the entry and the commit name the same person. |
 | `agent` | text | The agent applying it (`claude-code`): the `Agent:` trailer. Required for an agent, refused for a human. |
 | `inbox` | inbox item id, optional | When the request came through `.inbox/`. |
 | `base` | change id, optional | The `change` of the last `history` entry the caller read. |
@@ -95,9 +95,10 @@ Any other pair, including moving to the state the case already has, is
    - **agent:** `commit.author` is `casefile-agent <casefile-agent@casefile.invalid>`
      and the message carries `Agent:`. Commit it as `casefile spec cover` says
      (`git -c user.name=… -c user.email=… commit -F <message> -- <path>`).
-   - **human:** there is no `commit.author` and no `Agent:` trailer. The host
-     commits with the human's own Git identity (`git commit -F <message> -- <path>`):
-     the viewer does it for them.
+   - **human:** there is no `commit.author` and no `Agent:` trailer. The commit
+     is made with the human's own Git identity (`git commit -F <message> -- <path>`).
+     From the CLI, the human runs it; the viewer runs it for them (ADR
+     human-writes-through-operations).
 
    The subject is `review(<feature>): <verbs> <id>`, the verbs being `edit`
    when `set` changed something and the transition's verb, joined with `and`:
