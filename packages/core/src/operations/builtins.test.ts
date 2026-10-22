@@ -21,6 +21,7 @@ describe("builtinOperations", () => {
       "project-add",
       "query",
       "resolve",
+      "review",
       "runs",
       "validate",
     ]);

@@ -7,6 +7,7 @@ import {
   type CasefileError,
   fail,
   findWorkspaceRoot,
+  gitUserEmail,
   type HostInput,
   type HostRegistry,
   openRegistry,
@@ -159,6 +160,8 @@ export async function run(
       cwd,
       host,
       project: globals.project,
+      operation: command.operation.name,
+      env: environment.env,
     });
     if (value !== undefined) input[field.name] = value;
   }
@@ -171,7 +174,14 @@ export async function run(
 
 async function hostValue(
   name: HostInput,
-  at: { root: string | null; cwd: string; host: HostRegistry; project: string | undefined },
+  at: {
+    root: string | null;
+    cwd: string;
+    host: HostRegistry;
+    project: string | undefined;
+    operation: string;
+    env: CliEnvironment["env"];
+  },
 ): Promise<unknown> {
   switch (name) {
     case "version":
@@ -183,6 +193,11 @@ async function hostValue(
       const projects = at.host.config?.projects ?? [];
       return at.root === null ? undefined : (projectAt(projects, at.root, at.cwd) ?? undefined);
     }
+    case "identity":
+      // Unset: the operation that needs it says `identity.missing`.
+      return (await gitUserEmail(at.root ?? at.cwd, at.env)) ?? undefined;
+    case "via":
+      return `cli:${at.operation}`;
   }
 }
 

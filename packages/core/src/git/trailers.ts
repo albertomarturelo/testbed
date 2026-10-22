@@ -9,15 +9,16 @@ export type CommitTrailers = {
   requestedBy: string;
   /** The inbox item, when the request came through `.inbox/`. */
   inbox?: string;
-  /** The agent that made the change (`claude-code`). */
-  agent: string;
+  /** The agent that made the change (`claude-code`); absent when a human made it. */
+  agent?: string;
   /** The change id every `history` entry of the commit stores (ADR history-commit-reference). */
   change: string;
 };
 
 /**
  * A casefile commit message: subject, blank line, then the trailers in a fixed
- * order (ADR git-is-identity, agent-runs-the-commit). Ends with a newline.
+ * order (ADR git-is-identity, agent-runs-the-commit). A human's commit has no
+ * `Agent:` line (ADR human-writes-through-operations). Ends with a newline.
  * Line breaks in values are flattened so a value cannot forge another trailer.
  */
 export function commitMessage(subject: string, trailers: CommitTrailers): string {
@@ -25,7 +26,7 @@ export function commitMessage(subject: string, trailers: CommitTrailers): string
   const lines = [
     `Requested-by: ${line(trailers.requestedBy)}`,
     ...(trailers.inbox === undefined ? [] : [`Inbox-Id: ${line(trailers.inbox)}`]),
-    `Agent: ${line(trailers.agent)}`,
+    ...(trailers.agent === undefined ? [] : [`Agent: ${line(trailers.agent)}`]),
     `Casefile-Change: ${line(trailers.change)}`,
   ];
   return `${line(subject)}\n\n${lines.join("\n")}\n`;

@@ -31,6 +31,12 @@ describe("commitMessage", () => {
     ]);
   });
 
+  it("has no Agent line for a human's commit", () => {
+    expect(commitMessage("s", { requestedBy: "qa@acme.example", change })).toBe(
+      `s\n\nRequested-by: qa@acme.example\nCasefile-Change: ${change}\n`,
+    );
+  });
+
   it("never lets a value add a line of its own", () => {
     const message = commitMessage("one\ntwo", {
       requestedBy: "qa@acme.example",

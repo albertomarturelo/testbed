@@ -5,11 +5,12 @@ human reviews. The agent decides what to test: it reads the code, the
 acceptance criteria and the cases that already exist. casefile writes the
 files. It assigns ids, uses the exact file format, records a `history` entry
 with a change id, and returns the commit to make (ADR agent-driven-setup:
-the agent decides, the library writes).
+the agent decides, the library writes). The QA creates a case the same way
+from the viewer (ADR human-writes-through-operations).
 
-- **Actor:** agent
-- **CLI:** `casefile cover <feature> --cases '<json>' --requested-by <email> --agent <name> [--inbox <id>] [--project <name>] --json`
-  (run with `CASEFILE_ACTOR=agent`; read `commit` from the `--json` output, since the plain
+- **Actor:** agent, human
+- **CLI:** `casefile cover <feature> --cases '<json>' [--agent <name>] [--requested-by <email>] [--inbox <id>] [--project <name>] --json`
+  (an agent runs it with `CASEFILE_ACTOR=agent`; read `commit` from the `--json` output, since the plain
   output does not keep the message byte for byte)
 - **Writes:** `**/context/tests/**/TC-*.md` (new files only)
 
@@ -38,10 +39,16 @@ the agent decides, the library writes).
 |---|---|---|
 | `feature` | feature path (`login`, `checkout/payments`) | Where the cases go: `<project>/context/tests/<feature>/`. Created if absent. |
 | `cases` | `ProposedCase[]`, 1 or more | The cases to write, in the order their ids are assigned. |
-| `requestedBy` | email | The human who asked: `git config user.email`, or the inbox item's author. Written as `history[].by` and the `Requested-by:` trailer. |
-| `agent` | text | The agent that proposes them (`claude-code`, `codex`): the `Agent:` trailer. |
+| `identity` | email | Filled by the host from `git config user.email` in the workspace: the person at the keyboard. |
+| `requestedBy` | email, optional | Agent only: the human who asked, when it is not `identity` (an inbox item's author). Refused for a human. |
+| `agent` | text | The agent that proposes them (`claude-code`, `codex`): the `Agent:` trailer. Required for an agent, refused for a human. |
 | `inbox` | inbox item id | When the request came through `.inbox/`: written as `history[].inbox` and the `Inbox-Id:` trailer. |
+| `via` | text | Filled by the host: `cli:cover` from the CLI, `ui:cover` from the viewer. Written as `history[].via`. |
 | `project` | project name | Filled by the host from `--project` or the project containing `--cwd`. Required when the workspace has several projects and `--cwd` is in none. |
+
+`identity` and `via` are host inputs, never flags (ADR cli-generic-host). The
+case is by `requestedBy` when given, else `identity`: that email is
+`history[].by` and the `Requested-by:` trailer.
 
 A `ProposedCase` has the case fields the agent decides. Fields that are not
 listed here are not accepted:
@@ -58,8 +65,9 @@ listed here are not accepted:
 | `notes` | no | Markdown written as the body of the file, below the frontmatter. |
 
 `id`, `feature`, `state`, `origin` and `history` are casefile's to write, so
-they cannot be given. A proposed case is always `state: draft` and
-`origin: agent`. Changing, approving or retiring it is a review
+they cannot be given. A proposed case is always `state: draft`, with
+`origin: agent` when an agent proposes it and `origin: human` when a human
+creates it. Changing, approving or retiring it is a review
 (`casefile spec review`).
 
 ## Behaviour
@@ -78,10 +86,10 @@ they cannot be given. A proposed case is always `state: draft` and
 4. Generates **one change id** (a UUID) for the call.
 5. Writes `<project path>/context/tests/<feature>/<id>.md` for each case. It
    never overwrites a file. The frontmatter keys come in this order: `id`,
-   `feature`, `title`, `state: draft`, `origin: agent`, the given fields in
+   `feature`, `title`, `state: draft`, `origin`, the given fields in
    schema order, then `history`. `history` holds one entry:
-   `{ at: <now, UTC>, by: requestedBy, via: cli:cover, change, inbox?, event: created }`.
-6. **Does not commit.** It returns the commit to make. Commit exactly the
+   `{ at: <now, UTC>, by, via, change, inbox?, event: created }`.
+6. **Does not commit.** It returns the commit to make. An agent commits exactly the
    created files, with that author and message (ADR git-is-identity):
 
    ```bash
@@ -98,6 +106,11 @@ they cannot be given. A proposed case is always `state: draft` and
    The `Casefile-Change:` trailer is what links each `history` entry to its
    commit (ADR history-commit-reference). ADR agent-runs-the-commit explains
    why the agent runs it.
+
+   A human's commit has no `commit.author` and no `Agent:` trailer: it is
+   made with their own Git identity (`git commit -F <message> -- <created paths>`).
+   From the CLI, the human runs it; the viewer runs it for them (ADR
+   human-writes-through-operations).
 
 **Postconditions:** `casefile validate` reports nothing new for the created
 files. `casefile resolve <ref>` shows each case as `draft`. `casefile overview`
@@ -123,6 +136,9 @@ first call instead.
   "next": ["Commit the created files with commit.author and commit.message taken from --json output, staging only them (`git commit -F <message> -- <paths>`)",
            "Ask the human to review the drafts: web/TC-0003, web/TC-0004"] }
 ```
+
+For a human, `commit` has no `author`, the message no `Agent:` line, and `next`
+says to commit as yourself and review the drafts.
 
 ## Example
 
@@ -170,11 +186,14 @@ Nothing is written when any of these is returned.
 | Code | When |
 |---|---|
 | `operation.invalid_input` | the input or a proposed case does not match its schema (with the field path), e.g. a `state`, `id` or `automation.status` given |
+| `cover.agent_required` / `cover.agent_not_allowed` | `agent` missing for an agent, or given by a human |
+| `cover.requested_by_not_allowed` | `requestedBy` given by a human: their own identity is used |
+| `identity.missing` | no `requestedBy`, and the host found no `git config user.email` in the workspace |
 | `resolve.missing_field` | a proposed case would not resolve: set the field in the case, or finish setup |
 | `label.undeclared` | a label key is not declared in the project's `_properties.yaml` |
 | `cover.duplicate_title` | a case of that feature, existing or earlier in `cases`, has the same title |
 | `cover.batch_too_large` | more cases than the feature's `review.max_batch` |
 | `cover.file_exists` | the file for a new id exists but does not parse as a case; fix or remove it |
 | `project.required` / `project.unknown` | no project could be chosen, or the name is unknown |
-| `operation.actor_not_allowed` | invoked by a human or CI |
+| `operation.actor_not_allowed` | invoked by CI |
 | loader codes | `casefile.yaml` cannot be read; run `casefile validate` |

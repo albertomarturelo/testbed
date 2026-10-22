@@ -49,6 +49,7 @@ describe("openRegistry", () => {
       "project-add",
       "query",
       "resolve",
+      "review",
       "runs",
       "validate",
     ]);
@@ -81,6 +82,7 @@ describe("openRegistry", () => {
       "project-add",
       "query",
       "resolve",
+      "review",
       "runs",
       "validate",
     ]);
