@@ -40,7 +40,8 @@ the bundled skills), and the actor (human, agent, CI) is invisible to a process.
    `identity` the `git config user.email` Git resolves in the workspace (left
    unset when there is none; an operation that needs it fails with
    `identity.missing`), and `via` where the call came from, `cli:<operation>`
-   (the viewer: `ui:<operation>`). Every host fills all of them
+   (the viewer: `ui:<operation>`). Every host fills the ones an operation it
+   invokes declares
    (ADR [human-writes-through-operations](2026-10-19-human-writes-through-operations.md)).
    *(`identity` and `via` added by #84.)*
 4. **Root:** the host finds the workspace from `--cwd` and invokes there; an

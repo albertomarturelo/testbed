@@ -81,24 +81,20 @@ const EDITABLE = Object.keys(field).filter(
   (key) => Object.hasOwn(ReviewSet.shape, key) && !NOT_EDITABLE.includes(key as never),
 );
 
-const ReviewInput = z
-  .strictObject({
-    /** The case, looked up like `casefile resolve`. */
-    ref: CaseRef,
-    set: ReviewSet.optional(),
-    /** The state to move to (`casefile spec review`, Transitions). */
-    to: CaseState.optional(),
-    /** Why: the `note` of the `history` entries. */
-    note: z.string().min(1).optional(),
-    /** The `change` of the last `history` entry the caller read. */
-    base: ChangeId.optional(),
-    ...WriterInput,
-    project: z.string().min(1).optional().meta({ host: "project" }),
-  })
-  .refine((input) => input.set !== undefined || input.to !== undefined, {
-    message: "give set, to or both",
-    path: ["set"],
-  });
+/** Structural only, so hosts derive it faithfully (JSON Schema for MCP); `run` requires `set` or `to`. */
+const ReviewInput = z.strictObject({
+  /** The case, looked up like `casefile resolve`. */
+  ref: CaseRef,
+  set: ReviewSet.optional(),
+  /** The state to move to (`casefile spec review`, Transitions). */
+  to: CaseState.optional(),
+  /** Why: the `note` of the `history` entries. */
+  note: z.string().min(1).optional(),
+  /** The `change` of the last `history` entry the caller read. */
+  base: ChangeId.optional(),
+  ...WriterInput,
+  project: z.string().min(1).optional().meta({ host: "project" }),
+});
 
 const ReviewOutput = z.strictObject({
   ref: z.string(),
@@ -141,6 +137,13 @@ export const reviewOperation = defineOperation({
   spec: "specs/review.md",
   subject: "ref",
   async run(input, context) {
+    if (input.set === undefined && input.to === undefined) {
+      return fail({
+        code: "operation.invalid_input",
+        field: "set",
+        message: "give --set, --to or both",
+      });
+    }
     const workspace = await loadWorkspace(context.root);
     if (workspace.config === null) return fail(...workspace.errors);
     const found = findCase(workspace, input.ref, input.project);
@@ -281,7 +284,7 @@ export const reviewOperation = defineOperation({
       errors.push(
         ...resolved.errors.map(({ path: _, ...error }) => ({
           ...error,
-          field: `set.${error.field ?? ""}`,
+          field: error.field === undefined ? "set" : `set.${error.field}`,
           message: `${error.message}: after this change it is set nowhere; give it a value, or set it in the commons`,
         })),
       );
