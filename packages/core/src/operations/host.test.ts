@@ -50,6 +50,7 @@ describe("openRegistry", () => {
       "query",
       "resolve",
       "review",
+      "run",
       "runs",
       "validate",
     ]);
@@ -83,6 +84,7 @@ describe("openRegistry", () => {
       "query",
       "resolve",
       "review",
+      "run",
       "runs",
       "validate",
     ]);

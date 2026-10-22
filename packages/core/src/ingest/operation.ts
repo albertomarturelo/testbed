@@ -5,7 +5,7 @@ import { TESTS_DIR } from "../load/paths.js";
 import { loadWorkspace } from "../load/workspace.js";
 import { requireProject } from "../operations/cases.js";
 import { defineOperation, type Operation } from "../operations/operation.js";
-import { Executor, FileSafeId, NOTE_MAX, RunEvent, RunStatus, Slug } from "../schema/index.js";
+import { boundNote, Executor, FileSafeId, RunEvent, RunStatus, Slug } from "../schema/index.js";
 import { IngestedResult, type Ingester } from "./ingester.js";
 
 const IngestInput = z.strictObject({
@@ -128,7 +128,7 @@ export function ingestOperation(ingester: Ingester): Operation {
             duration_ms: result.duration_ms,
             evidence: result.evidence,
             automation_ref: result.ref,
-            note: bounded(result.note),
+            note: boundNote(result.note),
           });
           if (event.success) events.push(event.data);
           else {
@@ -237,14 +237,6 @@ function mergeByRef(results: readonly IngestedResult[]): Merged[] {
       ...(notes.size === 0 ? {} : { note: [...notes].join("\n\n") }),
     };
   });
-}
-
-/** A note cut to `NOTE_MAX` characters, the last one `…` (ADR run-event-note §2). */
-function bounded(note: string | undefined): string | undefined {
-  if (note === undefined || note.length <= NOTE_MAX) return note;
-  // `max` counts UTF-16 units, like `length`; a pair is not split.
-  const cut = note.slice(0, NOTE_MAX - 1).replace(/[\uD800-\uDBFF]$/, "");
-  return `${cut}…`;
 }
 
 /**

@@ -22,12 +22,38 @@ export type CommitTrailers = {
  * Line breaks in values are flattened so a value cannot forge another trailer.
  */
 export function commitMessage(subject: string, trailers: CommitTrailers): string {
-  const line = (value: string) => value.replace(/\s*[\r\n]+\s*/g, " ").trim();
-  const lines = [
+  return message(subject, [
     `Requested-by: ${line(trailers.requestedBy)}`,
     ...(trailers.inbox === undefined ? [] : [`Inbox-Id: ${line(trailers.inbox)}`]),
     ...(trailers.agent === undefined ? [] : [`Agent: ${line(trailers.agent)}`]),
     `Casefile-Change: ${line(trailers.change)}`,
-  ];
-  return `${line(subject)}\n\n${lines.join("\n")}\n`;
+  ]);
+}
+
+export type RunTrailers = {
+  /** The run id: names the run file `.runs/<run>.jsonl`. */
+  run: string;
+  /** The events' `executor`: `human:<email>`, `agent:<name>`, `ci:<name>`. */
+  executor: string;
+};
+
+/**
+ * The commit message of a run file (ADR ci-commits-run-files §2): the trailers
+ * `Casefile-Run:` and `Executor:` replace `Requested-by:` and `Casefile-Change:`,
+ * since a run writes no `history` entry and answers no one's request.
+ */
+export function runCommitMessage(subject: string, trailers: RunTrailers): string {
+  return message(subject, [
+    `Casefile-Run: ${line(trailers.run)}`,
+    `Executor: ${line(trailers.executor)}`,
+  ]);
+}
+
+/** Line breaks in values are flattened so a value cannot forge another trailer. */
+function line(value: string): string {
+  return value.replace(/\s*[\r\n]+\s*/g, " ").trim();
+}
+
+function message(subject: string, trailers: readonly string[]): string {
+  return `${line(subject)}\n\n${trailers.join("\n")}\n`;
 }
