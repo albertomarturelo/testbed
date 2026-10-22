@@ -6,6 +6,7 @@ import { DEMO_MONOREPO_ROOT } from "../demo.fixture.js";
 import { commitMessage } from "../git/trailers.js";
 import { parseCaseFile } from "../load/parse.js";
 import { coverOperation } from "./cover.js";
+import type { Actor } from "./operation.js";
 import { createRegistry } from "./registry.js";
 import { CORE_SPECS_DIR } from "./spec.js";
 import { validateOperation } from "./validate.js";
@@ -34,9 +35,11 @@ type Covered = {
 };
 
 const base = { project: "web", requestedBy: "qa@acme.example", agent: "claude-code" };
+/** What the host fills in (ADR cli-generic-host §3). */
+const host = { via: "cli:cover", identity: "qa@acme.example" };
 const step = { do: "Submit the form", expect: "The form is rejected" };
-const cover = (input: Record<string, unknown>, actor: "agent" | "human" = "agent") =>
-  registry.invoke("cover", { ...base, feature: "login", ...input }, { root, actor });
+const cover = (input: Record<string, unknown>, actor: Actor = "agent") =>
+  registry.invoke("cover", { ...host, ...base, feature: "login", ...input }, { root, actor });
 const covered = async (input: Record<string, unknown>) => {
   const result = await cover(input);
   if (!result.ok) throw new Error(JSON.stringify(result.errors));
@@ -103,6 +106,47 @@ describe("cover", () => {
     expect(await registry.invoke("validate", {}, { root, actor: "agent" })).toMatchObject({
       ok: true,
     });
+  });
+
+  it("lets a human create drafts as themself: origin human, no author, no Agent: trailer", async () => {
+    const result = await cover(
+      {
+        requestedBy: undefined,
+        agent: undefined,
+        via: "ui:cover",
+        identity: "lead@acme.example",
+        cases: [{ title: "Reject an empty email", steps: [step] }],
+      },
+      "human",
+    );
+    if (!result.ok) throw new Error(JSON.stringify(result.errors));
+    const value = result.value as Covered;
+    expect(value.commit).toEqual({
+      message: commitMessage("cover(login): propose 1 case", {
+        requestedBy: "lead@acme.example",
+        change: value.change,
+      }),
+    });
+    expect(value.next[0]).toContain("as yourself");
+    const parsed = parseCaseFile(
+      "TC-0003.md",
+      await readFile(join(root, LOGIN, "TC-0003.md"), "utf8"),
+    );
+    expect(parsed).toMatchObject({
+      ok: true,
+      value: {
+        file: { origin: "human", history: [{ by: "lead@acme.example", via: "ui:cover" }] },
+      },
+    });
+  });
+
+  it("names the identity as the requester when an agent gives no --requested-by", async () => {
+    const value = await covered({
+      requestedBy: undefined,
+      identity: "dev@acme.example",
+      cases: [{ title: "Reject an empty email", steps: [step] }],
+    });
+    expect(value.commit.message).toContain("Requested-by: dev@acme.example\nAgent: claude-code\n");
   });
 
   it("creates a new feature directory", async () => {
@@ -195,20 +239,44 @@ describe("cover refuses, writing nothing", () => {
     await refused({ cases: [{ title: "T", steps: [step] }] }, "cover.file_exists");
   });
 
+  it("a writer that does not add up", async () => {
+    const cases = [{ title: "T", steps: [step] }];
+    await refused({ cases, agent: undefined }, "cover.agent_required", "agent");
+    await refused({ cases, requestedBy: undefined, identity: undefined }, "identity.missing");
+    const human = async (input: Record<string, unknown>, code: string) => {
+      const before = await loginFiles();
+      const result = await cover(
+        { cases, requestedBy: undefined, agent: undefined, ...input },
+        "human",
+      );
+      expect(result).toMatchObject({ ok: false, errors: [{ code }] });
+      expect(await loginFiles()).toEqual(before);
+    };
+    await human({ agent: "claude-code" }, "cover.agent_not_allowed");
+    await human({ requestedBy: "someone@acme.example" }, "cover.requested_by_not_allowed");
+    await human({ identity: undefined }, "identity.missing");
+  });
+
   it("an unknown project", async () => {
     await refused({ project: "nope", cases: [{ title: "T", steps: [step] }] }, "project.unknown");
   });
 
-  it("no project chosen in a workspace of several, or a human actor", async () => {
+  it("no project chosen in a workspace of several, or CI", async () => {
     const before = await loginFiles();
     expect(
       await registry.invoke(
         "cover",
-        { ...base, project: undefined, feature: "login", cases: [{ title: "T", steps: [step] }] },
+        {
+          ...host,
+          ...base,
+          project: undefined,
+          feature: "login",
+          cases: [{ title: "T", steps: [step] }],
+        },
         { root, actor: "agent" },
       ),
     ).toMatchObject({ ok: false, errors: [{ code: "project.required" }] });
-    expect(await cover({ cases: [{ title: "T", steps: [step] }] }, "human")).toMatchObject({
+    expect(await cover({ cases: [{ title: "T", steps: [step] }] }, "ci")).toMatchObject({
       ok: false,
       errors: [{ code: "operation.actor_not_allowed" }],
     });

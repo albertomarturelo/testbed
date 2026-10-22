@@ -166,6 +166,7 @@ Every command has `--help`, `--json` for scripts and agents, and a SPEC:
 | `casefile project add` | Registers a project and scaffolds its `context/tests/` |
 | `casefile validate` | Checks the whole workspace; lists every problem with how to fix it |
 | `casefile cover` | Writes the cases the agent proposes for a feature, as drafts |
+| `casefile review` | Edits, approves or retires one case, for the agent or the QA (on `main`, ships in the next release) |
 | `casefile ingest junit` | Turns a JUnit report into run events matched by `automation.ref` |
 | `casefile overview` | Every project with its cases, automation status and last run |
 | `casefile runs` | One case's run events, newest first, with why each one failed |
@@ -200,7 +201,7 @@ The reasons behind each one are in [docs/decisions](docs/decisions/_index.md).
 
 | Today (`0.1.0`) | Next (ranked by the [authoring loop](docs/decisions/2026-10-19-authoring-loop-first.md)) |
 |---|---|
-| `init`, `project add`, `validate`, `cover`, `overview`, `runs`, `query`, `resolve`, `id next`, `spec` | `review`: the agent edits, approves and retires a case on the QA's request (#83, #84) |
+| `init`, `project add`, `validate`, `cover`, `overview`, `runs`, `query`, `resolve`, `id next`, `spec` | `review` (edit, approve, retire a case, for the agent or the QA) is on `main` and ships in the next release; `run`: the QA records a result by hand (#90) |
 | Skills `casefile-setup` and `qa-cover` | Skills `qa-bootstrap` (a project's feature tree and first drafts from its code) and `qa-review` (#85) |
 | Read-only local UI (`pnpm ui`): projects, feature tree, cases, each case's runs and why they failed | The QA edits, approves and retires a case, records a result and creates one from the viewer (#91–#94, [decided](docs/decisions/2026-10-19-human-writes-through-operations.md)); the case page reads as a document; coverage per feature (#86, #87); live reload (#26) |
 | `@casefile/cli` and `@casefile/core` on npm, published by CI with provenance ([release process](docs/decisions/2026-10-20-release-process.md)) | `casefile ui`: the viewer from the installed CLI, without a clone |

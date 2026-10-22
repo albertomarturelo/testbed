@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted — 2026-10-17 (#11); output rules extended by #45. Amends the `project add <name> <path>` form of
+Accepted — 2026-10-17 (#11); output rules extended by #45; host inputs
+`identity` and `via` added by #84. Amends the `project add <name> <path>` form of
 [agent-driven-setup](2026-10-15-agent-driven-setup.md) and the interactive
 skill prompt of `init`'s SPEC.
 
@@ -31,10 +32,17 @@ the bundled skills), and the actor (human, agent, CI) is invisible to a process.
    **Amendment:** `project add <name> <path>` becomes
    `project add <name> --path <path>`.
 3. **Host inputs:** a field the host supplies declares it with Zod metadata,
-   `.meta({ host: "version" | "skills" | "project" })`, and is never a flag.
+   `.meta({ host: "version" | "skills" | "project" | "identity" | "via" })`, and
+   is never a flag.
    `version` is the running casefile, `skills` the bundled skill files,
    `project` the `--project` value or the project containing `--cwd`
-   (ADR [workspace-and-projects](2026-10-15-workspace-and-projects.md) §6).
+   (ADR [workspace-and-projects](2026-10-15-workspace-and-projects.md) §6),
+   `identity` the `git config user.email` Git resolves in the workspace (left
+   unset when there is none; an operation that needs it fails with
+   `identity.missing`), and `via` where the call came from, `cli:<operation>`
+   (the viewer: `ui:<operation>`). Every host fills all of them
+   (ADR [human-writes-through-operations](2026-10-19-human-writes-through-operations.md)).
+   *(`identity` and `via` added by #84.)*
 4. **Root:** the host finds the workspace from `--cwd` and invokes there; an
    operation with `root: "cwd"` (only `init`) also works without one: it runs
    at the workspace found above `--cwd`, else in `--cwd` itself, so a second

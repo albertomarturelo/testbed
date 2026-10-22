@@ -3,9 +3,11 @@ import type { Operation } from "./operation.js";
 
 /**
  * Inputs a host fills in instead of the user (ADR cli-generic-host): the running
- * casefile version, the bundled skill files, the current project.
+ * casefile version, the bundled skill files, the current project, the person at
+ * the keyboard (`git config user.email`) and where the call came from
+ * (`cli:<operation>`, `ui:<operation>`).
  */
-export const HOST_INPUTS = ["version", "skills", "project"] as const;
+export const HOST_INPUTS = ["version", "skills", "project", "identity", "via"] as const;
 export type HostInput = (typeof HOST_INPUTS)[number];
 
 /** One top-level input field of an operation, as hosts render it (CLI flags, forms). */

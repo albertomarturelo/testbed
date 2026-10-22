@@ -37,9 +37,9 @@ edits a case file by hand.
 | `inbox` | inbox item id, optional | When the request came through `.inbox/`. |
 | `base` | change id, optional | The `change` of the last `history` entry the caller read. |
 | `via` | text | Filled by the host: `cli:review` from the CLI, `ui:review` from the viewer. Written as `history[].via`. |
+| `project` | project name | Filled by the host from `--project` or the project containing `--cwd`. |
 
 `identity` and `via` are host inputs, never flags (ADR cli-generic-host).
-| `project` | project name | Filled by the host from `--project` or the project containing `--cwd`. |
 
 At least one of `set` and `to` is required.
 

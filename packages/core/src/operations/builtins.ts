@@ -8,6 +8,7 @@ import { overviewOperation } from "./overview.js";
 import { projectAddOperation } from "./project-add.js";
 import { queryOperation } from "./query.js";
 import { resolveOperation } from "./resolve.js";
+import { reviewOperation } from "./review.js";
 import { runsOperation } from "./runs.js";
 import { validateOperation } from "./validate.js";
 
@@ -22,5 +23,6 @@ export const builtinOperations: readonly Operation[] = [
   overviewOperation,
   runsOperation,
   coverOperation,
+  reviewOperation,
   ingestOperation(junitIngester),
 ];

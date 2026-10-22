@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -457,5 +458,65 @@ describe("casefile ingest junit", () => {
 
   it("is listed with the other commands", async () => {
     expect((await cli([])).stdout).toMatch(/ingest junit\s+Turns a test report into run events/);
+  });
+});
+
+describe("casefile review: the host fills identity and via", () => {
+  /** Git finds only the repository's own config, so the test does not see the developer's. */
+  const git = {
+    PATH: process.env.PATH ?? "",
+    GIT_CONFIG_GLOBAL: "/dev/null",
+    GIT_CONFIG_NOSYSTEM: "1",
+  };
+  const argv = (...extra: string[]) => [
+    "review",
+    "TC-0001",
+    "--to",
+    "retired",
+    "--cwd",
+    join(tmp, "apps/web"),
+    "--json",
+    ...extra,
+  ];
+  beforeEach(async () => {
+    await cp(MONOREPO, tmp, { recursive: true });
+    execFileSync("git", ["init", "-q"], { cwd: tmp, env: git });
+  });
+
+  it("writes `git config user.email` and cli:review into history", async () => {
+    execFileSync("git", ["config", "user.email", "qa@acme.example"], { cwd: tmp, env: git });
+    const result = await cli(argv(), git);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      ok: true,
+      value: {
+        state: "retired",
+        commit: { message: expect.stringContaining("Requested-by: qa@acme.example\n") },
+      },
+    });
+    const file = await readFile(join(tmp, "apps/web/context/tests/login/TC-0001.md"), "utf8");
+    expect(file).toMatch(
+      /by: qa@acme\.example\n {4}via: cli:review\n {4}change: \S+\n {4}event: retired\n/,
+    );
+  });
+
+  it("says identity.missing without a git email, and never takes either as a flag", async () => {
+    const missing = await cli(argv(), git);
+    expect(missing.code).toBe(1);
+    expect(JSON.parse(missing.stdout)).toMatchObject({
+      ok: false,
+      errors: [{ code: "identity.missing" }],
+    });
+    for (const flag of [
+      ["--identity", "x@acme.example"],
+      ["--via", "ui:review"],
+    ]) {
+      const result = await cli(argv(...flag), git);
+      expect(JSON.parse(result.stdout)).toMatchObject({
+        ok: false,
+        errors: [
+          { code: "cli.usage", message: expect.stringContaining(`Unknown option '${flag[0]}'`) },
+        ],
+      });
+    }
   });
 });

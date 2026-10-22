@@ -1,9 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { posix } from "node:path";
-import { Document, isScalar, isSeq, Scalar, visit } from "yaml";
 import { z } from "zod";
 import { type CasefileError, fail, ok } from "../errors.js";
-import { AGENT_AUTHOR, commitMessage } from "../git/trailers.js";
 import { nextCaseId } from "../ids.js";
 import { TESTS_DIR } from "../load/paths.js";
 import { loadWorkspace } from "../load/workspace.js";
@@ -13,13 +11,22 @@ import {
   resolveCase,
   workspaceLayer,
 } from "../resolve/resolve.js";
-import { Email, FeatureSlug, TestCaseFile } from "../schema/index.js";
+import { FeatureSlug, TestCaseFile } from "../schema/index.js";
+import {
+  CaseTitle,
+  caseText,
+  normalizeTitle,
+  WriteCommit,
+  WriterInput,
+  writeCommit,
+  writtenBy,
+} from "./case-file.js";
 import { requireProject, takenIds } from "./cases.js";
 import { extensionLayers, loadExtensions } from "./extensions.js";
 import { defineOperation } from "./operation.js";
 
 /**
- * The case fields the agent decides (`casefile spec cover`). `id`, `feature`,
+ * The case fields the caller decides (`casefile spec cover`). `id`, `feature`,
  * `state`, `origin` and `history` are casefile's; `automation.status` is never
  * stored as `automated` (ADR write-ownership), so only `eligible` and `ref`.
  */
@@ -35,8 +42,7 @@ const ProposedCase = TestCaseFile.pick({
   work_items: true,
   duplicates_checked_against: true,
 }).extend({
-  /** One line: titles are listed in tables (CLI, UI). */
-  title: z.string().regex(/^[^\r\n]+$/, "one line, no line breaks"),
+  title: CaseTitle,
   automation: z
     .strictObject({ eligible: z.boolean().optional(), ref: z.string().min(1).optional() })
     .optional(),
@@ -48,12 +54,7 @@ const CoverInput = z.strictObject({
   /** Where the cases go: `<project>/context/tests/<feature>/`. */
   feature: FeatureSlug,
   cases: z.array(ProposedCase).min(1),
-  /** The human who asked; `history[].by` and the `Requested-by:` trailer. */
-  requestedBy: Email,
-  /** The agent proposing them; the `Agent:` trailer. */
-  agent: z.string().min(1),
-  /** The inbox item the request came from; `history[].inbox` and `Inbox-Id:`. */
-  inbox: z.string().min(1).optional(),
+  ...WriterInput,
   project: z.string().min(1).optional().meta({ host: "project" }),
 });
 
@@ -62,31 +63,29 @@ const CoverOutput = z.strictObject({
   feature: z.string(),
   change: z.string(),
   created: z.array(z.strictObject({ ref: z.string(), path: z.string() })),
-  commit: z.strictObject({ author: z.string(), message: z.string() }),
+  commit: WriteCommit,
   next: z.array(z.string()),
 });
-
-/** Frontmatter keys casefile writes, in this order; the rest follow schema order. */
-const OWN_KEYS = ["id", "feature", "title", "state", "origin"] as const;
-
-/** Lists of short tokens read better on one line: `surfaces: [web]`. */
-const FLOW_LISTS = new Set(["surfaces", "work_items", "duplicates_checked_against"]);
 
 /**
  * `casefile cover <feature> --cases '<json>'` (ADR agent-driven-setup: the agent
  * decides, the library writes). Writes the proposed cases as `draft` files with
  * fresh ids and one `history` entry sharing one change id, all or nothing, and
- * returns the commit for the agent to run (ADR agent-runs-the-commit).
+ * returns the commit for the caller to run (ADR agent-runs-the-commit). A human
+ * creates cases too, from the viewer (ADR human-writes-through-operations).
  */
 export const coverOperation = defineOperation({
   name: "cover",
   input: CoverInput,
   output: CoverOutput,
-  actor: ["agent"],
+  actor: ["agent", "human"],
   writes: [`**/${TESTS_DIR}/**/TC-*.md`],
   spec: "specs/cover.md",
   subject: "feature",
   async run(input, context) {
+    const writer = writtenBy("cover", context.actor, input);
+    if (!writer.ok) return writer;
+    const { by, agent } = writer.value;
     const workspace = await loadWorkspace(context.root);
     if (workspace.config === null) return fail(...workspace.errors);
     const selected = requireProject(workspace, input.project);
@@ -150,13 +149,13 @@ export const coverOperation = defineOperation({
         id,
         feature: input.feature,
         state: "draft",
-        origin: "agent",
+        origin: agent === undefined ? "human" : "agent",
         ...fields,
         history: [
           {
             at,
-            by: input.requestedBy,
-            via: "cli:cover",
+            by,
+            via: input.via,
             change,
             ...(input.inbox === undefined ? {} : { inbox: input.inbox }),
             event: "created",
@@ -201,17 +200,20 @@ export const coverOperation = defineOperation({
       feature: input.feature,
       change,
       created: files.map(({ ref, path }) => ({ ref, path })),
-      commit: {
-        author: AGENT_AUTHOR,
-        message: commitMessage(
-          `cover(${input.feature}): propose ${count} ${count === 1 ? "case" : "cases"}`,
-          { requestedBy: input.requestedBy, inbox: input.inbox, agent: input.agent, change },
-        ),
-      },
-      next: [
-        `Commit the created files with commit.author and commit.message taken from --json output, staging only them (\`git commit -F <message> -- <paths>\`)`,
-        `Ask the human to review the drafts: ${refs}`,
-      ],
+      commit: writeCommit(
+        `cover(${input.feature}): propose ${count} ${count === 1 ? "case" : "cases"}`,
+        { requestedBy: by, inbox: input.inbox, agent, change },
+      ),
+      next:
+        agent === undefined
+          ? [
+              `Commit the created files with commit.message taken from --json output, as yourself, staging only them (\`git commit -F <message> -- <paths>\`)`,
+              `Review and approve the drafts: ${refs}`,
+            ]
+          : [
+              `Commit the created files with commit.author and commit.message taken from --json output, staging only them (\`git commit -F <message> -- <paths>\`)`,
+              `Ask the human to review the drafts: ${refs}`,
+            ],
     });
   },
 });
@@ -224,32 +226,4 @@ function innermost<T>(
   let found: T | undefined;
   for (const { commons } of layers) found = pick(commons) ?? found;
   return found;
-}
-
-/** Titles compare without case or repeated spaces: "Sign in" = "sign  in". */
-function normalizeTitle(title: string): string {
-  return title.trim().replace(/\s+/g, " ").toLowerCase();
-}
-
-/**
- * The case file: frontmatter with casefile's keys first and the rest in schema
- * order, short lists inline, timestamps quoted (as in `casefile spec cover`).
- */
-function caseText(file: TestCaseFile, notes: string | undefined): string {
-  const order = [...OWN_KEYS, ...Object.keys(TestCaseFile.shape)];
-  const record = file as Record<string, unknown>;
-  const ordered = Object.fromEntries(
-    [...new Set(order)].filter((key) => record[key] !== undefined).map((key) => [key, record[key]]),
-  );
-  const doc = new Document(ordered);
-  visit(doc, {
-    Pair(_, pair) {
-      const key = isScalar(pair.key) ? String(pair.key.value) : "";
-      if (FLOW_LISTS.has(key) && isSeq(pair.value)) pair.value.flow = true;
-      if (key === "at" && isScalar(pair.value)) pair.value.type = Scalar.QUOTE_DOUBLE;
-    },
-  });
-  const frontmatter = doc.toString({ lineWidth: 0, flowCollectionPadding: false });
-  const body = notes?.trim() ? `\n${notes.trim()}\n` : "";
-  return `---\n${frontmatter}---\n${body}`;
 }
