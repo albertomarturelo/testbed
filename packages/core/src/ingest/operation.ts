@@ -5,8 +5,9 @@ import { TESTS_DIR } from "../load/paths.js";
 import { loadWorkspace } from "../load/workspace.js";
 import { requireProject } from "../operations/cases.js";
 import { defineOperation, type Operation } from "../operations/operation.js";
-import { boundNote, Executor, FileSafeId, RunEvent, RunStatus, Slug } from "../schema/index.js";
+import { Executor, FileSafeId, RunEvent, RunStatus, Slug } from "../schema/index.js";
 import { IngestedResult, type Ingester } from "./ingester.js";
+import { boundNote } from "./note.js";
 
 const IngestInput = z.strictObject({
   /** The report file, relative to the workspace root. */

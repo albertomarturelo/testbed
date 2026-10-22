@@ -39,14 +39,6 @@ export const Triage = z.strictObject({
 /** Longest `note` on a run event; ingest cuts longer ones (ADR run-event-note). */
 export const NOTE_MAX = 2000;
 
-/** A note cut to `NOTE_MAX` characters, the last one `…` (ADR run-event-note §2). */
-export function boundNote(note: string | undefined): string | undefined {
-  if (note === undefined || note.length <= NOTE_MAX) return note;
-  // `max` counts UTF-16 units, like `length`; a pair is not split.
-  const cut = note.slice(0, NOTE_MAX - 1).replace(/[\uD800-\uDBFF]$/, "");
-  return `${cut}…`;
-}
-
 /** One line of `context/tests/.runs/<run-id>.jsonl`. Append-only; corrections are new events. */
 export const RunEvent = z.strictObject({
   run_id: FileSafeId,
