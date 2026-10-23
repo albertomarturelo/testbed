@@ -31,7 +31,7 @@ edits a case file by hand.
 | `set` | object, optional | The fields to change, from the table below. Each one replaces the stored value; `null` removes it, so the case inherits it from its commons again. |
 | `to` | `draft`, `in_review`, `active`, `retired`, optional | The state to move to (see Transitions). |
 | `note` | text, optional | Why: written as the `note` of the `history` entries. |
-| `identity` | email | Filled by the host from `git config user.email` in the workspace: the person at the keyboard, who asked the agent or edited in the viewer. |
+| `identity` | email | Filled by the host: `CASEFILE_USER_EMAIL` when set, else `git config user.email` in the workspace (ADR identity-override; `casefile whoami` shows it): the person at the keyboard, who asked the agent or edited in the viewer. |
 | `requestedBy` | email, optional | Agent only: the human who asked, when it is not `identity` (an inbox item's author). Refused for a human, so the entry and the commit always name the same person. |
 | `agent` | text | The agent applying it (`claude-code`): the `Agent:` trailer. Required for an agent, refused for a human. |
 | `inbox` | inbox item id, optional | When the request came through `.inbox/`. |
@@ -204,7 +204,8 @@ Nothing is written when any of these is returned.
 | `review.stale` | `base` is not the change of the case's last `history` entry: read it again |
 | `review.agent_required` / `review.agent_not_allowed` | `agent` missing for an agent, or given by a human |
 | `review.requested_by_not_allowed` | `requestedBy` given by a human: their own identity is used |
-| `identity.missing` | the host found no `git config user.email` in the workspace |
+| `identity.missing` | the host found neither `CASEFILE_USER_EMAIL` nor `git config user.email` |
+| `identity.invalid` | `CASEFILE_USER_EMAIL` or `git config user.email` is not an email (the message names which); nothing runs |
 | `review.duplicate_title` | another case of the feature has that title |
 | `label.undeclared` | a label key is not declared in the project's `_properties.yaml` |
 | `resolve.missing_field` | after the change, a required field is set nowhere (e.g. `priority: null` with no commons value) |

@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "@/App";
-import type { CaseRow, Result } from "@/api";
+import { type CaseRow, forgetSession, type Result } from "@/api";
 import { CaseDetail } from "@/views/CaseDetail";
 import { CaseList } from "@/views/CaseList";
 import { QueryView } from "@/views/QueryView";
@@ -16,8 +16,14 @@ beforeEach(() => {
   calls.length = 0;
   answers = {};
   window.location.hash = "";
-  vi.stubGlobal("fetch", async (url: string, init: { body: string }) => {
+  forgetSession();
+  vi.stubGlobal("fetch", async (url: string, init?: { body: string }) => {
     const name = url.split("/").at(-1) as string;
+    if (init === undefined) {
+      // GET /api/session: answered like an operation, with no input.
+      const answer = answers[name]?.({}) ?? { ok: false, errors: [{ code: "x", message: name }] };
+      return new Response(JSON.stringify(answer));
+    }
     const input = JSON.parse(init.body) as Record<string, unknown>;
     calls.push({ name, input });
     const answer = answers[name]?.(input) ?? { ok: false, errors: [{ code: "x", message: name }] };
@@ -246,6 +252,45 @@ describe("QueryView", () => {
     window.dispatchEvent(new HashChangeEvent("hashchange"));
     await vi.waitFor(() => expect(screen.queryByText("0 cases")).toBeNull());
     expect((screen.getByLabelText("Query") as HTMLInputElement).value).toBe("");
+  });
+});
+
+describe("App: who the QA acts as", () => {
+  beforeEach(() => {
+    answers.overview = () => ({ ok: true, value: { projects: [], cases: [] } });
+  });
+
+  it("names the identity and where it came from", async () => {
+    answers.session = () => ({
+      ok: true,
+      value: { token: "t", identity: { email: "qa@acme.example", name: "QA Lead", source: "env" } },
+    });
+    render(<App />);
+    const acting = await screen.findByText("Acting as QA Lead <qa@acme.example>");
+    expect(acting.getAttribute("title")).toBe("from CASEFILE_USER_EMAIL");
+  });
+
+  it("warns when nobody is configured, before any write", async () => {
+    answers.session = () => ({ ok: true, value: { token: "t", identity: null } });
+    render(<App />);
+    expect(await screen.findByText(/No identity: set CASEFILE_USER_EMAIL/)).toBeTruthy();
+  });
+
+  it("sends the session token with every call", async () => {
+    const headers: unknown[] = [];
+    answers.session = () => ({
+      ok: true,
+      value: { token: "secret", identity: { email: "qa@acme.example", source: "git" } },
+    });
+    const stubbed = globalThis.fetch;
+    vi.stubGlobal("fetch", (url: string, init?: RequestInit) => {
+      if (init !== undefined) headers.push(init.headers);
+      return stubbed(url, init);
+    });
+    render(<App />);
+    await screen.findByText("Acting as qa@acme.example");
+    await vi.waitFor(() => expect(headers).not.toHaveLength(0));
+    expect(headers[0]).toMatchObject({ "x-casefile-token": "secret" });
   });
 });
 

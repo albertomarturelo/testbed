@@ -60,7 +60,7 @@ Run every casefile command with `CASEFILE_ACTOR=agent`.
 
    ```bash
    CASEFILE_ACTOR=agent casefile cover <feature> --project <name> \
-     --requested-by <the human's git email> --agent <your name> --json \
+     --agent <your name> --json \
      --cases "$(cat <cases file>)"
    ```
 

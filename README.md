@@ -175,6 +175,7 @@ Every command has `--help`, `--json` for scripts and agents, and a SPEC:
 | `casefile resolve` | Shows a case after inheritance, with where each value came from |
 | `casefile id next` | The next free case id of a project |
 | `casefile spec <name>` | Prints the SPEC of an operation or topic |
+| `casefile whoami` | Who writes are made as: `CASEFILE_USER_EMAIL` when set, else `git config user.email` (on `main`, ships in the next release) |
 
 ## Principles
 
@@ -184,7 +185,8 @@ Every command has `--help`, `--json` for scripts and agents, and a SPEC:
 - **Files are the source of truth.** No database, no hidden state: everything is
   recomputable from the repo.
 - **Git is identity.** Who changed a case and why comes from commits and
-  their trailers, not from accounts.
+  their trailers, not from accounts. On a shared machine, `CASEFILE_USER_EMAIL`
+  names the QA without touching git config.
 - **Cases are written only through core operations**, by the agent or the QA
   from the viewer; Git says who. Nobody hand-edits YAML.
 - **Bring your own agent.** casefile never calls an LLM.

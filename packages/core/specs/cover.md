@@ -39,7 +39,7 @@ from the viewer (ADR human-writes-through-operations).
 |---|---|---|
 | `feature` | feature path (`login`, `checkout/payments`) | Where the cases go: `<project>/context/tests/<feature>/`. Created if absent. |
 | `cases` | `ProposedCase[]`, 1 or more | The cases to write, in the order their ids are assigned. |
-| `identity` | email | Filled by the host from `git config user.email` in the workspace: the person at the keyboard. |
+| `identity` | email | Filled by the host: `CASEFILE_USER_EMAIL` when set, else `git config user.email` in the workspace (ADR identity-override; `casefile whoami` shows it): the person at the keyboard. |
 | `requestedBy` | email, optional | Agent only: the human who asked, when it is not `identity` (an inbox item's author). Refused for a human. |
 | `agent` | text | The agent that proposes them (`claude-code`, `codex`): the `Agent:` trailer. Required for an agent, refused for a human. |
 | `inbox` | inbox item id | When the request came through `.inbox/`: written as `history[].inbox` and the `Inbox-Id:` trailer. |
@@ -48,7 +48,9 @@ from the viewer (ADR human-writes-through-operations).
 
 `identity` and `via` are host inputs, never flags (ADR cli-generic-host). The
 case is by `requestedBy` when given, else `identity`: that email is
-`history[].by` and the `Requested-by:` trailer.
+`history[].by` and the `Requested-by:` trailer. An agent passes `--requested-by`
+only when the request is someone else's (an inbox item's author); otherwise the
+identity the host resolved is the requester.
 
 A `ProposedCase` has the case fields the agent decides. Fields that are not
 listed here are not accepted:
@@ -146,11 +148,13 @@ says to commit as yourself and review the drafts.
 ## Example
 
 Workspace `examples/demo-monorepo`: `web` already has `TC-0001` and `TC-0002` in
-`login`. The human asked: "cover an empty password on sign-in".
+`login`. The human at the keyboard (`casefile whoami`: `qa@acme.example`) asked:
+"cover an empty password on sign-in". The host fills that identity, so the
+agent passes no `--requested-by`.
 
 ```bash
 CASEFILE_ACTOR=agent casefile cover login --project web \
-  --requested-by qa@acme.example --agent claude-code --json --cases '[
+  --agent claude-code --json --cases '[
   { "title": "Reject an empty password",
     "steps": [{ "do": "Submit a registered email with an empty password",
                 "expect": "The form says the password is required and stays on the page" }],
@@ -191,7 +195,8 @@ Nothing is written when any of these is returned.
 | `operation.invalid_input` | the input or a proposed case does not match its schema (with the field path), e.g. a `state`, `id` or `automation.status` given |
 | `cover.agent_required` / `cover.agent_not_allowed` | `agent` missing for an agent, or given by a human |
 | `cover.requested_by_not_allowed` | `requestedBy` given by a human: their own identity is used |
-| `identity.missing` | no `requestedBy`, and the host found no `git config user.email` in the workspace |
+| `identity.missing` | no `requestedBy`, and the host found neither `CASEFILE_USER_EMAIL` nor `git config user.email` |
+| `identity.invalid` | `CASEFILE_USER_EMAIL` or `git config user.email` is not an email (the message names which); nothing runs |
 | `resolve.missing_field` | a proposed case would not resolve: set the field in the case, or finish setup |
 | `label.undeclared` | a label key is not declared in the project's `_properties.yaml` |
 | `cover.duplicate_title` | a case of that feature, existing or earlier in `cases`, has the same title |

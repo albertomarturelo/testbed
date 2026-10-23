@@ -36,7 +36,7 @@ package `@casefile/cli`, and the unscoped `casefile` package is a different one.
 
    ```bash
    CASEFILE_ACTOR=agent casefile cover <feature> --json \
-     --requested-by "$(git config user.email)" --agent <your name> \
+     --agent <your name> \
      --cases "$(cat <cases file>)"
    ```
 
