@@ -81,9 +81,15 @@ jobs:
           flags="--access public"
           if [ "$PUBLISH" = "true" ]; then flags="$flags --provenance"; else flags="$flags --dry-run"; fi
           for pkg in core cli; do
-            # A rerun after a partial publish skips what npm already has.
-            if [ "$PUBLISH" = "true" ] && npm view "@casefile/$pkg@$version" version > /dev/null 2>&1; then
-              echo "@casefile/$pkg@$version is already on npm: skipped"
+            # npm refuses a version it already has, even with --dry-run (#123).
+            # Publishing, that is a rerun after a partial publish; dry, a PR
+            # between releases. Either way the tarball was packed and smoke-tested.
+            if npm view "@casefile/$pkg@$version" version > /dev/null 2>&1; then
+              if [ "$PUBLISH" = "true" ]; then
+                echo "@casefile/$pkg@$version is already on npm: skipped"
+              else
+                echo "::notice::dry run: @casefile/$pkg@$version is already on npm, so npm would refuse it; publish skipped (packed and smoke-tested above)"
+              fi
               continue
             fi
             npm publish "$RUNNER_TEMP"/pack/casefile-$pkg-*.tgz $flags
