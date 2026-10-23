@@ -81,12 +81,40 @@ describe("CaseList", () => {
     expect(automationCell("Linked")).toBe("linked");
     expect(automationCell("Linked, in progress")).toBe("linked");
     expect(automationCell("Linked, run by hand")).toBe("linked");
-    expect(automationCell("By hand")).toBe("manual");
+    expect(automationCell("By hand")).toBe("no test");
     expect(automationCell("Needs an account")).toBe("not eligible");
     // The badge says which test is linked and what the case still resolves to.
     expect(
       screen.getAllByTitle(/^Linked to login\.spec\.ts::wip; .*\(in progress\)$/),
     ).toHaveLength(1);
+  });
+
+  it("tells an eligible case without a test from one nobody can automate (#111)", () => {
+    render(<CaseList rows={rows} />);
+    const noTest = screen.getByText("no test");
+    expect(noTest.getAttribute("title")).toBe(
+      "Can be automated: no test is linked to it yet (manual)",
+    );
+    const notEligible = screen.getByText("not eligible");
+    expect(notEligible.getAttribute("title")).toBe(
+      "automation.eligible is false: nobody can automate it",
+    );
+    // `manual` no longer appears for an eligible case: it read as "tested by hand".
+    expect(screen.queryByText("manual")).toBeNull();
+    // A candidate without a test keeps its own word.
+    cleanup();
+    render(<CaseList rows={[row("TC-0009", "Planned", { automation: "candidate" })]} />);
+    expect(automationCell("Planned")).toBe("candidate");
+  });
+
+  it("draws automated lighter than a run result", () => {
+    render(<CaseList rows={rows} />);
+    const tr = screen.getByRole("link", { name: "Proven" }).closest("tr");
+    const automated = tr?.querySelectorAll("td")[5]?.querySelector('[data-slot="badge"]');
+    const run = tr?.querySelectorAll("td")[6]?.querySelector('[data-slot="badge"]');
+    expect(automated?.getAttribute("data-variant")).toBe("secondary");
+    expect(run?.getAttribute("data-variant")).toBe("destructive");
+    expect(automated?.querySelector("svg")).not.toBeNull();
   });
 
   it("keeps case, title, automation and last run when the list is narrow", () => {
