@@ -1,4 +1,4 @@
-import { Link2 } from "lucide-react";
+import { CircleCheck, Link2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 type Variant = "default" | "secondary" | "destructive" | "outline";
@@ -11,8 +11,12 @@ const RUN: Record<string, Variant> = {
   not_run: "outline",
 };
 
+/**
+ * `automated` is derived and one agent run makes it (ADR write-ownership), so
+ * it is lighter than a run result: the result is what stands out in a row.
+ */
 const AUTOMATION: Record<string, Variant> = {
-  automated: "default",
+  automated: "secondary",
   flaky: "destructive",
   candidate: "secondary",
   in_progress: "secondary",
@@ -34,12 +38,15 @@ const FINAL = new Set(["automated", "flaky", "retired"]);
  * What the human reads for a case's automation. A case linked to a test that no
  * CI or agent run reported yet is `linked`, not the `manual` it resolves to (ADR
  * write-ownership): not "never ran", since a human may have run it by hand. One
- * nobody can automate is `not eligible`.
+ * nobody can automate is `not eligible`. One that could be automated but has no
+ * test yet is `no test`: `manual` would read as "tested by hand", which is what
+ * `not eligible` means (#111). `candidate` and `in progress` say more, and stay.
  */
-function automationKind(a: Automation): "status" | "linked" | "not_eligible" {
+function automationKind(a: Automation): "status" | "linked" | "not_eligible" | "no_test" {
   if (FINAL.has(a.status)) return "status";
   if (a.ref !== null) return "linked";
-  return a.eligible ? "status" : "not_eligible";
+  if (!a.eligible) return "not_eligible";
+  return a.status === "manual" ? "no_test" : "status";
 }
 
 /** The resolved `automation.status`; `automated`/`flaky` come from runs. */
@@ -66,7 +73,18 @@ export function AutomationBadge({ automation }: { automation: Automation }) {
           not eligible
         </Badge>
       );
+    case "no_test":
+      return (
+        <Badge variant="outline" title="Can be automated: no test is linked to it yet (manual)">
+          no test
+        </Badge>
+      );
     default:
-      return <Badge variant={AUTOMATION[automation.status] ?? "outline"}>{status}</Badge>;
+      return (
+        <Badge variant={AUTOMATION[automation.status] ?? "outline"}>
+          {automation.status === "automated" ? <CircleCheck aria-hidden /> : null}
+          {status}
+        </Badge>
+      );
   }
 }
