@@ -203,6 +203,7 @@ export const coverOperation = defineOperation({
       commit: writeCommit(
         `cover(${input.feature}): propose ${count} ${count === 1 ? "case" : "cases"}`,
         { requestedBy: by, inbox: input.inbox, agent, change },
+        files.map((f) => f.path),
       ),
       next:
         agent === undefined

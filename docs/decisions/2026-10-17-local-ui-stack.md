@@ -24,10 +24,10 @@ primitives, with components copied into the app rather than installed.
    `POST /api/operations/<name>` with the operation's JSON input. The answer is
    the `Result` that `casefile <cmd> --json` prints. It is a generic host
    ([extension-model](2026-10-15-extension-model.md)): it calls `openRegistry`
-   and has no operation logic. The actor is `human`. In F1 it only invokes
-   operations with `writes: []`; anything that writes returns `ui.read_only`
-   until the UI writes `.inbox/` intents
-   ([write-ownership](2026-10-15-write-ownership.md)). A request whose `Host`
+   and has no operation logic. The actor is `human`. A writing operation runs only for a same-origin
+   request carrying the session token, and the server then runs the returned
+   commit as the human ([human-writes-through-operations](2026-10-19-human-writes-through-operations.md),
+   #91; `ui.read_only` is gone). A request whose `Host`
    is not localhost is refused (DNS rebinding; added by #54).
 3. **Freshness:** each request runs the operation, which loads the workspace from
    files ([files-are-source-of-truth](2026-10-15-files-are-source-of-truth.md)).
@@ -78,6 +78,7 @@ primitives, with components copied into the app rather than installed.
   and an extension's read-only operation appears in the API with no web changes.
 - ARCHITECTURE and #54/#35 say `pnpm ui` until the publishing decision brings
   `casefile ui` back.
-- Binding to `127.0.0.1` with no auth is safe only while the UI is read-only.
-  Before it writes intents, any local page could POST to it. Writing needs an
-  origin check (and a token if needed), decided with the inbox UI.
+- Binding to `127.0.0.1` with no auth was safe only while the UI was read-only.
+  Since #91 a write needs the request's `Origin` (or `Sec-Fetch-Site:
+  same-origin`) and the token `GET /api/session` hands the page, never a URL;
+  read-only operations stay open (ADR human-writes-through-operations §3).

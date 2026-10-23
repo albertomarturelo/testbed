@@ -35,7 +35,7 @@ type Reviewed = {
   state: string;
   changed: string[];
   events: string[];
-  commit: { author?: string; message: string };
+  commit: { author?: string; message: string; files: string[] };
   next: string[];
 };
 
@@ -115,6 +115,7 @@ describe("review", () => {
         agent: "claude-code",
         change: value.change,
       }),
+      files: [`${LOGIN}/TC-0003.md`],
     });
     expect(value.next[0]).toContain("-- <path>");
     expect(await registry.invoke("validate", {}, { root, actor: "agent" })).toMatchObject({
@@ -129,6 +130,7 @@ describe("review", () => {
     );
     expect(value.commit).toEqual({
       message: `review(login): retire TC-0001\n\nRequested-by: lead@acme.example\nCasefile-Change: ${value.change}\n`,
+      files: [value.path],
     });
     expect(value.next[0]).toContain("as yourself");
     expect((await caseFile()).history.at(-1)).toMatchObject({

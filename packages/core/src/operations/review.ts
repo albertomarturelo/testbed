@@ -303,12 +303,11 @@ export const reviewOperation = defineOperation({
       state: file.state,
       changed,
       events,
-      commit: writeCommit(`review(${stored.feature}): ${verbs.join(" and ")} ${stored.id}`, {
-        requestedBy: by,
-        inbox: input.inbox,
-        agent,
-        change,
-      }),
+      commit: writeCommit(
+        `review(${stored.feature}): ${verbs.join(" and ")} ${stored.id}`,
+        { requestedBy: by, inbox: input.inbox, agent, change },
+        [loaded.path],
+      ),
       next: [
         agent === undefined
           ? "Commit the file with commit.message taken from --json output, as yourself, staging only it (`git commit -F <message> -- <path>`)"

@@ -108,9 +108,11 @@ creates it. Changing, approving or retiring it is a review
    why the agent runs it.
 
    A human's commit has no `commit.author` and no `Agent:` trailer: it is
-   made with their own Git identity (`git commit -F <message> -- <created paths>`).
+   made with their own Git identity (`git commit -F <message> -- <created paths>`),
+   or the one casefile resolved for them (ADR identity-override).
    From the CLI, the human runs it; the viewer runs it for them (ADR
-   human-writes-through-operations).
+   human-writes-through-operations). `commit.files` lists the created paths,
+   workspace-relative: the pathspec to stage and commit, and nothing else.
 
 **Postconditions:** `casefile validate` reports nothing new for the created
 files. `casefile resolve <ref>` shows each case as `draft`. `casefile overview`
@@ -132,7 +134,8 @@ first call instead.
     { "ref": "web/TC-0004", "path": "apps/web/context/tests/login/TC-0004.md" } ],
   "commit": {
     "author": "casefile-agent <casefile-agent@casefile.invalid>",
-    "message": "cover(login): propose 2 cases\n\nRequested-by: qa@acme.example\nAgent: claude-code\nCasefile-Change: 9d2f6a1e-3b4c-4d5e-8f90-1a2b3c4d5e6f\n" },
+    "message": "cover(login): propose 2 cases\n\nRequested-by: qa@acme.example\nAgent: claude-code\nCasefile-Change: 9d2f6a1e-3b4c-4d5e-8f90-1a2b3c4d5e6f\n",
+    "files": ["apps/web/context/tests/login/TC-0003.md", "apps/web/context/tests/login/TC-0004.md"] },
   "next": ["Commit the created files with commit.author and commit.message taken from --json output, staging only them (`git commit -F <message> -- <paths>`)",
            "Ask the human to review the drafts: web/TC-0003, web/TC-0004"] }
 ```

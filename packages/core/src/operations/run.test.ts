@@ -32,7 +32,7 @@ type Recorded = {
   path: string;
   appended: boolean;
   event: Record<string, unknown>;
-  commit?: { author?: string; message: string };
+  commit?: { author?: string; message: string; files: string[] };
   next: string[];
 };
 
@@ -85,6 +85,7 @@ describe("run", () => {
         run,
         executor: "human:qa@acme.example",
       }),
+      files: [value.path],
     });
     expect(value.next[0]).toContain("as yourself");
 
@@ -116,6 +117,7 @@ describe("run", () => {
         run: "rc-2.1",
         executor: "agent:claude-code",
       }),
+      files: [value.path],
     });
   });
 

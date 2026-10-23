@@ -1,7 +1,7 @@
 {
   "name": "@casefile/web",
   "version": "0.0.0",
-  "description": "casefile local UI: a read-only view of the workspace (ADR local-ui-stack).",
+  "description": "casefile local UI: the QA reads and writes the workspace through core operations (ADR local-ui-stack).",
   "private": true,
   "license": "MIT",
   "type": "module",

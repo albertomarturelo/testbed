@@ -132,7 +132,7 @@ export const runOperation = defineOperation({
       path,
       appended: true,
       event,
-      commit: agent ? { author: AGENT_AUTHOR, message } : { message },
+      commit: agent ? { author: AGENT_AUTHOR, message, files: [path] } : { message, files: [path] },
       next: [
         agent
           ? "Commit the run file with commit.author and commit.message taken from --json output, staging only it (`git commit -F <message> -- <path>`)"

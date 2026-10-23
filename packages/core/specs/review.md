@@ -102,9 +102,11 @@ including moving to the state the case already has, is
      and the message carries `Agent:`. `Requested-by:` is the same email as `by`. Commit it as `casefile spec cover` says
      (`git -c user.name=… -c user.email=… commit -F <message> -- <path>`).
    - **human:** there is no `commit.author` and no `Agent:` trailer. The commit
-     is made with the human's own Git identity (`git commit -F <message> -- <path>`).
+     is made with the human's own Git identity (`git commit -F <message> -- <path>`),
+     or the one casefile resolved for them (ADR identity-override).
      From the CLI, the human runs it; the viewer runs it for them (ADR
-     human-writes-through-operations).
+     human-writes-through-operations). `commit.files` is that one path,
+     workspace-relative: the pathspec to stage and commit, and nothing else.
 
    The subject is `review(<feature>): <verbs> <id>`, the verbs being `edit`
    when `set` changed something and the transition's verb, joined with `and`:
@@ -129,7 +131,8 @@ retry with `base` is `review.stale`. Commit the file of the first call instead.
   "events": ["updated", "reviewed"],
   "commit": {
     "author": "casefile-agent <casefile-agent@casefile.invalid>",
-    "message": "review(login): edit and approve TC-0003\n\nRequested-by: qa@acme.example\nAgent: claude-code\nCasefile-Change: 5e1c7a2b-8d3f-4a6e-9b0c-2f4d6e8a1c3b\n" },
+    "message": "review(login): edit and approve TC-0003\n\nRequested-by: qa@acme.example\nAgent: claude-code\nCasefile-Change: 5e1c7a2b-8d3f-4a6e-9b0c-2f4d6e8a1c3b\n",
+    "files": ["apps/web/context/tests/login/TC-0003.md"] },
   "next": ["Commit the file with commit.author and commit.message taken from --json output, staging only it (`git commit -F <message> -- <path>`)"] }
 ```
 
