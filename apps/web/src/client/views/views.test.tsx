@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { App } from "@/App";
+import { App, RUN_COLUMNS_KEY } from "@/App";
 import { type CaseRow, forgetSession, type Result } from "@/api";
 import { CaseDetail } from "@/views/CaseDetail";
 import { CaseList } from "@/views/CaseList";
@@ -31,6 +31,7 @@ beforeEach(() => {
   });
 });
 afterEach(() => {
+  window.localStorage.clear();
   cleanup();
   vi.unstubAllGlobals();
 });
@@ -155,6 +156,8 @@ describe("CaseDetail", () => {
       },
     });
     answers.runs = () => ({ ok: true, value: { ref: "web/TC-0001", runs: [] } });
+    // The list's choice to hide automation and runs never reaches the case page (#110).
+    window.localStorage.setItem(RUN_COLUMNS_KEY, "0");
     render(<CaseDetail caseRef="web/TC-0001" />);
     expect(await screen.findByRole("heading", { name: "Sign in" })).toBeTruthy();
     expect(screen.getByText("apps/web/context/tests/_common.yaml")).toBeTruthy();

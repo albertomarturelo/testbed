@@ -1,4 +1,4 @@
-import { RefreshCw } from "lucide-react";
+import { Eye, EyeOff, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { call, type Overview, type Result, type Session, session } from "@/api";
 import { ErrorList } from "@/components/ErrorList";
@@ -6,6 +6,7 @@ import { FeatureTree, inFeature } from "@/components/FeatureTree";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useStoredFlag } from "@/lib/stored";
 import { cn } from "@/lib/utils";
 import { formatRoute, parseRoute, type Route } from "@/route";
 import { CaseDetail } from "@/views/CaseDetail";
@@ -156,18 +157,35 @@ export function App() {
   );
 }
 
+/** Remembers, per viewer, whether the case list shows Automation and Last run (#110). */
+export const RUN_COLUMNS_KEY = "casefile.caseList.runColumns";
+
 function CasesPage(props: { overview: Overview; project?: string; feature?: string }) {
   const { overview, project, feature } = props;
   const inProject = overview.cases.filter((c) => project === undefined || c.project === project);
   // A leaf feature: every listed case is in it, so the Feature column would only repeat it.
   const leaf = feature !== undefined && !inProject.some((c) => c.feature.startsWith(`${feature}/`));
+  // Read over the project, not the feature: the columns do not come and go per feature.
+  const everRan = inProject.some((c) => c.last_run !== null);
+  const [runColumns, setRunColumns] = useStoredFlag(RUN_COLUMNS_KEY, true);
   return (
     <div className="flex gap-6">
       <aside className="w-56 shrink-0">
         <FeatureTree project={project} rows={inProject} selected={feature} />
       </aside>
-      <section className="min-w-0 flex-1">
-        <CaseList rows={inProject.filter((c) => inFeature(c, feature))} showFeature={!leaf} />
+      <section className="flex min-w-0 flex-1 flex-col gap-2">
+        <div className="flex justify-end">
+          <Button variant="ghost" size="sm" onClick={() => setRunColumns(!runColumns)}>
+            {runColumns ? <EyeOff /> : <Eye />}
+            {runColumns ? "Hide automation and runs" : "Show automation and runs"}
+          </Button>
+        </div>
+        <CaseList
+          rows={inProject.filter((c) => inFeature(c, feature))}
+          showFeature={!leaf}
+          showAutomation={runColumns}
+          showLastRun={runColumns && everRan}
+        />
       </section>
     </div>
   );

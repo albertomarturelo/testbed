@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { App } from "@/App";
+import { App, RUN_COLUMNS_KEY } from "@/App";
 import type { Overview } from "@/api";
 import { featureTree } from "@/components/FeatureTree";
 import { formatRoute, parseRoute } from "@/route";
@@ -40,6 +40,7 @@ let overview: Overview = OVERVIEW;
 beforeEach(() => {
   calls.length = 0;
   overview = OVERVIEW;
+  window.localStorage.clear();
   window.location.hash = "";
   vi.stubGlobal("fetch", async (url: string, init: { body: string }) => {
     const name = url.split("/").at(-1) as string;
@@ -107,6 +108,64 @@ describe("App: room for the title (#109)", () => {
     expect(screen.queryByRole("navigation", { name: "Projects" })).toBeNull();
     expect(screen.queryByText("All projects")).toBeNull();
     expect(screen.getByRole("navigation", { name: "Views" })).toBeTruthy();
+  });
+});
+
+describe("App: run columns are optional (#110)", () => {
+  const heads = () => screen.getAllByRole("columnheader").map((h) => h.textContent);
+
+  it("leaves Last run out when no case of the project ever ran", async () => {
+    overview = {
+      ...OVERVIEW,
+      cases: OVERVIEW.cases.map((c) => ({ ...c, last_run: null, last_run_at: null })),
+    };
+    render(<App />);
+    expect(await screen.findByText("Sign in")).toBeTruthy();
+    expect(heads()).toContain("Automation");
+    expect(heads()).not.toContain("Last run");
+    expect(screen.queryByText("never ran")).toBeNull();
+  });
+
+  it("reads runs over the project, not the selected feature", async () => {
+    // login/errors never ran, but login did: the column stays.
+    window.location.hash = formatRoute({ view: "cases", project: "web", feature: "login/errors" });
+    render(<App />);
+    expect(await screen.findByText("Reject a wrong password")).toBeTruthy();
+    expect(heads()).toContain("Last run");
+  });
+
+  it("hides automation and runs on request and remembers it for this viewer", async () => {
+    const view = render(<App />);
+    expect(await screen.findByText("Sign in")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Hide automation and runs" }));
+    expect(heads()).not.toContain("Automation");
+    expect(heads()).not.toContain("Last run");
+    expect(window.localStorage.getItem(RUN_COLUMNS_KEY)).toBe("0");
+
+    view.unmount();
+    render(<App />);
+    expect(await screen.findByText("Sign in")).toBeTruthy();
+    expect(heads()).not.toContain("Automation");
+    fireEvent.click(screen.getByRole("button", { name: "Show automation and runs" }));
+    expect(heads()).toEqual(expect.arrayContaining(["Automation", "Last run"]));
+    expect(window.localStorage.getItem(RUN_COLUMNS_KEY)).toBe("1");
+  });
+
+  it("renders the list when storage throws, and the toggle still works", async () => {
+    const broken = () => {
+      throw new Error("blocked");
+    };
+    vi.spyOn(window.localStorage, "getItem").mockImplementation(broken);
+    vi.spyOn(window.localStorage, "setItem").mockImplementation(broken);
+    try {
+      render(<App />);
+      expect(await screen.findByText("Sign in")).toBeTruthy();
+      expect(heads()).toContain("Automation");
+      fireEvent.click(screen.getByRole("button", { name: "Hide automation and runs" }));
+      expect(heads()).not.toContain("Automation");
+    } finally {
+      vi.restoreAllMocks();
+    }
   });
 });
 

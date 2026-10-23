@@ -21,13 +21,20 @@ const WIDE_ONLY = "hidden @4xl:table-cell";
 /**
  * The cases of the selected project and feature, one row each. `showFeature`
  * is off when a leaf feature is selected: every row would repeat it.
+ * `showAutomation` and `showLastRun` are off when the viewer hides them, and
+ * `showLastRun` also when the project has never run (ADR authoring-loop-first:
+ * cases kept as documentation are complete without runs).
  */
 export function CaseList({
   rows,
   showFeature = true,
+  showAutomation = true,
+  showLastRun = true,
 }: {
   rows: readonly CaseRow[];
   showFeature?: boolean;
+  showAutomation?: boolean;
+  showLastRun?: boolean;
 }) {
   if (rows.length === 0) {
     return <p className="py-12 text-center text-muted-foreground text-sm">No cases here yet.</p>;
@@ -45,8 +52,8 @@ export function CaseList({
             {showFeature ? <TableHead className={WIDE_ONLY}>Feature</TableHead> : null}
             <TableHead className={WIDE_ONLY}>State</TableHead>
             <TableHead className={WIDE_ONLY}>Priority</TableHead>
-            <TableHead>Automation</TableHead>
-            <TableHead>Last run</TableHead>
+            {showAutomation ? <TableHead>Automation</TableHead> : null}
+            {showLastRun ? <TableHead>Last run</TableHead> : null}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -80,25 +87,29 @@ export function CaseList({
                 <Badge variant="outline">{row.state}</Badge>
               </TableCell>
               <TableCell className={WIDE_ONLY}>{row.priority}</TableCell>
-              <TableCell>
-                <AutomationBadge
-                  automation={{
-                    status: row.automation,
-                    ref: row.automation_ref,
-                    eligible: row.eligible,
-                  }}
-                />
-              </TableCell>
-              <TableCell>
-                <div className="flex flex-col items-start gap-0.5 @4xl:flex-row @4xl:items-center @4xl:gap-2">
-                  <RunBadge status={row.last_run} />
-                  {row.last_run_at === null ? null : (
-                    <span className="text-muted-foreground text-xs">
-                      {formatDate(row.last_run_at)}
-                    </span>
-                  )}
-                </div>
-              </TableCell>
+              {showAutomation ? (
+                <TableCell>
+                  <AutomationBadge
+                    automation={{
+                      status: row.automation,
+                      ref: row.automation_ref,
+                      eligible: row.eligible,
+                    }}
+                  />
+                </TableCell>
+              ) : null}
+              {showLastRun ? (
+                <TableCell>
+                  <div className="flex flex-col items-start gap-0.5 @4xl:flex-row @4xl:items-center @4xl:gap-2">
+                    <RunBadge status={row.last_run} />
+                    {row.last_run_at === null ? null : (
+                      <span className="text-muted-foreground text-xs">
+                        {formatDate(row.last_run_at)}
+                      </span>
+                    )}
+                  </div>
+                </TableCell>
+              ) : null}
             </TableRow>
           ))}
         </TableBody>
