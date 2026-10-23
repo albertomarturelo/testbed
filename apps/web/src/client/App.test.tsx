@@ -35,14 +35,16 @@ function row(ref: string, feature: string, title: string, automation: string, ru
 }
 
 const calls: { name: string; input: unknown }[] = [];
+let overview: Overview = OVERVIEW;
 
 beforeEach(() => {
   calls.length = 0;
+  overview = OVERVIEW;
   window.location.hash = "";
   vi.stubGlobal("fetch", async (url: string, init: { body: string }) => {
     const name = url.split("/").at(-1) as string;
     calls.push({ name, input: JSON.parse(init.body) });
-    return new Response(JSON.stringify({ ok: true, value: OVERVIEW }));
+    return new Response(JSON.stringify({ ok: true, value: overview }));
   });
 });
 afterEach(() => {
@@ -68,6 +70,43 @@ describe("App", () => {
     expect(screen.queryByText("Create an order")).toBeNull();
     // The case file that does not resolve is pointed out.
     expect(screen.getByText(/does not resolve/)).toBeTruthy();
+  });
+});
+
+describe("App: room for the title (#109)", () => {
+  const featureHeader = () => screen.queryByRole("columnheader", { name: "Feature" });
+
+  it("hides the Feature column for a leaf feature, keeps it for a parent and for all", async () => {
+    window.location.hash = formatRoute({ view: "cases", project: "web", feature: "login/errors" });
+    const { unmount } = render(<App />);
+    expect(await screen.findByText("Reject a wrong password")).toBeTruthy();
+    expect(featureHeader()).toBeNull();
+    unmount();
+
+    for (const feature of ["login", undefined]) {
+      window.location.hash = formatRoute({ view: "cases", project: "web", feature });
+      const view = render(<App />);
+      expect(await screen.findByText("Reject a wrong password")).toBeTruthy();
+      expect(featureHeader()).not.toBeNull();
+      view.unmount();
+    }
+  });
+
+  it("shows no project switcher in a one-project workspace", async () => {
+    render(<App />);
+    expect(await screen.findByText("Sign in")).toBeTruthy();
+    expect(screen.getByRole("navigation", { name: "Projects" })).toBeTruthy();
+    cleanup();
+
+    overview = {
+      projects: [OVERVIEW.projects[0] as Overview["projects"][number]],
+      cases: OVERVIEW.cases.filter((c) => c.project === "web"),
+    };
+    render(<App />);
+    expect(await screen.findByText("Sign in")).toBeTruthy();
+    expect(screen.queryByRole("navigation", { name: "Projects" })).toBeNull();
+    expect(screen.queryByText("All projects")).toBeNull();
+    expect(screen.getByRole("navigation", { name: "Views" })).toBeTruthy();
   });
 });
 

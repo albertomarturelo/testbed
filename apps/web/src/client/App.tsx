@@ -77,30 +77,35 @@ export function App() {
         <a href="#/cases" className="font-semibold tracking-tight">
           casefile
         </a>
-        <Separator orientation="vertical" className="h-5!" />
-        <nav aria-label="Projects" className="flex flex-wrap gap-1 text-sm">
-          <ProjectLink
-            href={formatRoute({
-              view: route.view === "case" ? "cases" : route.view,
-              project: undefined,
-            })}
-            active={project === undefined}
-          >
-            All projects
-          </ProjectLink>
-          {projects.map((p) => (
-            <ProjectLink
-              key={p.name}
-              href={formatRoute({
-                view: route.view === "case" ? "cases" : route.view,
-                project: p.name,
-              })}
-              active={project === p.name}
-            >
-              {p.name} <span className="text-muted-foreground">· {p.cases}</span>
-            </ProjectLink>
-          ))}
-        </nav>
+        {/* One project: there is nothing to switch to, and its count is the list itself. */}
+        {projects.length > 1 ? (
+          <>
+            <Separator orientation="vertical" className="h-5!" />
+            <nav aria-label="Projects" className="flex flex-wrap gap-1 text-sm">
+              <ProjectLink
+                href={formatRoute({
+                  view: route.view === "case" ? "cases" : route.view,
+                  project: undefined,
+                })}
+                active={project === undefined}
+              >
+                All projects
+              </ProjectLink>
+              {projects.map((p) => (
+                <ProjectLink
+                  key={p.name}
+                  href={formatRoute({
+                    view: route.view === "case" ? "cases" : route.view,
+                    project: p.name,
+                  })}
+                  active={project === p.name}
+                >
+                  {p.name} <span className="text-muted-foreground">· {p.cases}</span>
+                </ProjectLink>
+              ))}
+            </nav>
+          </>
+        ) : null}
         <nav aria-label="Views" className="ml-auto flex gap-1 text-sm">
           <ProjectLink href={tab("cases")} active={route.view === "cases" || route.view === "case"}>
             Cases
@@ -154,13 +159,15 @@ export function App() {
 function CasesPage(props: { overview: Overview; project?: string; feature?: string }) {
   const { overview, project, feature } = props;
   const inProject = overview.cases.filter((c) => project === undefined || c.project === project);
+  // A leaf feature: every listed case is in it, so the Feature column would only repeat it.
+  const leaf = feature !== undefined && !inProject.some((c) => c.feature.startsWith(`${feature}/`));
   return (
     <div className="flex gap-6">
       <aside className="w-56 shrink-0">
         <FeatureTree project={project} rows={inProject} selected={feature} />
       </aside>
       <section className="min-w-0 flex-1">
-        <CaseList rows={inProject.filter((c) => inFeature(c, feature))} />
+        <CaseList rows={inProject.filter((c) => inFeature(c, feature))} showFeature={!leaf} />
       </section>
     </div>
   );

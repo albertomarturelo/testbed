@@ -18,8 +18,17 @@ import { formatRoute } from "@/route";
  */
 const WIDE_ONLY = "hidden @4xl:table-cell";
 
-/** The cases of the selected project and feature, one row each. */
-export function CaseList({ rows }: { rows: readonly CaseRow[] }) {
+/**
+ * The cases of the selected project and feature, one row each. `showFeature`
+ * is off when a leaf feature is selected: every row would repeat it.
+ */
+export function CaseList({
+  rows,
+  showFeature = true,
+}: {
+  rows: readonly CaseRow[];
+  showFeature?: boolean;
+}) {
   if (rows.length === 0) {
     return <p className="py-12 text-center text-muted-foreground text-sm">No cases here yet.</p>;
   }
@@ -33,7 +42,7 @@ export function CaseList({ rows }: { rows: readonly CaseRow[] }) {
           <TableRow>
             <TableHead>Case</TableHead>
             <TableHead>Title</TableHead>
-            <TableHead className={WIDE_ONLY}>Feature</TableHead>
+            {showFeature ? <TableHead className={WIDE_ONLY}>Feature</TableHead> : null}
             <TableHead className={WIDE_ONLY}>State</TableHead>
             <TableHead className={WIDE_ONLY}>Priority</TableHead>
             <TableHead>Automation</TableHead>
@@ -52,19 +61,21 @@ export function CaseList({ rows }: { rows: readonly CaseRow[] }) {
                   {oneProject ? row.ref.slice(row.project.length + 1) : row.ref}
                 </a>
               </TableCell>
-              {/* w-full + max-w-0: the title takes what the other columns leave, and truncates. */}
-              <TableCell className="w-full max-w-0">
+              {/* w-full + max-w-0: the title takes what the other columns leave; it wraps to two lines, then clamps. */}
+              <TableCell className="w-full max-w-0 whitespace-normal">
                 <a
-                  className="block truncate hover:underline"
+                  className="line-clamp-2 break-words hover:underline"
                   href={formatRoute({ view: "case", ref: row.ref })}
                   title={row.title}
                 >
                   {row.title}
                 </a>
               </TableCell>
-              <TableCell className={cn(WIDE_ONLY, "text-muted-foreground")}>
-                {row.feature}
-              </TableCell>
+              {showFeature ? (
+                <TableCell className={cn(WIDE_ONLY, "text-muted-foreground")}>
+                  {row.feature}
+                </TableCell>
+              ) : null}
               <TableCell className={WIDE_ONLY}>
                 <Badge variant="outline">{row.state}</Badge>
               </TableCell>
