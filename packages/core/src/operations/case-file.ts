@@ -72,18 +72,24 @@ export function writtenBy(
 /**
  * The commit a writing operation returns (ADR agent-runs-the-commit): an agent's
  * is authored by `casefile-agent`; a human commits as themself, so no author.
+ * `files` are the workspace-relative paths to stage, and nothing else.
  */
 export function writeCommit(
   subject: string,
   trailers: { requestedBy: string; inbox?: string; agent?: string; change: string },
-): { author?: string; message: string } {
+  files: readonly string[],
+): { author?: string; message: string; files: string[] } {
   const message = commitMessage(subject, trailers);
-  return trailers.agent === undefined ? { message } : { author: AGENT_AUTHOR, message };
+  return trailers.agent === undefined
+    ? { message, files: [...files] }
+    : { author: AGENT_AUTHOR, message, files: [...files] };
 }
 
 export const WriteCommit = z.strictObject({
   author: z.string().optional(),
   message: z.string(),
+  /** The files the operation wrote, workspace-relative: the commit's pathspec. */
+  files: z.array(z.string()).min(1),
 });
 
 /** Frontmatter keys casefile writes, in this order; the rest follow schema order. */

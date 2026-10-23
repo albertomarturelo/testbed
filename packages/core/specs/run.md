@@ -58,8 +58,11 @@ never make a case `automated`.
      Commit it as `casefile spec cover` says
      (`git -c user.name=… -c user.email=… commit -F <message> -- <path>`).
    - **human:** there is no `commit.author`; the commit is made with the
-     human's own Git identity (`git commit -F <message> -- <path>`). From the
-     CLI, the human runs it; the viewer runs it for them.
+     human's own Git identity (`git commit -F <message> -- <path>`), or the one
+     casefile resolved for them (ADR identity-override). From the
+     CLI, the human runs it; the viewer runs it for them. `commit.files` is
+     that one path, workspace-relative: the pathspec to stage and commit, and
+     nothing else.
 
    The subject is `run(<feature>): record <id> as <status>`. When nothing was
    appended there is no `commit`.
@@ -85,7 +88,8 @@ the last result.)
   "appended": true,
   "event": { "run_id": "manual-2026-10-21", "case_id": "TC-0002", "status": "failed", "…": "…" },
   "commit": {
-    "message": "run(login): record TC-0002 as failed\n\nCasefile-Run: manual-2026-10-21\nExecutor: human:qa@acme.example\n" },
+    "message": "run(login): record TC-0002 as failed\n\nCasefile-Run: manual-2026-10-21\nExecutor: human:qa@acme.example\n",
+    "files": ["apps/web/context/tests/.runs/manual-2026-10-21.jsonl"] },
   "next": ["Commit the run file with commit.message taken from --json output, as yourself, staging only it (`git commit -F <message> -- <path>`)"] }
 ```
 

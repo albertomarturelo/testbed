@@ -30,7 +30,7 @@ type Covered = {
   feature: string;
   change: string;
   created: { ref: string; path: string }[];
-  commit: { author: string; message: string };
+  commit: { author: string; message: string; files: string[] };
   next: string[];
 };
 
@@ -75,6 +75,7 @@ describe("cover", () => {
     expect(value.commit).toEqual({
       author: "casefile-agent <casefile-agent@casefile.invalid>",
       message: commitMessage("cover(login): propose 1 case", { ...base, change: value.change }),
+      files: [`${LOGIN}/TC-0003.md`],
     });
     expect(value.next[0]).toContain("-- <paths>");
     expect(value.next[0]).toContain("--json");
@@ -126,6 +127,7 @@ describe("cover", () => {
         requestedBy: "lead@acme.example",
         change: value.change,
       }),
+      files: [`${LOGIN}/TC-0003.md`],
     });
     expect(value.next[0]).toContain("as yourself");
     const parsed = parseCaseFile(

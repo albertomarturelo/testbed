@@ -23,7 +23,7 @@ function useRoute(): Route {
   return route;
 }
 
-/** The read-only workspace view (ADR local-ui-stack). Every view reads the files again. */
+/** The workspace view (ADR local-ui-stack). Every view reads the files again. */
 export function App() {
   const route = useRoute();
   const [overview, setOverview] = useState<Result<Overview> | null>(null);

@@ -1,4 +1,9 @@
-/** The local API (ADR local-ui-stack §2): each call runs one read-only core operation. */
+/**
+ * The local API (ADR local-ui-stack §2): each call runs one core operation.
+ * Reads need nothing; a write carries the session token the server handed the
+ * page (ADR human-writes-through-operations §3), and the server commits it as
+ * the human.
+ */
 
 export type CasefileError = {
   code: string;
@@ -12,6 +17,14 @@ export type CasefileError = {
 };
 
 export type Result<T> = { ok: true; value: T } | { ok: false; errors: CasefileError[] };
+
+/** Who the QA acts as, and which source said so (ADR identity-override). */
+export type SessionIdentity = { email: string; name?: string; source: "explicit" | "env" | "git" };
+
+export type Session = { token: string; identity: SessionIdentity | null };
+
+/** The commit a writing operation returned, with the sha the server made. */
+export type Commit = { author?: string; message: string; files: string[]; sha: string };
 
 export type ProjectSummary = { name: string; path: string; cases: number; unresolved: number };
 
@@ -73,11 +86,34 @@ export type Validation = {
   findings: CasefileError[];
 };
 
+const TOKEN_HEADER = "x-casefile-token";
+
+let sessionOnce: Promise<Session | null> | undefined;
+
+/**
+ * The page's session, fetched once per load; `null` when the server did not
+ * answer, in which case the next call asks again.
+ */
+export function session(): Promise<Session | null> {
+  sessionOnce ??= fetch("/api/session")
+    .then(async (response) => {
+      const result = (await response.json()) as Result<Session>;
+      return result.ok ? result.value : null;
+    })
+    .catch(() => null)
+    .then((value) => {
+      if (value === null) sessionOnce = undefined;
+      return value;
+    });
+  return sessionOnce;
+}
+
 export async function call<T>(name: string, input: object = {}): Promise<Result<T>> {
   try {
+    const token = (await session())?.token;
     const response = await fetch(`/api/operations/${name}`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", ...(token && { [TOKEN_HEADER]: token }) },
       body: JSON.stringify(input),
     });
     return (await response.json()) as Result<T>;
