@@ -85,7 +85,7 @@ suites allowed. One result per `<testcase>`:
 | `status` | `failed` with a `<failure>` or `<error>` child, `skipped` with `<skipped>`, else `passed` |
 | `at` | the test case's or nearest suite's `timestamp`, when it has a time zone |
 | `duration_ms` | `time` in seconds × 1000, rounded |
-| `source` | the nearest suite's `hostname`: the Playwright project (`chromium`) |
+| `source` | Playwright only (a `<testsuites id="…">` root, which its reporter always writes): the nearest suite's `hostname`, the project (`chromium`). Other runners (vitest, pytest, Surefire) write the machine's name there, so they get no `source`: a committed run file must not publish it |
 | `note` | the `<failure>` or `<error>` text (the runner's message, call log or stack trace), blank edge lines removed and dedented; without text, its `message` attribute |
 | `evidence` | one `{ "kind": "attachment", "ref": "<path>" }` per `[[ATTACHMENT\|<path>]]` line in `<system-out>` (Playwright): a relative path made workspace-relative from the report's directory, an absolute one kept as written |
 

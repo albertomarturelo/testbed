@@ -20,7 +20,9 @@ type Suite = { name?: string; timestamp?: string; hostname?: string };
  *   `skipped`, else `passed`.
  * - `at`: the case's or nearest suite's `timestamp`, when it has a time zone.
  * - `duration_ms`: `time` (seconds) × 1000, rounded.
- * - `source`: the nearest suite's `hostname`: the project name in Playwright.
+ * - `source`: the nearest suite's `hostname`, only in a Playwright report, where
+ *   it is the project (`chromium`). Vitest, pytest, Surefire… write the machine's
+ *   name there, which would publish it in a committed run file.
  * - `note`: the `failure` / `error` text, dedented; without text, its `message`.
  * - `evidence`: `[[ATTACHMENT|<path>]]` lines in `system-out` (Playwright), a
  *   relative path made workspace-relative from the report's directory, an
@@ -43,6 +45,7 @@ export const junitIngester = defineIngester({
       });
     }
 
+    const projects = isPlaywright(root);
     const results: IngestedResult[] = [];
     const errors: CasefileError[] = [];
     const pending: [XmlElement, Suite][] = [[root, {}]];
@@ -67,7 +70,7 @@ export const junitIngester = defineIngester({
           ? {
               name: element.attributes.name || outer.name,
               timestamp: element.attributes.timestamp ?? outer.timestamp,
-              hostname: element.attributes.hostname || outer.hostname,
+              hostname: projects ? element.attributes.hostname || outer.hostname : undefined,
             }
           : outer;
       // Reversed onto the stack, so results keep document order.
@@ -76,6 +79,16 @@ export const junitIngester = defineIngester({
     return errors.length > 0 ? fail(...errors) : ok(results);
   },
 });
+
+/**
+ * Playwright's JUnit reporter always writes `<testsuites id="…">` (empty unless
+ * `PLAYWRIGHT_JUNIT_SUITE_ID` is set) and the project as each suite's
+ * `hostname`. Vitest, pytest and jest-junit write no root `id`; Surefire's root
+ * is a `<testsuite>`.
+ */
+function isPlaywright(root: XmlElement): boolean {
+  return root.name === "testsuites" && root.attributes.id !== undefined;
+}
 
 function testCase(element: XmlElement, suite: Suite, report: string): IngestedResult | string {
   const { name, classname, time, timestamp } = element.attributes;
