@@ -104,12 +104,26 @@ describe("CaseList", () => {
       const cells = [...tr.querySelectorAll("td")].map((td) => td.classList.contains("hidden"));
       expect(cells).toEqual([false, false, true, true, true, false, false]);
     }
-    // The title gives way and truncates instead of pushing Last run out.
+    // The title gives way instead of pushing Last run out: it wraps to two lines, then clamps.
     const title = screen.getByRole("link", { name: "Needs an account" });
-    expect(title.classList.contains("truncate")).toBe(true);
-    expect(title.closest("td")?.classList.contains("max-w-0")).toBe(true);
+    expect(title.classList.contains("line-clamp-2")).toBe(true);
+    expect(title.classList.contains("truncate")).toBe(false);
+    expect(title.getAttribute("title")).toBe("Needs an account");
+    const cell = title.closest("td");
+    expect(cell?.classList.contains("max-w-0")).toBe(true);
+    // The table cell's default `whitespace-nowrap` would keep it on one line.
+    expect(cell?.classList.contains("whitespace-normal")).toBe(true);
     // One project: the id is enough, the ref stays on hover.
     expect(screen.getByRole("link", { name: "TC-0005" }).getAttribute("title")).toBe("web/TC-0005");
+  });
+
+  it("drops the Feature column when told every row is in one leaf feature", () => {
+    render(<CaseList rows={rows} showFeature={false} />);
+    const heads = screen.getAllByRole("columnheader").map((h) => h.textContent);
+    expect(heads).toEqual(["Case", "Title", "State", "Priority", "Automation", "Last run"]);
+    for (const tr of screen.getByRole("table").querySelectorAll("tbody tr")) {
+      expect(tr.querySelectorAll("td")).toHaveLength(6);
+    }
   });
 
   it("keeps the full ref when the list mixes projects", () => {
