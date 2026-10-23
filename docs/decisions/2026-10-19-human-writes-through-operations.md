@@ -8,7 +8,9 @@ Accepted — 2026-10-19 (#89). Supersedes
 [local-ui-stack](2026-10-17-local-ui-stack.md) §2 (the UI is no longer
 read-only; the write path it postponed is decided here) and
 [authoring-loop-first](2026-10-19-authoring-loop-first.md) §2 (the chat is one
-intent channel, the viewer is the other; `.inbox/` stays deferred).
+intent channel, the viewer is the other; `.inbox/` stays deferred). §2 amended by
+[identity-override](2026-10-23-identity-override.md): the viewer commits with
+`-c user.*` when `CASEFILE_USER_EMAIL` overrides git's identity.
 
 ## Context
 
