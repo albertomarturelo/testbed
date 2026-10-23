@@ -150,7 +150,7 @@ describe("ingest junit", () => {
     // Same suite time in every project: separate events would tie on `at`.
     await put(
       REPORT,
-      `<testsuites>${suite("chromium", "2026-10-17T09:12:03Z", "")}${suite("firefox", "2026-10-17T09:12:03Z", '<failure message="x"/>')}${suite("webkit", "2026-10-17T09:12:03Z", "<skipped/>")}</testsuites>`,
+      `<testsuites id="">${suite("chromium", "2026-10-17T09:12:03Z", "")}${suite("firefox", "2026-10-17T09:12:03Z", '<failure message="x"/>')}${suite("webkit", "2026-10-17T09:12:03Z", "<skipped/>")}</testsuites>`,
     );
     expect(await ingested()).toMatchObject({ results: 3, events: 1, appended: 1 });
     expect(await events()).toEqual([
@@ -179,7 +179,7 @@ describe("ingest junit", () => {
       `<testsuite name="login.spec.ts" hostname="${project}"><testcase name="signs in with valid credentials" classname="login.spec.ts">${body}</testcase></testsuite>`;
     await put(
       REPORT,
-      `<testsuites>${suite("chromium", "<failure>same</failure>")}${suite("firefox", "<failure>same</failure>")}${suite("webkit", "<failure>other</failure>")}${suite("edge", "<skipped>not this</skipped>")}</testsuites>`,
+      `<testsuites id="">${suite("chromium", "<failure>same</failure>")}${suite("firefox", "<failure>same</failure>")}${suite("webkit", "<failure>other</failure>")}${suite("edge", "<skipped>not this</skipped>")}</testsuites>`,
     );
     expect(await ingested()).toMatchObject({ appended: 1 });
     expect((await events())[0]?.note).toBe("same\n\nother");
@@ -221,6 +221,21 @@ describe("ingest junit", () => {
         { kind: "result:passed", ref: "#3" },
       ],
     });
+  });
+
+  it("never writes a vitest report's machine name into the run file (#106)", async () => {
+    await put(REPORT, await readFile(join(FIXTURES, "vitest.xml"), "utf8"));
+    await setRef(TC_0002, "src/auth.test.ts::login > refuses an empty password");
+    expect(await ingested()).toMatchObject({ results: 3, events: 1, appended: 1 });
+    expect((await events())[0]).toMatchObject({
+      case_id: "TC-0002",
+      status: "failed",
+      evidence: [
+        { kind: "result:passed", ref: "#1" },
+        { kind: "result:failed", ref: "#2" },
+      ],
+    });
+    expect(await read(`${RUNS}/pw-1.jsonl`)).not.toContain("dev-laptop");
   });
 
   it("gives one event per case when several cases share a ref", async () => {

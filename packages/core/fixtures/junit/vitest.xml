@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!-- Vitest style (`--reporter=junit`, checked with vitest 5.0.3): the machine's name as each suite's hostname, and two tests with one name in one file. -->
+<testsuites name="vitest tests" tests="3" failures="1" errors="0" time="0.052">
+    <testsuite name="src/auth.test.ts" timestamp="2026-10-21T22:10:04.512Z" hostname="dev-laptop.local" tests="3" failures="1" errors="0" skipped="0" time="0.052">
+        <testcase classname="src/auth.test.ts" name="login &gt; refuses an empty password" time="0.004">
+        </testcase>
+        <testcase classname="src/auth.test.ts" name="login &gt; refuses an empty password" time="0.006">
+            <failure message="expected 200 to be 401" type="AssertionError">
+AssertionError: expected 200 to be 401
+            </failure>
+        </testcase>
+        <testcase classname="src/auth.test.ts" name="login &gt; signs in" time="0.042">
+        </testcase>
+    </testsuite>
+</testsuites>

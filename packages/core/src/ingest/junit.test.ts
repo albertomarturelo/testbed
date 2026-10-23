@@ -107,6 +107,46 @@ describe("junitIngester", () => {
     ]);
   });
 
+  it("takes no source from a vitest report, whose hostname is the machine's name", async () => {
+    const results = await fixture("vitest.xml");
+    expect(results).toEqual([
+      {
+        ref: "src/auth.test.ts::login > refuses an empty password",
+        status: "passed",
+        at: "2026-10-21T22:10:04Z",
+        duration_ms: 4,
+      },
+      {
+        ref: "src/auth.test.ts::login > refuses an empty password",
+        status: "failed",
+        note: "AssertionError: expected 200 to be 401",
+        at: "2026-10-21T22:10:04Z",
+        duration_ms: 6,
+      },
+      {
+        ref: "src/auth.test.ts::login > signs in",
+        status: "passed",
+        at: "2026-10-21T22:10:04Z",
+        duration_ms: 42,
+      },
+    ]);
+    expect(JSON.stringify(results)).not.toContain("dev-laptop");
+  });
+
+  it("takes the project as source only under Playwright's <testsuites id> root", async () => {
+    const suite = `<testsuite name="a.spec.ts" hostname="chromium"><testcase name="t"/></testsuite>`;
+    expect(await parse(`<testsuites id="">${suite}</testsuites>`)).toEqual({
+      ok: true,
+      value: [{ ref: "a.spec.ts::t", status: "passed", source: "chromium" }],
+    });
+    for (const report of [`<testsuites name="pytest tests">${suite}</testsuites>`, suite]) {
+      expect(await parse(report)).toEqual({
+        ok: true,
+        value: [{ ref: "a.spec.ts::t", status: "passed" }],
+      });
+    }
+  });
+
   it("uses the bare name without a classname or suite name, and ignores a bad time", async () => {
     const result = await parse(`<testsuite><testcase name="t" time="soon"/></testsuite>`);
     expect(result).toEqual({ ok: true, value: [{ ref: "t", status: "passed" }] });
