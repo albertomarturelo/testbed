@@ -51,3 +51,18 @@ Corrections are appended here in the same change that fixes the code.
     package with a `^` range. Point the import at `@/lib/utils` and remove the
     package. Also pin any new package it adds to an exact version (corrected
     2026-10-17, #54).
+14. **Viewer changes are checked in a real browser before the PR (corrected
+    2026-10-23, #110).** Unit tests and a grep of the built CSS are not enough
+    for `apps/web`: build, start `apps/web/dist/server/bin.js --cwd <workspace>`,
+    and drive it with Playwright in headless Chromium (wide and ~900px), with
+    assertions on the DOM, no page or console errors, and a look at the
+    screenshots. Use `examples/demo-repo` (one project, runs),
+    `examples/demo-monorepo` (two projects) or a scratch copy without `.runs/`.
+    The PR body says what was checked. Until a decision gives `apps/web` its own
+    browser-test dependency, the Playwright installed in `examples/npm-login` is
+    used; the agent's Chrome extension cannot reach a server its shell started.
+15. **Per-viewer UI preferences live in `localStorage` through
+    `useStoredFlag` (`apps/web/src/client/lib/stored.ts`, #110).** They are
+    conveniences: every access is guarded, the page renders the same without
+    them, and the key is `casefile.<view>.<what>`. State that matters to the
+    workspace never goes there; it goes through core operations.
