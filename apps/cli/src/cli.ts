@@ -10,11 +10,14 @@ import {
   gitUserEmail,
   type HostInput,
   type HostRegistry,
+  type Identity,
+  ok,
   openRegistry,
   projectAt,
   type Result,
   readSkillBundle,
   readSpec,
+  resolveIdentity,
   specSummary,
 } from "@casefile/core";
 import {
@@ -101,6 +104,7 @@ export async function run(
   }
   if (first === "-v" || first === "--version") return out(pkg.version);
   if (first === "spec") return spec(argv.slice(1), host);
+  if (first === "whoami") return whoami(argv.slice(1), root ?? cwd, environment.env);
 
   if (first.startsWith("-")) {
     return result(
@@ -163,7 +167,8 @@ export async function run(
       operation: command.operation.name,
       env: environment.env,
     });
-    if (value !== undefined) input[field.name] = value;
+    if (!value.ok) return result(value, json, input);
+    if (value.value !== undefined) input[field.name] = value.value;
   }
   const outcome = await host.registry.invoke(command.operation.name, input, {
     root: invokeRoot,
@@ -182,23 +187,69 @@ async function hostValue(
     operation: string;
     env: CliEnvironment["env"];
   },
-): Promise<unknown> {
+): Promise<Result<unknown>> {
   switch (name) {
     case "version":
-      return pkg.version;
+      return ok(pkg.version);
     case "skills":
-      return readSkillBundle(SKILLS_DIR);
+      return ok(await readSkillBundle(SKILLS_DIR));
     case "project": {
-      if (at.project !== undefined) return at.project;
+      if (at.project !== undefined) return ok(at.project);
       const projects = at.host.config?.projects ?? [];
-      return at.root === null ? undefined : (projectAt(projects, at.root, at.cwd) ?? undefined);
+      return ok(at.root === null ? undefined : (projectAt(projects, at.root, at.cwd) ?? undefined));
     }
-    case "identity":
+    case "identity": {
       // Unset: the operation that needs it says `identity.missing`.
-      return (await gitUserEmail(at.root ?? at.cwd, at.env)) ?? undefined;
+      const identity = await hostIdentity(at.root ?? at.cwd, at.env);
+      return identity.ok ? ok(identity.value?.email) : identity;
+    }
     case "via":
-      return `cli:${at.operation}`;
+      return ok(`cli:${at.operation}`);
   }
+}
+
+/**
+ * Who the person is (ADR identity-override): `CASEFILE_USER_EMAIL` (+ `_NAME`),
+ * else `git config user.email` in `dir`. The host reads them; core decides.
+ */
+async function hostIdentity(
+  dir: string,
+  env: CliEnvironment["env"],
+): Promise<Result<Identity | null>> {
+  return resolveIdentity({
+    env: { email: env.CASEFILE_USER_EMAIL, name: env.CASEFILE_USER_NAME },
+    git: { email: await gitUserEmail(dir, env) },
+  });
+}
+
+/** `casefile whoami`: the identity writes are made as, and where it came from. */
+async function whoami(
+  args: readonly string[],
+  dir: string,
+  env: CliEnvironment["env"],
+): Promise<CliResult> {
+  const json = args.includes("--json");
+  const parsed = parseGlobalArgs(args);
+  if (!parsed.ok) return result(parsed, json);
+  if (parsed.value.length > 0) {
+    return result(fail({ code: "cli.usage", message: "usage: casefile whoami [--json]" }), json);
+  }
+  const identity = await hostIdentity(dir, env);
+  if (!identity.ok) return result(identity, json);
+  if (identity.value === null) {
+    return result(
+      fail({
+        code: "identity.missing",
+        field: "identity",
+        message:
+          "no identity: set CASEFILE_USER_EMAIL, or `git config user.email` in the workspace",
+      }),
+      json,
+    );
+  }
+  const { email, name, source } = identity.value;
+  const from = source === "env" ? "CASEFILE_USER_EMAIL" : "git config user.email";
+  return result(ok({ email, ...(name === undefined ? {} : { name }), source, from }), json);
 }
 
 /** `casefile spec <name>`: words join with `-`, so `spec project add` works too. */
@@ -245,6 +296,7 @@ async function usage(commands: readonly Command[], host: HostRegistry): Promise<
     rows.push([command.words.join(" "), firstSentence(await summary(command, host))]);
   }
   rows.push(["spec <name>", "Prints the SPEC of an operation or topic."]);
+  rows.push(["whoami", "Shows who writes are made as, and where that comes from."]);
   const width = Math.max(...rows.map(([name]) => name.length)) + 2;
   return `casefile ${pkg.version} (preview)
 
@@ -260,7 +312,9 @@ Global flags:
   -h, --help        Show help (casefile <command> --help for one command)
   -v, --version     Show the version
 
-Set CASEFILE_ACTOR=agent or ci when an agent or CI runs casefile (default: human).`;
+Set CASEFILE_ACTOR=agent or ci when an agent or CI runs casefile (default: human).
+Set CASEFILE_USER_EMAIL (and CASEFILE_USER_NAME) to write as someone other than
+\`git config user.email\`; \`casefile whoami\` shows who that is.`;
 }
 
 async function commandHelp(command: Command, host: HostRegistry): Promise<string> {

@@ -521,6 +521,92 @@ describe("casefile review: the host fills identity and via", () => {
   });
 });
 
+describe("identity: CASEFILE_USER_EMAIL before git config (ADR identity-override)", () => {
+  const git = {
+    PATH: process.env.PATH ?? "",
+    GIT_CONFIG_GLOBAL: "/dev/null",
+    GIT_CONFIG_NOSYSTEM: "1",
+  };
+  const review = ["review", "TC-0001", "--to", "retired", "--cwd", "apps/web", "--json"] as const;
+  const inTmp = (argv: readonly string[], env: Record<string, string>) =>
+    cli(
+      argv.map((arg) => (arg === "apps/web" ? join(tmp, "apps/web") : arg)),
+      { ...git, ...env },
+    );
+  beforeEach(async () => {
+    await cp(MONOREPO, tmp, { recursive: true });
+    execFileSync("git", ["init", "-q"], { cwd: tmp, env: git });
+  });
+
+  it("writes as CASEFILE_USER_EMAIL over git config", async () => {
+    execFileSync("git", ["config", "user.email", "dev@acme.example"], { cwd: tmp, env: git });
+    const result = await inTmp(review, { CASEFILE_USER_EMAIL: "qa@acme.example" });
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      ok: true,
+      value: { commit: { message: expect.stringContaining("Requested-by: qa@acme.example\n") } },
+    });
+    const file = await readFile(join(tmp, "apps/web/context/tests/login/TC-0001.md"), "utf8");
+    expect(file).toContain("by: qa@acme.example\n");
+    expect(file).not.toContain("dev@acme.example");
+  });
+
+  it("writes as CASEFILE_USER_EMAIL when git has no user configured", async () => {
+    const result = await inTmp(
+      ["run", "TC-0002", "--status", "passed", "--cwd", "apps/web", "--json"],
+      {
+        CASEFILE_USER_EMAIL: "qa@acme.example",
+      },
+    );
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      ok: true,
+      value: { event: { executor: "human:qa@acme.example" } },
+    });
+  });
+
+  it("refuses a malformed CASEFILE_USER_EMAIL, naming it, and writes nothing", async () => {
+    execFileSync("git", ["config", "user.email", "dev@acme.example"], { cwd: tmp, env: git });
+    const before = await readFile(join(tmp, "apps/web/context/tests/login/TC-0001.md"), "utf8");
+    const result = await inTmp(review, { CASEFILE_USER_EMAIL: "qa-lead" });
+    expect(result.code).toBe(1);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      ok: false,
+      errors: [
+        { code: "identity.invalid", message: expect.stringContaining("CASEFILE_USER_EMAIL") },
+      ],
+    });
+    expect(await readFile(join(tmp, "apps/web/context/tests/login/TC-0001.md"), "utf8")).toBe(
+      before,
+    );
+  });
+
+  it("whoami shows the identity and where it came from", async () => {
+    execFileSync("git", ["config", "user.email", "dev@acme.example"], { cwd: tmp, env: git });
+    const fromGit = await inTmp(["whoami", "--cwd", "apps/web", "--json"], {});
+    expect(JSON.parse(fromGit.stdout)).toEqual({
+      ok: true,
+      value: { email: "dev@acme.example", source: "git", from: "git config user.email" },
+    });
+    const fromEnv = await inTmp(["whoami", "--cwd", "apps/web"], {
+      CASEFILE_USER_EMAIL: "qa@acme.example",
+      CASEFILE_USER_NAME: "QA Lead",
+    });
+    expect(fromEnv.code).toBe(0);
+    expect(fromEnv.stdout).toContain("email: qa@acme.example");
+    expect(fromEnv.stdout).toContain("name: QA Lead");
+    expect(fromEnv.stdout).toContain("from: CASEFILE_USER_EMAIL");
+  });
+
+  it("whoami says identity.missing when nothing names the person", async () => {
+    const result = await inTmp(["whoami", "--cwd", "apps/web", "--json"], {});
+    expect(result.code).toBe(1);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      ok: false,
+      errors: [{ code: "identity.missing" }],
+    });
+    expect((await cli([])).stdout).toMatch(/whoami\s+Shows who writes are made as/);
+  });
+});
+
 describe("casefile run: the executor is the identity the host fills", () => {
   const git = {
     PATH: process.env.PATH ?? "",

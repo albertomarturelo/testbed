@@ -90,6 +90,11 @@ const TOKEN_HEADER = "x-casefile-token";
 
 let sessionOnce: Promise<Session | null> | undefined;
 
+/** Forget the session, as a new page load would (tests). */
+export function forgetSession(): void {
+  sessionOnce = undefined;
+}
+
 /**
  * The page's session, fetched once per load; `null` when the server did not
  * answer, in which case the next call asks again.

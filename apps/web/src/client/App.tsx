@@ -1,6 +1,6 @@
 import { RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { call, type Overview, type Result } from "@/api";
+import { call, type Overview, type Result, type Session, session } from "@/api";
 import { ErrorList } from "@/components/ErrorList";
 import { FeatureTree, inFeature } from "@/components/FeatureTree";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,32 @@ function useRoute(): Route {
     return () => window.removeEventListener("hashchange", onChange);
   }, []);
   return route;
+}
+
+/** Where the server's identity came from, as the QA would set it. */
+const SOURCES: Record<NonNullable<Session["identity"]>["source"], string> = {
+  explicit: "given explicitly",
+  env: "from CASEFILE_USER_EMAIL",
+  git: "from git config user.email",
+};
+
+/** Who what the QA writes here is committed as (ADR identity-override §4–5). */
+function ActingAs() {
+  const [current, setCurrent] = useState<Session | null | undefined>(undefined);
+  useEffect(() => {
+    session().then(setCurrent);
+  }, []);
+  if (current === undefined) return null;
+  const identity = current?.identity ?? null;
+  return identity === null ? (
+    <span className="text-xs text-destructive">
+      No identity: set CASEFILE_USER_EMAIL or git config user.email to write
+    </span>
+  ) : (
+    <span className="text-xs text-muted-foreground" title={SOURCES[identity.source]}>
+      Acting as {identity.name ? `${identity.name} <${identity.email}>` : identity.email}
+    </span>
+  );
 }
 
 /** The workspace view (ADR local-ui-stack). Every view reads the files again. */
@@ -86,6 +112,7 @@ export function App() {
             Validate
           </ProjectLink>
         </nav>
+        <ActingAs />
         <Button variant="outline" size="sm" onClick={refresh} aria-label="Read the files again">
           <RefreshCw /> Refresh
         </Button>

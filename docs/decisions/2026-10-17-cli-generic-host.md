@@ -22,8 +22,8 @@ the bundled skills), and the actor (human, agent, CI) is invisible to a process.
 
 1. **Command names:** an operation name's `-` separates words:
    `project-add` → `casefile project add`, `id-next` → `casefile id next`. The
-   longest matching name wins. `spec`, `--help` and `--version` are host
-   commands, not operations.
+   longest matching name wins. `spec`, `whoami`, `--help` and `--version` are host
+   commands, not operations (`whoami`: ADR identity-override §5).
 2. **Flags from the Zod input:** each top-level input field is a `--kebab-case`
    flag. Strings, numbers and enums take a value; booleans take none; arrays
    repeat the flag; any other shape takes JSON. The `subject` field (at most
@@ -37,8 +37,9 @@ the bundled skills), and the actor (human, agent, CI) is invisible to a process.
    `version` is the running casefile, `skills` the bundled skill files,
    `project` the `--project` value or the project containing `--cwd`
    (ADR [workspace-and-projects](2026-10-15-workspace-and-projects.md) §6),
-   `identity` the `git config user.email` Git resolves in the workspace (left
-   unset when there is none; an operation that needs it fails with
+   `identity` the email the host resolves: `CASEFILE_USER_EMAIL`, else the
+   `git config user.email` Git resolves in the workspace (ADR
+   [identity-override](2026-10-23-identity-override.md); left unset when there is none; an operation that needs it fails with
    `identity.missing`), and `via` where the call came from, `cli:<operation>`
    (the viewer: `ui:<operation>`). Every host fills the ones an operation it
    invokes declares

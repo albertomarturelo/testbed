@@ -33,7 +33,7 @@ report (`casefile spec ingest`), and only those events make a case
 | `env`, `build`, `release` | text, optional | Where it ran and what was tested. `build` and `release` are what release gates read (`casefile spec query-grammar`). |
 | `run` | file-safe id, optional | The run: names the run file. Default `manual-<date>`, today's UTC date, so a day of manual results shares one file. Pass a test cycle's id (`rc-2.1`) to group them under it. |
 | `agent` | text | The agent recording it (`claude-code`): the executor is `agent:<agent>`. Required for an agent, refused for a human. |
-| `identity` | email | Filled by the host from `git config user.email` in the workspace: a human's executor is `human:<identity>`. |
+| `identity` | email | Filled by the host: `CASEFILE_USER_EMAIL` when set, else `git config user.email` in the workspace (ADR identity-override; `casefile whoami` shows it): a human's executor is `human:<identity>`. |
 | `project` | project name | Filled by the host from `--project` or the project containing `--cwd`. |
 
 `identity` is a host input, never a flag (ADR cli-generic-host). There is no
@@ -124,7 +124,8 @@ Nothing is written when any of these is returned.
 |---|---|
 | `operation.invalid_input` | the input does not match its schema (with the field path), e.g. `--status not_run` or an `automation_ref` |
 | `run.agent_required` / `run.agent_not_allowed` | `agent` missing for an agent, or given by a human |
-| `identity.missing` | a human, and the host found no `git config user.email` in the workspace |
+| `identity.missing` | a human, and the host found neither `CASEFILE_USER_EMAIL` nor `git config user.email` |
+| `identity.invalid` | `CASEFILE_USER_EMAIL` or `git config user.email` is not an email (the message names which); nothing runs |
 | `case.unknown` / `case.ambiguous` | no such case, or a bare id found in several projects |
 | `project.unknown` | `project` names no project |
 | `operation.actor_not_allowed` | invoked by CI: CI records results with `casefile ingest` |
