@@ -39,7 +39,9 @@ a version is chosen, who decides to publish, and what CI checks before it does.
    after a partial publish) → a GitHub release with generated notes, from a
    separate job that alone may write to the repository. Only a pushed tag
    publishes: a manual run, or a PR that touches packaging, does all of it with
-   `npm publish --dry-run` and without the token.
+   `npm publish --dry-run` and without the token. npm refuses even a dry run
+   of a version it already has, so a dry run between releases skips the
+   publish step with a notice; the pack and smoke test still run (#123).
 5. **Auth and provenance:** the job authenticates with the secret `NPM_TOKEN`
    (a granular token that can only publish `@casefile/*`) and signs provenance
    through GitHub's OIDC (`id-token: write`), so each version on npm links to
