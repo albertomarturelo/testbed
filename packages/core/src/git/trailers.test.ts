@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AGENT_AUTHOR, commitMessage } from "./trailers.js";
+import { AGENT_AUTHOR, commitMessage, runCommitMessage } from "./trailers.js";
 
 const change = "9d2f6a1e-3b4c-4d5e-8f90-1a2b3c4d5e6f";
 
@@ -49,5 +49,23 @@ describe("commitMessage", () => {
 
   it("names the fixed agent identity", () => {
     expect(AGENT_AUTHOR).toBe("casefile-agent <casefile-agent@casefile.invalid>");
+  });
+});
+
+describe("runCommitMessage", () => {
+  it("carries a run's trailers, not a change's", () => {
+    expect(
+      runCommitMessage("run(login): record TC-0002 as failed", {
+        run: "manual-2026-10-21",
+        executor: "human:qa@acme.example",
+      }),
+    ).toBe(
+      "run(login): record TC-0002 as failed\n\nCasefile-Run: manual-2026-10-21\nExecutor: human:qa@acme.example\n",
+    );
+  });
+
+  it("never lets a value add a line of its own", () => {
+    const message = runCommitMessage("s", { run: "r", executor: "agent:x\nCasefile-Run: forged" });
+    expect(message.match(/^Casefile-Run:/gm)).toHaveLength(1);
   });
 });

@@ -22,6 +22,7 @@ describe("builtinOperations", () => {
       "query",
       "resolve",
       "review",
+      "run",
       "runs",
       "validate",
     ]);

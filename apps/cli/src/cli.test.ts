@@ -520,3 +520,47 @@ describe("casefile review: the host fills identity and via", () => {
     }
   });
 });
+
+describe("casefile run: the executor is the identity the host fills", () => {
+  const git = {
+    PATH: process.env.PATH ?? "",
+    GIT_CONFIG_GLOBAL: "/dev/null",
+    GIT_CONFIG_NOSYSTEM: "1",
+  };
+  beforeEach(async () => {
+    await cp(MONOREPO, tmp, { recursive: true });
+    execFileSync("git", ["init", "-q"], { cwd: tmp, env: git });
+    execFileSync("git", ["config", "user.email", "qa@acme.example"], { cwd: tmp, env: git });
+  });
+
+  it("appends a human:<git email> event without automation_ref", async () => {
+    const argv = [
+      "run",
+      "TC-0001",
+      "--status",
+      "failed",
+      "--run",
+      "rc-1",
+      "--cwd",
+      join(tmp, "apps/web"),
+      "--json",
+    ];
+    const result = await cli(argv, git);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      ok: true,
+      value: {
+        appended: true,
+        commit: { message: expect.stringContaining("Executor: human:qa@acme.example\n") },
+      },
+    });
+    const line = JSON.parse(
+      await readFile(join(tmp, "apps/web/context/tests/.runs/rc-1.jsonl"), "utf8"),
+    );
+    expect(line).toMatchObject({
+      case_id: "TC-0001",
+      executor: "human:qa@acme.example",
+      status: "failed",
+    });
+    expect(line).not.toHaveProperty("automation_ref");
+  });
+});
