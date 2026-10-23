@@ -41,7 +41,10 @@ export async function commitAsHuman(
   return sha.ok ? { ok: true, value: { sha: sha.value.trim() } } : sha;
 }
 
-/** One git command in `cwd`; a non-zero exit is `ui.commit_failed` with git's stderr. */
+/**
+ * One git command in `cwd`; a non-zero exit is `ui.commit_failed` with git's
+ * stderr. Only a command given `stdin` gets an input pipe (#122).
+ */
 function git(
   cwd: string,
   env: NodeJS.ProcessEnv,
@@ -50,20 +53,29 @@ function git(
   stdin?: string,
 ): Promise<Result<string>> {
   return new Promise((resolve) => {
-    const child = spawn("git", args, { cwd, env, stdio: ["pipe", "pipe", "pipe"] });
+    const child = spawn("git", args, {
+      cwd,
+      env,
+      stdio: [stdin === undefined ? "ignore" : "pipe", "pipe", "pipe"],
+    });
     let stdout = "";
     let stderr = "";
-    child.stdout.on("data", (chunk: Buffer) => {
+    child.stdout?.on("data", (chunk: Buffer) => {
       stdout += chunk.toString("utf8");
     });
-    child.stderr.on("data", (chunk: Buffer) => {
+    child.stderr?.on("data", (chunk: Buffer) => {
       stderr += chunk.toString("utf8");
     });
     child.on("error", (error) => resolve(failed(verb, error.message)));
     child.on("close", (code) =>
       resolve(code === 0 ? { ok: true, value: stdout } : failed(verb, stderr.trim(), code)),
     );
-    child.stdin.end(stdin ?? "");
+    if (stdin !== undefined) {
+      // Git may exit before reading it (a failing pre-commit hook runs first):
+      // its exit code and stderr say why, so the closed pipe is not an error.
+      child.stdin?.on("error", () => {});
+      child.stdin?.end(stdin);
+    }
   });
 }
 
