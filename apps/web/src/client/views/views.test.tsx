@@ -6,7 +6,7 @@ import { App, RUN_COLUMNS_KEY } from "@/App";
 import { type CaseRow, forgetSession, type Result } from "@/api";
 import { FeatureTree, featureOpenKey } from "@/components/FeatureTree";
 import { CaseDetail } from "@/views/CaseDetail";
-import { CaseList } from "@/views/CaseList";
+import { byFeature, CaseList } from "@/views/CaseList";
 import { QueryView } from "@/views/QueryView";
 import { ValidateView } from "@/views/ValidateView";
 
@@ -162,6 +162,76 @@ describe("CaseList", () => {
     render(<CaseList rows={[...rows, api]} />);
     expect(screen.getByRole("link", { name: "web/TC-0001" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "api/TC-0001" })).toBeTruthy();
+  });
+});
+
+describe("CaseList grouped by feature (#112)", () => {
+  const at = (id: string, feature: string): CaseRow => ({
+    ref: `web/${id}`,
+    project: "web",
+    feature,
+    title: `${feature} ${id}`,
+    state: "active",
+    priority: "P2",
+    automation: "manual",
+    automation_ref: null,
+    eligible: true,
+    last_run: null,
+    last_run_at: null,
+  });
+  // Overview order (by id), features mixed; `auth-admin` sorts before `auth/login`
+  // as a string, but after it in the tree, where `auth` and its children come first.
+  const rows = [
+    at("TC-0001", "checkout/payments"),
+    at("TC-0002", "auth-admin"),
+    at("TC-0003", "auth/login"),
+    at("TC-0004", "auth"),
+    at("TC-0005", "checkout/payments"),
+    at("TC-0006", "billing"),
+  ];
+  const headings = () =>
+    [...document.querySelectorAll('th[scope="rowgroup"]')].map((th) => th.textContent);
+
+  it("lists one heading per feature, in tree order, with each group's count", () => {
+    render(<CaseList rows={rows} grouped project="web" />);
+    expect(headings()).toEqual([
+      "auth · 1",
+      "auth/login · 1",
+      "auth-admin · 1",
+      "billing · 1",
+      "checkout/payments · 2",
+    ]);
+  });
+
+  it("puts each case under its feature, keeping their order within it", () => {
+    render(<CaseList rows={rows} grouped project="web" />);
+    const group = screen.getByRole("link", { name: "checkout/payments" }).closest("tbody");
+    const titles = [...(group?.querySelectorAll("td:nth-child(2)") ?? [])].map(
+      (td) => td.textContent,
+    );
+    expect(titles).toEqual(["checkout/payments TC-0001", "checkout/payments TC-0005"]);
+  });
+
+  it("links each heading to its feature, as the tree does, and drops the Feature column", () => {
+    render(<CaseList rows={rows} grouped project="web" />);
+    expect(screen.getByRole("link", { name: "auth/login" }).getAttribute("href")).toBe(
+      "#/cases?project=web&feature=auth%2Flogin",
+    );
+    expect(screen.queryByRole("columnheader", { name: "Feature" })).toBeNull();
+    // The heading spans every column the table shows.
+    const th = document.querySelector('th[scope="rowgroup"]');
+    expect(th?.getAttribute("colSpan")).toBe("6");
+  });
+
+  it("spans only the columns left when automation and runs are hidden", () => {
+    render(<CaseList rows={rows} grouped showAutomation={false} showLastRun={false} />);
+    expect(document.querySelector('th[scope="rowgroup"]')?.getAttribute("colSpan")).toBe("4");
+  });
+
+  it("groups features written with stray slashes under the tree's path", () => {
+    expect(byFeature([at("TC-0001", "auth//login/"), at("TC-0002", "./auth/login")])).toEqual([
+      ["auth/login", [at("TC-0001", "auth//login/"), at("TC-0002", "./auth/login")]],
+    ]);
   });
 });
 

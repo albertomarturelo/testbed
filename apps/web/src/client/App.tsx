@@ -163,7 +163,8 @@ export const RUN_COLUMNS_KEY = "casefile.caseList.runColumns";
 function CasesPage(props: { overview: Overview; project?: string; feature?: string }) {
   const { overview, project, feature } = props;
   const inProject = overview.cases.filter((c) => project === undefined || c.project === project);
-  // A leaf feature: every listed case is in it, so the Feature column would only repeat it.
+  // A leaf feature keeps the plain table; all features or a parent group by feature (#112).
+  // Either way there is no Feature column: every row would repeat it, or the heading says it.
   const leaf = feature !== undefined && !inProject.some((c) => c.feature.startsWith(`${feature}/`));
   // Read over the project, not the feature: the columns do not come and go per feature.
   const everRan = inProject.some((c) => c.last_run !== null);
@@ -182,7 +183,9 @@ function CasesPage(props: { overview: Overview; project?: string; feature?: stri
         </div>
         <CaseList
           rows={inProject.filter((c) => inFeature(c, feature))}
-          showFeature={!leaf}
+          grouped={!leaf}
+          project={project}
+          showFeature={false}
           showAutomation={runColumns}
           showLastRun={runColumns && everRan}
         />
