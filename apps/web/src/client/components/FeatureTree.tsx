@@ -139,17 +139,17 @@ function Parent(props: BranchProps & { row: (marker: React.ReactNode) => React.R
           />
         </button>,
       )}
+      {/* Tailwind's preflight makes `hidden` win over `contents`. */}
       <div id={groupId} hidden={!open} className="contents">
-        {open &&
-          node.children.map((child) => (
-            <Branch
-              key={child.path}
-              node={child}
-              project={project}
-              selected={selected}
-              depth={depth + 1}
-            />
-          ))}
+        {node.children.map((child) => (
+          <Branch
+            key={child.path}
+            node={child}
+            project={project}
+            selected={selected}
+            depth={depth + 1}
+          />
+        ))}
       </div>
     </>
   );
