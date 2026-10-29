@@ -332,6 +332,10 @@ describe("FeatureTree: parents fold and unfold (#114)", () => {
 });
 
 describe("CaseDetail", () => {
+  /** The page's headings and card titles (shadcn's are `div`s), in document order. */
+  const outline = () =>
+    [...document.querySelectorAll('h1, h2, [data-slot="card-title"]')].map((h) => h.textContent);
+
   it("shows the resolved case, its steps and where each value comes from", async () => {
     answers.resolve = () => ({
       ok: true,
@@ -423,6 +427,121 @@ describe("CaseDetail", () => {
     expect(times).toEqual(["2026-10-17T19:23:06Z", "2026-10-10T08:00:00Z"]);
     expect(screen.getByText("failed")).toBeTruthy();
     expect(screen.getByText("passed")).toBeTruthy();
+  });
+
+  it("reads as a document: body, preconditions, data, numbered steps, references (#86)", async () => {
+    answers.resolve = () => ({
+      ok: true,
+      value: {
+        ref: "web/TC-0007",
+        path: "context/tests/login/TC-0007.md",
+        body: "Needs real credentials: manual.\n\nNo automated test may sign in.\n",
+        inherited: [{ field: "priority", value: "P1", origin: "(the case)" }],
+        case: {
+          title: "Sign in with a registered account",
+          state: "draft",
+          priority: "P1",
+          automation: { status: "manual", eligible: false },
+          preconditions: ["A registered npm test account"],
+          data: { base_url: "https://staging.acme.example", retries: 2 },
+          steps: [
+            { do: "Open the sign-in page", expect: "The form is empty" },
+            { do: "Sign in", expect: "The account page opens" },
+          ],
+          // Listed twice on purpose: no duplicate React keys.
+          acceptance_ref: [
+            "ACME-101#AC-1",
+            "https://tracker.example/ACME-101#ac-2",
+            "ACME-101#AC-1",
+          ],
+          work_items: [
+            "story:ACME-101",
+            "issue:https://github.com/acme/web/issues/7",
+            "x:javascript:alert(1)",
+          ],
+          history: [{ event: "created", at: "2026-10-17T19:22:51Z", by: "qa@acme.example" }],
+        },
+      },
+    });
+    answers.runs = () => ({ ok: true, value: { ref: "web/TC-0007", runs: [] } });
+    render(<CaseDetail caseRef="web/TC-0007" />);
+    await screen.findByRole("heading", { name: "Sign in with a registered account" });
+
+    // The body as written, its blank line kept.
+    const body = screen.getByText(/Needs real credentials/);
+    expect(body.textContent).toBe(
+      "Needs real credentials: manual.\n\nNo automated test may sign in.",
+    );
+    expect(body.className).toContain("whitespace-pre-wrap");
+
+    // The title comes before where the case stands.
+    const title = screen.getByRole("heading", { name: "Sign in with a registered account" });
+    expect(title.nextElementSibling?.textContent).toContain("web/TC-0007");
+
+    // Reading order: the document first, inherited values last.
+    expect(outline()).toEqual([
+      "Sign in with a registered account",
+      "Preconditions",
+      "Data",
+      "Steps",
+      "References",
+      "History",
+      "Runs",
+      "Inherited values",
+    ]);
+    const order = (a: HTMLElement, b: HTMLElement) =>
+      a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING;
+    expect(order(body, screen.getByRole("heading", { name: "Preconditions" }))).toBeTruthy();
+
+    expect(screen.getByText("A registered npm test account")).toBeTruthy();
+    expect(screen.getByText("base_url").nextElementSibling?.textContent).toBe(
+      "https://staging.acme.example",
+    );
+    expect(screen.getByText("retries").nextElementSibling?.textContent).toBe("2");
+
+    // Steps are numbered, each with its expected result.
+    const rows = [...document.querySelectorAll("section tbody tr")].map((tr) =>
+      [...tr.querySelectorAll("td")].map((td) => td.textContent),
+    );
+    expect(rows).toEqual([
+      ["1", "Open the sign-in page", "The form is empty"],
+      ["2", "Sign in", "The account page opens"],
+    ]);
+    expect(screen.getByRole("columnheader", { name: "Expected result" })).toBeTruthy();
+
+    // References: links only for http(s) URLs, whole or after a work item's kind.
+    expect(screen.getAllByText("ACME-101#AC-1").every((el) => el.closest("a") === null)).toBe(true);
+    const ac = screen.getByRole("link", { name: "https://tracker.example/ACME-101#ac-2" });
+    expect(ac.getAttribute("href")).toBe("https://tracker.example/ACME-101#ac-2");
+    expect(ac.getAttribute("rel")).toBe("noreferrer");
+    expect(screen.getByText("story:ACME-101").closest("a")).toBeNull();
+    const issue = screen.getByRole("link", { name: "https://github.com/acme/web/issues/7" });
+    expect(issue.getAttribute("href")).toBe("https://github.com/acme/web/issues/7");
+    expect(issue.parentElement?.textContent).toBe("issue:https://github.com/acme/web/issues/7");
+    expect(screen.getByText("x:javascript:alert(1)").closest("a")).toBeNull();
+    expect(document.querySelector('a[href^="javascript"]')).toBeNull();
+  });
+
+  it("leaves out what a case does not have", async () => {
+    answers.resolve = () => ({
+      ok: true,
+      value: {
+        ref: "web/TC-0005",
+        path: "context/tests/login/TC-0005.md",
+        inherited: [],
+        case: {
+          title: "Bare",
+          state: "draft",
+          priority: "P3",
+          automation: { status: "manual", eligible: true },
+        },
+      },
+    });
+    answers.runs = () => ({ ok: true, value: { ref: "web/TC-0005", runs: [] } });
+    render(<CaseDetail caseRef="web/TC-0005" />);
+    await screen.findByRole("heading", { name: "Bare" });
+    expect(outline()).toEqual(["Bare", "Steps", "Runs", "Inherited values"]);
+    expect(screen.getByText("No steps.")).toBeTruthy();
   });
 
   it("shows the errors of a case that does not resolve", async () => {

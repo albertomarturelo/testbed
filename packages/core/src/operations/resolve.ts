@@ -15,6 +15,11 @@ const ResolveOutput = z.strictObject({
   /** Always qualified: `web/TC-0003`. */
   ref: z.string(),
   path: z.string(),
+  /**
+   * The Markdown below the frontmatter, without the blank lines around it and
+   * ending in a newline. Absent when the case has none.
+   */
+  body: z.string().optional(),
   /** Every inheritable value with the file it came from, in `origins` order. */
   inherited: z.array(z.strictObject({ field: z.string(), value: z.string(), origin: z.string() })),
   /** The whole resolved case, as the resolver returns it. */
@@ -41,7 +46,7 @@ export const resolveOperation = defineOperation({
     const target = findCase(workspace, input.ref, input.project);
     if (!target.ok) return target;
 
-    const { path } = target.value.case;
+    const { path, body } = target.value.case;
     const found = resolved.cases.find((c) => c.path === path);
     if (found === undefined) {
       // It loaded but did not resolve: the resolver's errors say why.
@@ -52,9 +57,25 @@ export const resolveOperation = defineOperation({
       value: display(valueAt(found, field)),
       origin: origin === found.path ? "(the case)" : origin,
     }));
-    return ok({ ref: caseRef(found), path: found.path, inherited, case: found });
+    const text = documentBody(body);
+    return ok({
+      ref: caseRef(found),
+      path: found.path,
+      ...(text === undefined ? {} : { body: text }),
+      inherited,
+      case: found,
+    });
   },
 });
+
+/**
+ * The body as a reader wants it: the blank line after `---` and trailing blank
+ * lines dropped, one final newline (text, so hosts print it as a block).
+ */
+function documentBody(body: string): string | undefined {
+  const text = body.replace(/^(?:[ \t]*\r?\n)+/, "").trimEnd();
+  return text === "" ? undefined : `${text}\n`;
+}
 
 /** `labels.owner_team`, `preconditions.0`, `automation.eligible` → the value there. */
 function valueAt(subject: object, field: string): unknown {

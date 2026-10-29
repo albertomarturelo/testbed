@@ -172,7 +172,7 @@ Every command has `--help`, `--json` for scripts and agents, and a SPEC:
 | `casefile overview` | Every project with its cases, automation status and last run |
 | `casefile runs` | One case's run events, newest first, with why each one failed |
 | `casefile query` | Lists the cases a query selects (`priority = P1 and state = draft`) |
-| `casefile resolve` | Shows a case after inheritance, with where each value came from |
+| `casefile resolve` | Shows a case after inheritance, with where each value came from, and its Markdown body |
 | `casefile id next` | The next free case id of a project |
 | `casefile spec <name>` | Prints the SPEC of an operation or topic |
 | `casefile whoami` | Who writes are made as: `CASEFILE_USER_EMAIL` when set, else `git config user.email` (on `main`, ships in the next release) |

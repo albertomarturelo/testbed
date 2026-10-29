@@ -72,10 +72,14 @@ function entry(key: string, value: unknown, indent: string): string[] {
     ];
   }
   if (typeof value === "string" && value.includes("\n")) {
-    // Multi-line text (a run's failure note) as a block under its key, so it keeps the indent.
+    // Multi-line text (a run's failure note, a case body) as a block under its key, so it
+    // keeps the indent. Text ending in a newline is a block too; that newline adds no line.
     return [
       `${indent}${key}: |`,
-      ...value.split(/\r?\n/).map((line) => `${indent}  ${line}`.trimEnd()),
+      ...value
+        .replace(/\r?\n$/, "")
+        .split(/\r?\n/)
+        .map((line) => `${indent}  ${line}`.trimEnd()),
     ];
   }
   return [`${indent}${key}: ${scalar(value)}`];
