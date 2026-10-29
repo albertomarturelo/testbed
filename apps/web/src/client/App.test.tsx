@@ -77,18 +77,23 @@ describe("App", () => {
 describe("App: room for the title (#109)", () => {
   const featureHeader = () => screen.queryByRole("columnheader", { name: "Feature" });
 
-  it("hides the Feature column for a leaf feature, keeps it for a parent and for all", async () => {
+  it("keeps the plain table for a leaf, groups a parent and all features (#112)", async () => {
+    const heading = (feature: string) => screen.queryByRole("link", { name: feature });
     window.location.hash = formatRoute({ view: "cases", project: "web", feature: "login/errors" });
     const { unmount } = render(<App />);
     expect(await screen.findByText("Reject a wrong password")).toBeTruthy();
     expect(featureHeader()).toBeNull();
+    expect(heading("login/errors")).toBeNull();
     unmount();
 
     for (const feature of ["login", undefined]) {
       window.location.hash = formatRoute({ view: "cases", project: "web", feature });
       const view = render(<App />);
       expect(await screen.findByText("Reject a wrong password")).toBeTruthy();
-      expect(featureHeader()).not.toBeNull();
+      // The group heading names the feature, so no row repeats it in a column.
+      expect(featureHeader()).toBeNull();
+      expect(heading("login")?.getAttribute("href")).toBe("#/cases?project=web&feature=login");
+      expect(heading("login/errors")).not.toBeNull();
       view.unmount();
     }
   });

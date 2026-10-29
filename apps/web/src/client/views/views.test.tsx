@@ -75,7 +75,7 @@ describe("CaseList", () => {
     row("TC-0005", "Needs an account", { eligible: false }),
   ];
   const automationCell = (title: string) =>
-    screen.getByRole("link", { name: title }).closest("tr")?.querySelectorAll("td")[5]?.textContent;
+    screen.getByRole("link", { name: title }).closest("tr")?.querySelectorAll("td")[4]?.textContent;
 
   it("tells a linked case that never ran from manual and from not eligible", () => {
     render(<CaseList rows={rows} />);
@@ -112,8 +112,8 @@ describe("CaseList", () => {
   it("draws automated lighter than a run result", () => {
     render(<CaseList rows={rows} />);
     const tr = screen.getByRole("link", { name: "Proven" }).closest("tr");
-    const automated = tr?.querySelectorAll("td")[5]?.querySelector('[data-slot="badge"]');
-    const run = tr?.querySelectorAll("td")[6]?.querySelector('[data-slot="badge"]');
+    const automated = tr?.querySelectorAll("td")[4]?.querySelector('[data-slot="badge"]');
+    const run = tr?.querySelectorAll("td")[5]?.querySelector('[data-slot="badge"]');
     expect(automated?.getAttribute("data-variant")).toBe("secondary");
     expect(run?.getAttribute("data-variant")).toBe("destructive");
     expect(automated?.querySelector("svg")).not.toBeNull();
@@ -126,14 +126,14 @@ describe("CaseList", () => {
     expect(table.closest(".\\@container")).not.toBeNull();
     const heads = screen.getAllByRole("columnheader");
     const hidden = heads.filter((h) => h.classList.contains("hidden")).map((h) => h.textContent);
-    expect(hidden).toEqual(["Feature", "State", "Priority"]);
+    expect(hidden).toEqual(["State", "Priority"]);
     for (const h of heads.filter((h) => hidden.includes(h.textContent))) {
       expect(h.classList.contains("@4xl:table-cell")).toBe(true);
     }
     // Every cell of a hidden column hides with it.
     for (const tr of table.querySelectorAll("tbody tr")) {
       const cells = [...tr.querySelectorAll("td")].map((td) => td.classList.contains("hidden"));
-      expect(cells).toEqual([false, false, true, true, true, false, false]);
+      expect(cells).toEqual([false, false, true, true, false, false]);
     }
     // The title gives way instead of pushing Last run out: it wraps to two lines, then clamps.
     const title = screen.getByRole("link", { name: "Needs an account" });
@@ -148,8 +148,8 @@ describe("CaseList", () => {
     expect(screen.getByRole("link", { name: "TC-0005" }).getAttribute("title")).toBe("web/TC-0005");
   });
 
-  it("drops the Feature column when told every row is in one leaf feature", () => {
-    render(<CaseList rows={rows} showFeature={false} />);
+  it("has no Feature column: a leaf would repeat it in every row (#112)", () => {
+    render(<CaseList rows={rows} />);
     const heads = screen.getAllByRole("columnheader").map((h) => h.textContent);
     expect(heads).toEqual(["Case", "Title", "State", "Priority", "Automation", "Last run"]);
     for (const tr of screen.getByRole("table").querySelectorAll("tbody tr")) {
@@ -162,6 +162,70 @@ describe("CaseList", () => {
     render(<CaseList rows={[...rows, api]} />);
     expect(screen.getByRole("link", { name: "web/TC-0001" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "api/TC-0001" })).toBeTruthy();
+  });
+});
+
+describe("CaseList grouped by feature (#112)", () => {
+  const at = (id: string, feature: string): CaseRow => ({
+    ref: `web/${id}`,
+    project: "web",
+    feature,
+    title: `${feature} ${id}`,
+    state: "active",
+    priority: "P2",
+    automation: "manual",
+    automation_ref: null,
+    eligible: true,
+    last_run: null,
+    last_run_at: null,
+  });
+  // Overview order (by id), features mixed; `auth-admin` sorts before `auth/login`
+  // as a string, but after it in the tree, where `auth` and its children come first.
+  const rows = [
+    at("TC-0001", "checkout/payments"),
+    at("TC-0002", "auth-admin"),
+    at("TC-0003", "auth/login"),
+    at("TC-0004", "auth"),
+    at("TC-0005", "checkout/payments"),
+    at("TC-0006", "billing"),
+  ];
+  const headings = () =>
+    [...document.querySelectorAll('th[scope="rowgroup"]')].map((th) => th.textContent);
+
+  it("lists one heading per feature, in tree order, with each group's count", () => {
+    render(<CaseList rows={rows} grouped project="web" />);
+    expect(headings()).toEqual([
+      "auth · 1",
+      "auth/login · 1",
+      "auth-admin · 1",
+      "billing · 1",
+      "checkout/payments · 2",
+    ]);
+  });
+
+  it("puts each case under its feature, keeping their order within it", () => {
+    render(<CaseList rows={rows} grouped project="web" />);
+    const group = screen.getByRole("link", { name: "checkout/payments" }).closest("tbody");
+    const titles = [...(group?.querySelectorAll("td:nth-child(2)") ?? [])].map(
+      (td) => td.textContent,
+    );
+    expect(titles).toEqual(["checkout/payments TC-0001", "checkout/payments TC-0005"]);
+  });
+
+  it("links each heading to its feature, as the tree does, and drops the Feature column", () => {
+    render(<CaseList rows={rows} grouped project="web" />);
+    expect(screen.getByRole("link", { name: "auth/login" }).getAttribute("href")).toBe(
+      "#/cases?project=web&feature=auth%2Flogin",
+    );
+    expect(screen.queryByRole("columnheader", { name: "Feature" })).toBeNull();
+    // The heading spans every column the table shows.
+    const th = document.querySelector('th[scope="rowgroup"]');
+    expect(th?.getAttribute("colSpan")).toBe("6");
+  });
+
+  it("spans only the columns left when automation and runs are hidden", () => {
+    render(<CaseList rows={rows} grouped showAutomation={false} showLastRun={false} />);
+    expect(document.querySelector('th[scope="rowgroup"]')?.getAttribute("colSpan")).toBe("4");
   });
 });
 

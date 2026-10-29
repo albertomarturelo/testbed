@@ -7,12 +7,28 @@ import { formatRoute } from "@/route";
 
 type Node = { name: string; path: string; count: number; children: Node[] };
 
+/** The parts of a feature path, as the tree nests them (`auth//login/` and `./auth/login` are `auth/login`). */
+function featureParts(feature: string): string[] {
+  return feature.split("/").filter((part) => part !== "" && part !== ".");
+}
+
+/** Tree order: a parent before what is below it, siblings by name, as the feature tree lists them. */
+export function compareFeatures(a: string, b: string): number {
+  const pa = featureParts(a);
+  const pb = featureParts(b);
+  for (let i = 0; i < Math.min(pa.length, pb.length); i += 1) {
+    const order = (pa[i] as string).localeCompare(pb[i] as string);
+    if (order !== 0) return order;
+  }
+  return pa.length - pb.length;
+}
+
 /** Feature directories of the cases, nested by `/`, each with its case count (subtree included). */
 export function featureTree(rows: readonly CaseRow[]): Node[] {
   const root: Node = { name: "", path: "", count: 0, children: [] };
   for (const row of rows) {
     let node = root;
-    for (const name of row.feature.split("/").filter((part) => part !== "" && part !== ".")) {
+    for (const name of featureParts(row.feature)) {
       const path = node.path === "" ? name : `${node.path}/${name}`;
       let child = node.children.find((c) => c.name === name);
       if (child === undefined) {
