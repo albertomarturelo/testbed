@@ -222,10 +222,15 @@ describe("FeatureTree: parents fold and unfold (#114)", () => {
   it("keeps the selected feature's ancestors open, even when the viewer folded them", () => {
     window.localStorage.setItem(featureOpenKey("web", "auth"), "0");
     window.localStorage.setItem(featureOpenKey("web", "auth/login"), "0");
-    render(<FeatureTree project="web" rows={rows} selected="auth/login/errors" />);
+    window.localStorage.setItem(featureOpenKey("web", "authz"), "0");
+    const withAuthz = [...rows, leaf("web/TC-0005", "authz/roles")];
+    render(<FeatureTree project="web" rows={withAuthz} selected="auth/login/errors" />);
     expect(shown("errors 1")).toBe(true);
     expect(toggle("auth").getAttribute("aria-expanded")).toBe("true");
     expect(toggle("auth").getAttribute("aria-disabled")).toBe("true");
+    // A sibling that only shares the name's prefix is not an ancestor.
+    expect(toggle("authz").getAttribute("aria-expanded")).toBe("false");
+    expect(toggle("authz").getAttribute("aria-disabled")).toBeNull();
     fireEvent.click(toggle("auth"));
     expect(shown("errors 1")).toBe(true);
     // The selected feature itself is not its own ancestor: it folds as usual.

@@ -77,10 +77,12 @@ type BranchProps = { node: Node; project?: string; selected?: string; depth: num
 
 function Branch(props: BranchProps) {
   const { node, depth } = props;
+  // The link is stretched over the whole row (indent included), as before the
+  // chevron existed; the chevron sits above it and is the only part that does not navigate.
   const row = (marker: React.ReactNode) => (
     <div
       className={cn(
-        "flex items-center gap-0.5 rounded-md pr-2 hover:bg-accent",
+        "relative flex items-center gap-0.5 rounded-md pr-2 hover:bg-accent",
         props.selected === node.path && "bg-accent font-medium",
       )}
       style={{ paddingLeft: `${0.25 + depth}rem` }}
@@ -88,7 +90,7 @@ function Branch(props: BranchProps) {
       {marker}
       <a
         href={formatRoute({ view: "cases", project: props.project, feature: node.path })}
-        className="flex min-w-0 flex-1 items-center gap-1.5 py-1"
+        className="flex min-w-0 flex-1 items-center gap-1.5 py-1 after:absolute after:inset-0 after:rounded-md"
       >
         <span className="truncate">{node.name}</span>
         <span className="ml-auto text-muted-foreground text-xs">{node.count}</span>
@@ -126,7 +128,7 @@ function Parent(props: BranchProps & { row: (marker: React.ReactNode) => React.R
             if (!holdsSelected) setStored(!open);
           }}
           className={cn(
-            "flex size-5 shrink-0 items-center justify-center rounded-sm",
+            "relative z-10 flex size-5 shrink-0 items-center justify-center rounded-sm",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
             holdsSelected ? "cursor-default" : "hover:bg-muted",
           )}
