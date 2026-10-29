@@ -1,8 +1,10 @@
 // @vitest-environment happy-dom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App, RUN_COLUMNS_KEY } from "@/App";
 import { type CaseRow, forgetSession, type Result } from "@/api";
+import { FeatureTree, featureOpenKey } from "@/components/FeatureTree";
 import { CaseDetail } from "@/views/CaseDetail";
 import { CaseList } from "@/views/CaseList";
 import { QueryView } from "@/views/QueryView";
@@ -160,6 +162,108 @@ describe("CaseList", () => {
     render(<CaseList rows={[...rows, api]} />);
     expect(screen.getByRole("link", { name: "web/TC-0001" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "api/TC-0001" })).toBeTruthy();
+  });
+});
+
+describe("FeatureTree: parents fold and unfold (#114)", () => {
+  const leaf = (ref: string, feature: string): CaseRow => ({
+    ref,
+    project: "web",
+    feature,
+    title: ref,
+    state: "active",
+    priority: "P2",
+    automation: "manual",
+    automation_ref: null,
+    eligible: true,
+    last_run: null,
+    last_run_at: null,
+  });
+  const rows = [
+    leaf("web/TC-0001", "auth"),
+    leaf("web/TC-0002", "auth/login"),
+    leaf("web/TC-0003", "auth/login/errors"),
+    leaf("web/TC-0004", "billing"),
+  ];
+  const toggle = (path: string) => screen.getByRole("button", { name: `Features under ${path}` });
+  const shown = (name: string) => screen.queryByRole("link", { name }) !== null;
+
+  it("gives every parent a chevron button apart from its link, open by default", () => {
+    render(<FeatureTree project="web" rows={rows} selected="billing" />);
+    expect(toggle("auth").getAttribute("aria-expanded")).toBe("true");
+    expect(toggle("auth/login").getAttribute("aria-expanded")).toBe("true");
+    // A leaf has no chevron, and the button is not inside the link.
+    expect(screen.queryByRole("button", { name: "Features under billing" })).toBeNull();
+    expect(toggle("auth").closest("a")).toBeNull();
+    expect(screen.getByRole("link", { name: "auth 3" }).getAttribute("href")).toBe(
+      "#/cases?project=web&feature=auth",
+    );
+    expect(shown("errors 1")).toBe(true);
+  });
+
+  it("hides the children on collapse, shows them on expand, and remembers it", () => {
+    render(<FeatureTree project="web" rows={rows} selected="billing" />);
+    fireEvent.click(toggle("auth"));
+    expect(toggle("auth").getAttribute("aria-expanded")).toBe("false");
+    expect(shown("login 2")).toBe(false);
+    expect(shown("errors 1")).toBe(false);
+    expect(shown("auth 3")).toBe(true);
+    expect(window.location.hash).toBe("");
+    expect(window.localStorage.getItem(featureOpenKey("web", "auth"))).toBe("0");
+
+    cleanup();
+    render(<FeatureTree project="web" rows={rows} selected="billing" />);
+    expect(shown("login 2")).toBe(false);
+    fireEvent.click(toggle("auth"));
+    expect(shown("login 2")).toBe(true);
+    expect(window.localStorage.getItem(featureOpenKey("web", "auth"))).toBe("1");
+  });
+
+  it("keeps the selected feature's ancestors open, even when the viewer folded them", () => {
+    window.localStorage.setItem(featureOpenKey("web", "auth"), "0");
+    window.localStorage.setItem(featureOpenKey("web", "auth/login"), "0");
+    window.localStorage.setItem(featureOpenKey("web", "authz"), "0");
+    const withAuthz = [...rows, leaf("web/TC-0005", "authz/roles")];
+    render(<FeatureTree project="web" rows={withAuthz} selected="auth/login/errors" />);
+    expect(shown("errors 1")).toBe(true);
+    expect(toggle("auth").getAttribute("aria-expanded")).toBe("true");
+    expect(toggle("auth").getAttribute("aria-disabled")).toBe("true");
+    // A sibling that only shares the name's prefix is not an ancestor.
+    expect(toggle("authz").getAttribute("aria-expanded")).toBe("false");
+    expect(toggle("authz").getAttribute("aria-disabled")).toBeNull();
+    fireEvent.click(toggle("auth"));
+    expect(shown("errors 1")).toBe(true);
+    // The selected feature itself is not its own ancestor: it folds as usual.
+    cleanup();
+    render(<FeatureTree project="web" rows={rows} selected="auth/login" />);
+    expect(toggle("auth/login").getAttribute("aria-expanded")).toBe("false");
+    expect(shown("errors 1")).toBe(false);
+  });
+
+  it("toggles from the keyboard with Enter and Space", async () => {
+    const user = userEvent.setup();
+    render(<FeatureTree project="web" rows={rows} selected="billing" />);
+    toggle("auth").focus();
+    await user.keyboard("{Enter}");
+    expect(toggle("auth").getAttribute("aria-expanded")).toBe("false");
+    expect(shown("login 2")).toBe(false);
+    await user.keyboard(" ");
+    expect(toggle("auth").getAttribute("aria-expanded")).toBe("true");
+    expect(shown("login 2")).toBe(true);
+  });
+
+  it("starts every parent open and still folds when storage is unavailable", () => {
+    const blocked = () => {
+      throw new Error("blocked");
+    };
+    const storage = { getItem: vi.fn(blocked), setItem: vi.fn(blocked), clear: () => undefined };
+    vi.stubGlobal("localStorage", storage);
+    render(<FeatureTree project="web" rows={rows} selected="billing" />);
+    expect(shown("errors 1")).toBe(true);
+    fireEvent.click(toggle("auth"));
+    expect(shown("login 2")).toBe(false);
+    expect(storage.getItem).toHaveBeenCalled();
+    expect(storage.setItem).toHaveBeenCalled();
   });
 });
 

@@ -37,6 +37,7 @@ Upgrades are deliberate PRs that update this table.
 | `@casefile/web` | `lucide-react` | dev (bundled) | 1.54.0 | Icons (shadcn default) |
 | `@casefile/web` | `tw-animate-css` | dev (bundled) | 1.4.0 | Animations the shadcn components use |
 | `@casefile/web` | `happy-dom`, `@testing-library/react` | dev | 20.14.6, 16.3.3 | Client smoke tests |
+| `@casefile/web` | `@testing-library/user-event` | dev | 14.6.8 | Keyboard and pointer in client tests: happy-dom does not activate a button on Enter or Space (#114) |
 
 shadcn/ui itself is not a dependency: its CLI (`shadcn@4.21.4`, run with
 `pnpm dlx`) copies components into `apps/web/src/client/components/ui/` (CONVENTIONS 13).
