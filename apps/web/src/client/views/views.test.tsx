@@ -448,7 +448,12 @@ describe("CaseDetail", () => {
             { do: "Open the sign-in page", expect: "The form is empty" },
             { do: "Sign in", expect: "The account page opens" },
           ],
-          acceptance_ref: ["ACME-101#AC-1", "https://tracker.example/ACME-101#ac-2"],
+          // Listed twice on purpose: no duplicate React keys.
+          acceptance_ref: [
+            "ACME-101#AC-1",
+            "https://tracker.example/ACME-101#ac-2",
+            "ACME-101#AC-1",
+          ],
           work_items: [
             "story:ACME-101",
             "issue:https://github.com/acme/web/issues/7",
@@ -468,6 +473,10 @@ describe("CaseDetail", () => {
       "Needs real credentials: manual.\n\nNo automated test may sign in.",
     );
     expect(body.className).toContain("whitespace-pre-wrap");
+
+    // The title comes before where the case stands.
+    const title = screen.getByRole("heading", { name: "Sign in with a registered account" });
+    expect(title.nextElementSibling?.textContent).toContain("web/TC-0007");
 
     // Reading order: the document first, inherited values last.
     expect(outline()).toEqual([
@@ -501,7 +510,7 @@ describe("CaseDetail", () => {
     expect(screen.getByRole("columnheader", { name: "Expected result" })).toBeTruthy();
 
     // References: links only for http(s) URLs, whole or after a work item's kind.
-    expect(screen.getByText("ACME-101#AC-1").closest("a")).toBeNull();
+    expect(screen.getAllByText("ACME-101#AC-1").every((el) => el.closest("a") === null)).toBe(true);
     const ac = screen.getByRole("link", { name: "https://tracker.example/ACME-101#ac-2" });
     expect(ac.getAttribute("href")).toBe("https://tracker.example/ACME-101#ac-2");
     expect(ac.getAttribute("rel")).toBe("noreferrer");

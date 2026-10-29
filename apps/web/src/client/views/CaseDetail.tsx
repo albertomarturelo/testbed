@@ -64,19 +64,21 @@ export function CaseDetail({ caseRef }: { caseRef: string }) {
   const acceptance = Array.isArray(c.acceptance_ref) ? (c.acceptance_ref as string[]) : [];
   const workItems = Array.isArray(c.work_items) ? (c.work_items as string[]) : [];
   const history = Array.isArray(c.history) ? (c.history as HistoryEntry[]) : [];
-  const body = value.body?.trim() ?? "";
+  // Core already drops the blank lines around it; keep a first line's indentation.
+  const body = value.body?.trimEnd() ?? "";
 
   return (
     <div className="flex flex-col gap-4">
       {back}
       <header className="flex flex-col gap-2">
+        {/* Reading order: the title, then where the case stands. */}
+        <h1 className="font-semibold text-2xl tracking-tight">{String(c.title)}</h1>
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-mono text-muted-foreground text-sm">{value.ref}</span>
           <Badge variant="outline">{String(c.state)}</Badge>
           <Badge variant="secondary">{String(c.priority)}</Badge>
           <AutomationBadge automation={{ ...automation, ref: automation.ref ?? null }} />
         </div>
-        <h1 className="font-semibold text-2xl tracking-tight">{String(c.title)}</h1>
         <p className="font-mono text-muted-foreground text-xs">{value.path}</p>
         {automation.ref === undefined ? null : (
           <p className="text-sm">
@@ -153,8 +155,9 @@ export function CaseDetail({ caseRef }: { caseRef: string }) {
                   <>
                     <dt className="text-muted-foreground">Acceptance criteria</dt>
                     <dd className="flex min-w-0 flex-wrap gap-x-3 gap-y-1">
-                      {acceptance.map((ref) => (
-                        <Reference key={ref} text={ref} />
+                      {acceptance.map((ref, i) => (
+                        // biome-ignore lint/suspicious/noArrayIndexKey: a ref may be listed twice
+                        <Reference key={i} text={ref} />
                       ))}
                     </dd>
                   </>
@@ -163,8 +166,9 @@ export function CaseDetail({ caseRef }: { caseRef: string }) {
                   <>
                     <dt className="text-muted-foreground">Work items</dt>
                     <dd className="flex min-w-0 flex-wrap gap-x-3 gap-y-1">
-                      {workItems.map((item) => (
-                        <Reference key={item} text={item} prefixed />
+                      {workItems.map((item, i) => (
+                        // biome-ignore lint/suspicious/noArrayIndexKey: an item may be listed twice
+                        <Reference key={i} text={item} prefixed />
                       ))}
                     </dd>
                   </>
@@ -276,7 +280,7 @@ function ExternalLink({ href, children }: { href: string; children: React.ReactN
 }
 
 /** The text as a URL when it is an absolute http(s) one, else null. */
-export function webUrl(text: string): string | null {
+function webUrl(text: string): string | null {
   if (!/^https?:\/\//i.test(text)) return null;
   try {
     const url = new URL(text);
