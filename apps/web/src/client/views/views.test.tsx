@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App, RUN_COLUMNS_KEY } from "@/App";
 import { type CaseRow, forgetSession, type Result } from "@/api";
-import { FeatureTree, featureOpenKey } from "@/components/FeatureTree";
+import { FeatureTree, featureOpenKey, tally, tallyLine } from "@/components/FeatureTree";
 import { CaseDetail } from "@/views/CaseDetail";
 import { CaseList } from "@/views/CaseList";
 import { QueryView } from "@/views/QueryView";
@@ -250,7 +250,33 @@ describe("FeatureTree: parents fold and unfold (#114)", () => {
     leaf("web/TC-0004", "billing"),
   ];
   const toggle = (path: string) => screen.getByRole("button", { name: `Features under ${path}` });
-  const shown = (name: string) => screen.queryByRole("link", { name }) !== null;
+  // A tree link's name is the feature, its count, then its tally line (#87): match the start.
+  const link = (start: string) => ({ name: (name: string) => name.startsWith(`${start} `) });
+  const shown = (start: string) => screen.queryByRole("link", link(start)) !== null;
+
+  it("shows each feature's cases by state and how many are linked, subtree included (#87)", () => {
+    const states = [
+      { ...leaf("web/TC-0005", "auth/login"), state: "draft" },
+      { ...leaf("web/TC-0006", "auth/login"), state: "in_review", automation_ref: "x.spec.ts::y" },
+      { ...leaf("web/TC-0007", "billing"), state: "retired" },
+    ];
+    render(<FeatureTree project="web" rows={[...rows, ...states]} />);
+    const line = (start: string) =>
+      screen.getByRole("link", link(start)).lastElementChild?.textContent;
+    expect(line("auth 5")).toBe("1 draft · 1 in review · 3 active · 1 linked");
+    expect(line("login 4")).toBe("1 draft · 1 in review · 2 active · 1 linked");
+    expect(line("billing 2")).toBe("1 active · 1 retired · 0 linked");
+    expect(screen.getByRole("link", { name: /^All features/ }).lastElementChild?.textContent).toBe(
+      "1 draft · 1 in review · 4 active · 1 retired · 1 linked",
+    );
+  });
+
+  it("orders states as a case moves through them, unknown ones last", () => {
+    expect(tallyLine({ states: { zeta: 1, retired: 1, draft: 2, alpha: 1 }, linked: 3 })).toBe(
+      "2 draft · 1 retired · 1 alpha · 1 zeta · 3 linked",
+    );
+    expect(tallyLine(tally([]))).toBe("0 linked");
+  });
 
   it("gives every parent a chevron button apart from its link, open by default", () => {
     render(<FeatureTree project="web" rows={rows} selected="billing" />);
@@ -259,7 +285,7 @@ describe("FeatureTree: parents fold and unfold (#114)", () => {
     // A leaf has no chevron, and the button is not inside the link.
     expect(screen.queryByRole("button", { name: "Features under billing" })).toBeNull();
     expect(toggle("auth").closest("a")).toBeNull();
-    expect(screen.getByRole("link", { name: "auth 3" }).getAttribute("href")).toBe(
+    expect(screen.getByRole("link", link("auth 3")).getAttribute("href")).toBe(
       "#/cases?project=web&feature=auth",
     );
     expect(shown("errors 1")).toBe(true);

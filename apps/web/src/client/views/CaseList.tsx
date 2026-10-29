@@ -31,6 +31,8 @@ export function CaseList({
   rows,
   grouped = false,
   project,
+  state,
+  emptyText = "No cases here yet.",
   showAutomation = true,
   showLastRun = true,
 }: {
@@ -38,11 +40,14 @@ export function CaseList({
   grouped?: boolean;
   /** The listed project, for the group headings' links: the same as the feature tree's. */
   project?: string;
+  /** The list's state filter (#87): the group headings' links keep it. */
+  state?: string;
+  emptyText?: string;
   showAutomation?: boolean;
   showLastRun?: boolean;
 }) {
   if (rows.length === 0) {
-    return <p className="py-12 text-center text-muted-foreground text-sm">No cases here yet.</p>;
+    return <p className="py-12 text-center text-muted-foreground text-sm">{emptyText}</p>;
   }
   // Rows of one project need only the case id; across projects the ref tells them apart.
   const oneProject = rows.every((row) => row.project === rows[0]?.project);
@@ -122,7 +127,7 @@ export function CaseList({
                 >
                   <a
                     className="hover:underline"
-                    href={formatRoute({ view: "cases", project, feature })}
+                    href={formatRoute({ view: "cases", project, feature, state })}
                   >
                     {feature}
                   </a>{" "}

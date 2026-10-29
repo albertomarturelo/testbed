@@ -270,6 +270,18 @@ describe("id-next operation", () => {
 });
 
 describe("overview operation", () => {
+  it("gives each row the state a `state = draft` query matches (#87)", async () => {
+    const overview = await invoke("overview", DEMO_ROOT);
+    const query = await invoke("query", DEMO_ROOT, { query: "state = draft" });
+    if (!overview.ok || !query.ok) throw new Error("overview or query failed");
+    const drafts = (overview.value as { cases: { ref: string; state: string }[] }).cases
+      .filter((row) => row.state === "draft")
+      .map((row) => row.ref);
+    const matched = (query.value as { cases: { ref: string }[] }).cases.map((row) => row.ref);
+    expect(drafts).toEqual(matched);
+    expect(drafts).toHaveLength(DEMO_EXPECTED.states.draft);
+  });
+
   type Overview = {
     projects: { name: string; path: string; cases: number; unresolved: number }[];
     cases: Record<string, string | boolean | null>[];
