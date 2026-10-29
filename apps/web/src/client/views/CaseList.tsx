@@ -10,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatRoute } from "@/route";
+import { formatRoute, type StateFilter } from "@/route";
 
 /**
  * Columns the human can do without on a narrow list: the feature tree, the case
@@ -41,7 +41,7 @@ export function CaseList({
   /** The listed project, for the group headings' links: the same as the feature tree's. */
   project?: string;
   /** The list's state filter (#87): the group headings' links keep it. */
-  state?: string;
+  state?: StateFilter;
   emptyText?: string;
   showAutomation?: boolean;
   showLastRun?: boolean;

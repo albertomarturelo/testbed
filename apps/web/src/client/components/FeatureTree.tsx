@@ -3,7 +3,7 @@ import { useId } from "react";
 import type { CaseRow } from "@/api";
 import { useStoredFlag } from "@/lib/stored";
 import { cn } from "@/lib/utils";
-import { formatRoute } from "@/route";
+import { formatRoute, type StateFilter } from "@/route";
 
 /** What a feature covers: its cases by state, and how many are linked to a test (#87). */
 export type Tally = { states: Record<string, number>; linked: number };
@@ -88,7 +88,7 @@ export function inFeature(row: CaseRow, selected: string | undefined): boolean {
 }
 
 /** `state`: the list's state filter (#87); the tree's links keep it, its counts ignore it. */
-type Props = { project?: string; rows: readonly CaseRow[]; selected?: string; state?: string };
+type Props = { project?: string; rows: readonly CaseRow[]; selected?: string; state?: StateFilter };
 
 /**
  * Where a viewer's choice to fold or unfold a parent feature is remembered
@@ -140,7 +140,7 @@ type BranchProps = {
   node: Node;
   project?: string;
   selected?: string;
-  state?: string;
+  state?: StateFilter;
   depth: number;
 };
 

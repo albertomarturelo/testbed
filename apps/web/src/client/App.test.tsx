@@ -246,7 +246,7 @@ describe("routes and feature tree", () => {
   it("round-trips every view through the hash", () => {
     for (const route of [
       { view: "cases" as const, project: "web", feature: "login" },
-      { view: "cases" as const, project: "web", feature: "login", state: "draft" },
+      { view: "cases" as const, project: "web", feature: "login", state: "draft" as const },
       { view: "case" as const, ref: "web/TC-0001" },
       { view: "query" as const, project: "api" },
       { view: "validate" as const },
@@ -254,6 +254,8 @@ describe("routes and feature tree", () => {
       expect(parseRoute(formatRoute(route))).toEqual(route);
     }
     expect(parseRoute("")).toEqual({ view: "cases" });
+    // Drafts awaiting review is the only state filter the page shows (#87).
+    expect(parseRoute("#/cases?state=active")).toEqual({ view: "cases" });
   });
 
   it("nests features by `/`, counting the cases below each by state and linked (#87)", () => {

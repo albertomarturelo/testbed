@@ -1,13 +1,17 @@
 /**
  * Views live in the URL hash (ADR local-ui-stack §4): `#/cases?project=web&feature=login`
- * (`&state=draft` lists only the cases in that state, #87),
+ * (`&state=draft` lists only the drafts awaiting review, #87; no other state is a filter),
  * `#/case/web/TC-0001`, `#/query`, `#/validate`. A reload keeps the view.
  */
 export type Route =
-  | { view: "cases"; project?: string; feature?: string; state?: string }
+  | { view: "cases"; project?: string; feature?: string; state?: StateFilter }
   | { view: "case"; ref: string }
   | { view: "query"; project?: string }
   | { view: "validate"; project?: string };
+
+/** The state the "drafts awaiting review" filter lists: what a `state = draft` query matches. */
+export const DRAFT = "draft";
+export type StateFilter = typeof DRAFT;
 
 export function parseRoute(hash: string): Route {
   const [path = "", search = ""] = hash.replace(/^#\/?/, "").split("?");
@@ -21,7 +25,8 @@ export function parseRoute(hash: string): Route {
     view: "cases",
     project,
     feature: params.get("feature") ?? undefined,
-    state: params.get("state") ?? undefined,
+    // Only the filter the page offers: any other value would filter with nothing on screen saying so.
+    state: params.get("state") === DRAFT ? DRAFT : undefined,
   };
 }
 

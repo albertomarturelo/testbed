@@ -9,7 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useStoredFlag } from "@/lib/stored";
 import { cn } from "@/lib/utils";
-import { formatRoute, parseRoute, type Route } from "@/route";
+import { DRAFT, formatRoute, parseRoute, type Route, type StateFilter } from "@/route";
 import { CaseDetail } from "@/views/CaseDetail";
 import { CaseList } from "@/views/CaseList";
 import { QueryView } from "@/views/QueryView";
@@ -166,14 +166,11 @@ export function App() {
 /** Remembers, per viewer, whether the case list shows Automation and Last run (#110). */
 export const RUN_COLUMNS_KEY = "casefile.caseList.runColumns";
 
-/** The state the "drafts awaiting review" filter lists: what a `state = draft` query matches (#87). */
-export const DRAFT = "draft";
-
 function CasesPage(props: {
   overview: Overview;
   project?: string;
   feature?: string;
-  state?: string;
+  state?: StateFilter;
 }) {
   const { overview, project, feature, state } = props;
   const inProject = overview.cases.filter((c) => project === undefined || c.project === project);
