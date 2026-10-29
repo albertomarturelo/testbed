@@ -1,5 +1,5 @@
 import type { CaseRow } from "@/api";
-import { compareFeatures, featurePath } from "@/components/FeatureTree";
+import { compareFeatures } from "@/components/FeatureTree";
 import { AutomationBadge, RunBadge } from "@/components/StatusBadge";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -10,7 +10,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { cn } from "@/lib/utils";
 import { formatRoute } from "@/route";
 
 /**
@@ -22,17 +21,16 @@ const WIDE_ONLY = "hidden @4xl:table-cell";
 /**
  * The cases of the selected project and feature, one row each. `grouped` lists
  * them under one heading per feature, in tree order, like a table of contents
- * (#112); the heading links to the feature and replaces the Feature column.
- * Flat, `showFeature` is off when a leaf feature is selected: every row would
- * repeat it. `showAutomation` and `showLastRun` are off when the viewer hides
- * them, and `showLastRun` also when the project has never run (ADR
- * authoring-loop-first: cases kept as documentation are complete without runs).
+ * (#112); the heading links to the feature. There is no Feature column: flat,
+ * the list is one leaf feature and every row would repeat it.
+ * `showAutomation` and `showLastRun` are off when the viewer hides them, and
+ * `showLastRun` also when the project has never run (ADR authoring-loop-first:
+ * cases kept as documentation are complete without runs).
  */
 export function CaseList({
   rows,
   grouped = false,
   project,
-  showFeature = true,
   showAutomation = true,
   showLastRun = true,
 }: {
@@ -40,7 +38,6 @@ export function CaseList({
   grouped?: boolean;
   /** The listed project, for the group headings' links: the same as the feature tree's. */
   project?: string;
-  showFeature?: boolean;
   showAutomation?: boolean;
   showLastRun?: boolean;
 }) {
@@ -49,8 +46,7 @@ export function CaseList({
   }
   // Rows of one project need only the case id; across projects the ref tells them apart.
   const oneProject = rows.every((row) => row.project === rows[0]?.project);
-  const featureColumn = showFeature && !grouped;
-  const columns = 4 + Number(featureColumn) + Number(showAutomation) + Number(showLastRun);
+  const columns = 4 + Number(showAutomation) + Number(showLastRun);
   const caseRow = (row: CaseRow) => (
     <TableRow key={row.ref}>
       <TableCell className="font-mono text-xs">
@@ -72,9 +68,6 @@ export function CaseList({
           {row.title}
         </a>
       </TableCell>
-      {featureColumn ? (
-        <TableCell className={cn(WIDE_ONLY, "text-muted-foreground")}>{row.feature}</TableCell>
-      ) : null}
       <TableCell className={WIDE_ONLY}>
         <Badge variant="outline">{row.state}</Badge>
       </TableCell>
@@ -110,7 +103,6 @@ export function CaseList({
           <TableRow>
             <TableHead>Case</TableHead>
             <TableHead>Title</TableHead>
-            {featureColumn ? <TableHead className={WIDE_ONLY}>Feature</TableHead> : null}
             <TableHead className={WIDE_ONLY}>State</TableHead>
             <TableHead className={WIDE_ONLY}>Priority</TableHead>
             {showAutomation ? <TableHead>Automation</TableHead> : null}
@@ -149,12 +141,11 @@ export function CaseList({
 }
 
 /** The rows per feature, features in tree order; rows keep their order within a feature. */
-export function byFeature(rows: readonly CaseRow[]): [string, CaseRow[]][] {
+function byFeature(rows: readonly CaseRow[]): [string, CaseRow[]][] {
   const groups = new Map<string, CaseRow[]>();
   for (const row of rows) {
-    const feature = featurePath(row.feature);
-    const group = groups.get(feature);
-    if (group === undefined) groups.set(feature, [row]);
+    const group = groups.get(row.feature);
+    if (group === undefined) groups.set(row.feature, [row]);
     else group.push(row);
   }
   return [...groups].sort(([a], [b]) => compareFeatures(a, b));

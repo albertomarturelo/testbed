@@ -164,7 +164,6 @@ function CasesPage(props: { overview: Overview; project?: string; feature?: stri
   const { overview, project, feature } = props;
   const inProject = overview.cases.filter((c) => project === undefined || c.project === project);
   // A leaf feature keeps the plain table; all features or a parent group by feature (#112).
-  // Either way there is no Feature column: every row would repeat it, or the heading says it.
   const leaf = feature !== undefined && !inProject.some((c) => c.feature.startsWith(`${feature}/`));
   // Read over the project, not the feature: the columns do not come and go per feature.
   const everRan = inProject.some((c) => c.last_run !== null);
@@ -185,7 +184,6 @@ function CasesPage(props: { overview: Overview; project?: string; feature?: stri
           rows={inProject.filter((c) => inFeature(c, feature))}
           grouped={!leaf}
           project={project}
-          showFeature={false}
           showAutomation={runColumns}
           showLastRun={runColumns && everRan}
         />

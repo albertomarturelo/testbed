@@ -12,11 +12,6 @@ function featureParts(feature: string): string[] {
   return feature.split("/").filter((part) => part !== "" && part !== ".");
 }
 
-/** A feature path as the tree links to it. */
-export function featurePath(feature: string): string {
-  return featureParts(feature).join("/");
-}
-
 /** Tree order: a parent before what is below it, siblings by name, as the feature tree lists them. */
 export function compareFeatures(a: string, b: string): number {
   const pa = featureParts(a);
