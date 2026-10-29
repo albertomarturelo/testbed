@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App, RUN_COLUMNS_KEY } from "@/App";
 import type { Overview } from "@/api";
@@ -71,6 +71,74 @@ describe("App", () => {
     expect(screen.queryByText("Create an order")).toBeNull();
     // The case file that does not resolve is pointed out.
     expect(screen.getByText(/does not resolve/)).toBeTruthy();
+  });
+});
+
+describe("App: drafts awaiting review (#87)", () => {
+  const withDrafts = (): Overview => ({
+    projects: OVERVIEW.projects,
+    cases: [
+      ...OVERVIEW.cases,
+      { ...row("web/TC-0003", "login", "Lock after five tries", "manual", null), state: "draft" },
+      {
+        ...row("web/TC-0004", "login/errors", "Reject an empty form", "manual", null),
+        state: "draft",
+      },
+      { ...row("web/TC-0005", "login", "Old flow", "manual", null), state: "retired" },
+    ],
+  });
+  const toggle = () => screen.getByRole("button", { name: /Drafts awaiting review/ });
+
+  it("counts the drafts in scope in the header and lists only them when pressed", async () => {
+    overview = withDrafts();
+    window.location.hash = formatRoute({ view: "cases", project: "web" });
+    render(<App />);
+    expect(await screen.findByText("Sign in")).toBeTruthy();
+    expect(toggle().getAttribute("aria-pressed")).toBe("false");
+    expect(toggle().textContent).toContain("2");
+
+    fireEvent.click(toggle());
+    expect(window.location.hash).toBe("#/cases?project=web&state=draft");
+    // The App follows the hash on `hashchange`: wait for the filtered list.
+    await waitFor(() => expect(screen.queryByText("Sign in")).toBeNull());
+    expect(screen.getByText("Lock after five tries")).toBeTruthy();
+    expect(screen.queryByText("Old flow")).toBeNull();
+    expect(screen.getByText("Reject an empty form")).toBeTruthy();
+    expect(toggle().getAttribute("aria-pressed")).toBe("true");
+
+    // The tree and the group headings keep the filter; the tree still counts every case.
+    const tree = screen.getByRole("navigation", { name: "Features" });
+    const errors = [...tree.querySelectorAll("a")].find((a) => a.textContent?.startsWith("errors"));
+    expect(errors?.getAttribute("href")).toBe(
+      "#/cases?project=web&feature=login%2Ferrors&state=draft",
+    );
+    expect(tree.textContent).toContain("All features · 5");
+    expect(screen.getByRole("link", { name: "login" }).getAttribute("href")).toBe(
+      "#/cases?project=web&feature=login&state=draft",
+    );
+
+    fireEvent.click(toggle());
+    expect(window.location.hash).toBe("#/cases?project=web");
+    expect(await screen.findByText("Sign in")).toBeTruthy();
+  });
+
+  it("counts within the selected feature and says when none wait", async () => {
+    overview = withDrafts();
+    window.location.hash = formatRoute({
+      view: "cases",
+      project: "web",
+      feature: "login/errors",
+      state: "draft",
+    });
+    render(<App />);
+    expect(await screen.findByText("Reject an empty form")).toBeTruthy();
+    expect(toggle().textContent).toContain("1");
+    cleanup();
+
+    overview = OVERVIEW;
+    render(<App />);
+    expect(await screen.findByText("No drafts await review here.")).toBeTruthy();
+    expect(toggle().textContent).toContain("0");
   });
 });
 
@@ -178,6 +246,7 @@ describe("routes and feature tree", () => {
   it("round-trips every view through the hash", () => {
     for (const route of [
       { view: "cases" as const, project: "web", feature: "login" },
+      { view: "cases" as const, project: "web", feature: "login", state: "draft" as const },
       { view: "case" as const, ref: "web/TC-0001" },
       { view: "query" as const, project: "api" },
       { view: "validate" as const },
@@ -185,17 +254,34 @@ describe("routes and feature tree", () => {
       expect(parseRoute(formatRoute(route))).toEqual(route);
     }
     expect(parseRoute("")).toEqual({ view: "cases" });
+    // Drafts awaiting review is the only state filter the page shows (#87).
+    expect(parseRoute("#/cases?state=active")).toEqual({ view: "cases" });
   });
 
-  it("nests features by `/` and counts the cases below each", () => {
+  it("nests features by `/`, counting the cases below each by state and linked (#87)", () => {
     expect(featureTree(OVERVIEW.cases)).toEqual([
       {
         name: "login",
         path: "login",
         count: 2,
-        children: [{ name: "errors", path: "login/errors", count: 1, children: [] }],
+        tally: { states: { active: 2 }, linked: 1 },
+        children: [
+          {
+            name: "errors",
+            path: "login/errors",
+            count: 1,
+            tally: { states: { active: 1 }, linked: 0 },
+            children: [],
+          },
+        ],
       },
-      { name: "orders", path: "orders", count: 1, children: [] },
+      {
+        name: "orders",
+        path: "orders",
+        count: 1,
+        tally: { states: { active: 1 }, linked: 1 },
+        children: [],
+      },
     ]);
   });
 });
