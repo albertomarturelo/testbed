@@ -74,6 +74,15 @@ describe("renderValue", () => {
     );
   });
 
+  it("prints one line of text ending in a newline as a block, with no blank line after", () => {
+    expect(renderValue({ body: "Needs real credentials.\n", next: ["casefile validate"] })).toBe(
+      ["body: |", "  Needs real credentials.", "", "Next:", "  - casefile validate"].join("\n"),
+    );
+    expect(renderValue({ body: "One\n\nTwo\n", ref: "web/TC-0001" })).toBe(
+      ["body: |", "  One", "", "  Two", "ref: web/TC-0001"].join("\n"),
+    );
+  });
+
   it("prints a non-object value as is", () => {
     expect(renderValue("text")).toBe("text");
     expect(renderValue([1, 2])).toBe("[1,2]");

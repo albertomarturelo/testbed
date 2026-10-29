@@ -1,7 +1,7 @@
 # resolve
 
 Shows one case as casefile sees it after inheritance: every inherited value
-next to the file it came from. It never writes.
+next to the file it came from, and the case's Markdown body. It never writes.
 
 - **Actor:** human, agent, CI
 - **CLI:** `casefile resolve <ref> [--project <name>] [--json]`
@@ -26,6 +26,7 @@ next to the file it came from. It never writes.
 
 ```json
 { "ref": "web/TC-0003", "path": "context/tests/checkout/payments/TC-0003.md",
+  "body": "Inherits from the root, `checkout/` and `checkout/payments/` commons.\n",
   "inherited": [{ "field": "priority", "value": "P1",
                   "origin": "context/tests/checkout/payments/_common.yaml" }],
   "case": { "id": "TC-0003", "project": "web", "...": "the resolved case" } }
@@ -35,6 +36,11 @@ next to the file it came from. It never writes.
 `automation.eligible`, `labels.<key>`, `data.<key>`, `preconditions.<n>`); a
 value written in the case itself has origin `(the case)`. Lists and objects are
 shown as JSON text in `value`; `case` keeps them typed.
+
+`body` is the Markdown below the case's frontmatter, as written: the blank line
+after `---` and trailing blank lines are dropped and it ends in one newline, so
+the CLI prints it as a block under `body: |`. It is absent when the case has no
+body. casefile does not interpret it; a host shows it as text.
 
 ## Errors
 

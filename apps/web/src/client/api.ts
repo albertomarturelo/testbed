@@ -48,6 +48,8 @@ export type Overview = { projects: ProjectSummary[]; cases: CaseRow[] };
 export type Resolved = {
   ref: string;
   path: string;
+  /** The Markdown below the frontmatter; absent when the case has none (#86). */
+  body?: string;
   inherited: { field: string; value: string; origin: string }[];
   case: Record<string, unknown>;
 };

@@ -351,6 +351,8 @@ describe("casefile resolve, query, id next", () => {
     // Each file of the commons chain shows up as an origin.
     for (const file of DEMO_EXPECTED.tc0003CommonsChain) expect(result.stdout).toContain(file);
     expect(result.stdout).toMatch(/\n {2}priority +\S+ +context\/tests\//);
+    // The case's body, as a block (#86).
+    expect(result.stdout).toContain(`\nbody: |\n  ${DEMO_EXPECTED.tc0003Body}inherited:`);
   });
 
   it("asks to qualify an ambiguous id; resolves a qualified one", async () => {

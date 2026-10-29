@@ -20,6 +20,8 @@ export const DEMO_EXPECTED = {
     "context/tests/checkout/_common.yaml",
     "context/tests/checkout/payments/_common.yaml",
   ],
+  /** TC-0003's Markdown body as `resolve` returns it (#86); TC-0005 has none. */
+  tc0003Body: "Inherits from the root, `checkout/` and `checkout/payments/` commons.\n",
   /** Cases whose `automation.status` resolves to `automated` (a run matches `automation.ref`). */
   derivedAutomated: ["TC-0001", "TC-0004", "TC-0007"],
   queries: {

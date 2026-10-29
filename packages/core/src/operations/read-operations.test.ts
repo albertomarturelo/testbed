@@ -70,6 +70,14 @@ describe("resolve operation", () => {
     expect(value.inherited.some((row) => row.origin === "(the case)")).toBe(true);
   });
 
+  it("returns the case's Markdown body, or none (#86)", async () => {
+    const withBody = await invoke("resolve", DEMO_ROOT, { ref: "TC-0003" });
+    expect(withBody).toMatchObject({ ok: true, value: { body: DEMO_EXPECTED.tc0003Body } });
+    const without = await invoke("resolve", DEMO_ROOT, { ref: "TC-0005" });
+    if (!without.ok) throw new Error(without.errors[0]?.message);
+    expect(without.value).not.toHaveProperty("body");
+  });
+
   it("asks to qualify a bare id found in several projects", async () => {
     const [first, second] = DEMO_MONOREPO_EXPECTED.caseRefs.filter((ref) =>
       ref.endsWith("TC-0001"),
