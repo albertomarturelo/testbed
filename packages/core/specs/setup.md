@@ -185,7 +185,7 @@ review:
 
 ## Without the npm registry
 
-Every release from the one after `v0.1.0` carries
+Every release from `v0.1.1` carries
 `casefile-toolchain-<version>.tgz`: the `node_modules/` that step 1 would
 install, and nothing else (ADR release-toolchain-tarball). Use it when
 `registry.npmjs.org` is blocked and GitHub is not. `<version>` is the exact pin
