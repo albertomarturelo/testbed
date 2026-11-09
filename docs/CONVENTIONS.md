@@ -50,7 +50,11 @@ Corrections are appended here in the same change that fixes the code.
     two things it gets wrong: it imports `cn` from a `cn` npm package and adds that
     package with a `^` range. Point the import at `@/lib/utils` and remove the
     package. Also pin any new package it adds to an exact version (corrected
-    2026-10-17, #54).
+    2026-10-17, #54). When it asks to overwrite a component we already own
+    (`button`, `separator`), answer No (`yes n | pnpm dlx shadcn@4.21.4 add …`):
+    ours may carry local fixes. Run `pnpm format` and `pnpm lint` on what it
+    adds; `field` needed an `import type * as React` and three Biome fixes
+    (added 2026-11-09, #92).
 14. **Viewer changes are checked in a real browser before the PR (corrected
     2026-10-23, #110).** Unit tests and a grep of the built CSS are not enough
     for `apps/web`: build, start `apps/web/dist/server/bin.js --cwd <workspace>`,
@@ -66,3 +70,12 @@ Corrections are appended here in the same change that fixes the code.
     conveniences: every access is guarded, the page renders the same without
     them, and the key is `casefile.<view>.<what>`. State that matters to the
     workspace never goes there; it goes through core operations.
+16. **Viewer forms are controlled React state over shadcn `Field`,
+    `Input`, `Textarea`, `NativeSelect` (#92).** No form library: shadcn's
+    `form` brings `react-hook-form`, a state framework ADR local-ui-stack §5
+    reserves for an ADR. A form calls one writing operation with only the
+    fields that differ from what the page loaded, plus `base` (the last
+    `history[].change` read). An error whose `field` names a form input
+    (`set.<field>…` for `review`) shows under that input with its code; every
+    other error (`ui.*`, `review.stale`, …) shows whole with `ErrorList`.
+    Values the case inherits from commons are shown read-only, never sent.

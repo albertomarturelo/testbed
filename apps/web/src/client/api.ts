@@ -54,6 +54,18 @@ export type Resolved = {
   case: Record<string, unknown>;
 };
 
+/** What `review` answers (`casefile spec review`): the case's new state and the commit made. */
+export type Reviewed = {
+  ref: string;
+  path: string;
+  change: string;
+  state: string;
+  changed: string[];
+  events: string[];
+  commit: Commit;
+  next: string[];
+};
+
 /** One line of a `.runs/*.jsonl` file, with that file (`casefile spec runs`). */
 export type CaseRun = {
   run_id: string;

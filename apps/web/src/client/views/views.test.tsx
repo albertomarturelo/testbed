@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App, RUN_COLUMNS_KEY } from "@/App";
@@ -578,6 +578,276 @@ describe("CaseDetail", () => {
     render(<CaseDetail caseRef="web/TC-0009" />);
     expect(await screen.findByText("no case TC-0009 in the workspace")).toBeTruthy();
     expect(calls.map((c) => c.name)).toEqual(["resolve"]);
+  });
+});
+
+describe("CaseDetail: edit, approve and retire (#92)", () => {
+  const created = {
+    event: "created",
+    at: "2026-10-05T09:00:00Z",
+    by: "qa@acme.example",
+    via: "cli:cover",
+    change: "c-1",
+    commit: "1111111aaaaaaa",
+  };
+  /** A resolved case in `state`; `after` history entries are appended once `review` succeeded. */
+  const resolvedCase = (state: string, after: Record<string, unknown>[] = []) => ({
+    ok: true as const,
+    value: {
+      ref: "web/TC-0001",
+      path: "apps/web/context/tests/login/TC-0001.md",
+      inherited: [],
+      case: {
+        id: "TC-0001",
+        title: "Sign in",
+        state,
+        priority: "P2",
+        labels: { risk: "auth", tags: ["smoke", "web"] },
+        preconditions: ["An account exists"],
+        automation: { status: "manual", eligible: true },
+        steps: [
+          { do: "Open the login page", expect: "The form shows" },
+          { do: "Submit valid credentials", expect: "The home page opens", evidence: "screenshot" },
+        ],
+        history: [created, ...after],
+      },
+    },
+  });
+  const reviewed = (subject: string, state: string) => ({
+    ok: true as const,
+    value: {
+      ref: "web/TC-0001",
+      path: "apps/web/context/tests/login/TC-0001.md",
+      change: "c-2",
+      state,
+      changed: [],
+      events: [],
+      commit: { message: `${subject}\n\nCasefile-Change: c-2`, files: [], sha: "2222222bbbbbbb" },
+      next: [],
+    },
+  });
+  const reviews = () => calls.filter((c) => c.name === "review").map((c) => c.input);
+
+  beforeEach(() => {
+    answers.runs = () => ({ ok: true, value: { ref: "web/TC-0001", runs: [] } });
+  });
+
+  it("saves only the changed fields in one review call, then shows the new entry and its commit", async () => {
+    const user = userEvent.setup();
+    let done = false;
+    answers.resolve = () =>
+      resolvedCase(
+        "active",
+        // Core does not derive commits yet (#51): the page names the one it just made.
+        done ? [{ event: "updated", by: "qa@acme.example", change: "c-2", commit: null }] : [],
+      );
+    answers.review = () => {
+      done = true;
+      return reviewed("review(login): edit TC-0001", "active");
+    };
+    render(<CaseDetail caseRef="web/TC-0001" />);
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+
+    const title = screen.getByLabelText("Title");
+    await user.clear(title);
+    await user.type(title, "Sign in with a password");
+    await user.selectOptions(screen.getByLabelText("Priority"), "P1");
+    await user.click(screen.getByRole("button", { name: "Move step 2 up" }));
+    await user.type(screen.getByLabelText("Step 1 expected result"), " at once");
+    await user.click(screen.getByRole("button", { name: "Add precondition" }));
+    await user.type(screen.getByLabelText("Precondition 2"), "The site is up");
+    await user.clear(screen.getByLabelText("Label 2 value"));
+    await user.type(screen.getByLabelText("Label 2 value"), "smoke");
+    await user.click(screen.getByLabelText("Can be automated"));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(await screen.findByText(/review\(login\): edit TC-0001/)).toBeTruthy();
+    expect(reviews()).toEqual([
+      {
+        ref: "web/TC-0001",
+        base: "c-1",
+        set: {
+          title: "Sign in with a password",
+          priority: "P1",
+          preconditions: ["An account exists", "The site is up"],
+          // Moved up and edited; the step keeps its evidence.
+          steps: [
+            {
+              do: "Submit valid credentials",
+              expect: "The home page opens at once",
+              evidence: "screenshot",
+            },
+            { do: "Open the login page", expect: "The form shows" },
+          ],
+          // A list label stays a list; the untouched one is sent as it was, labels is one field.
+          labels: { risk: "auth", tags: ["smoke"] },
+          automation: { eligible: false },
+        },
+      },
+    ]);
+    // The page read the case again: the form is gone and the new entry shows its commit.
+    expect(calls.map((c) => c.name).filter((n) => n === "resolve")).toHaveLength(2);
+    expect(screen.queryByRole("form", { name: "Edit case" })).toBeNull();
+    expect(screen.getByRole("status").textContent).toContain("2222222");
+    expect(screen.getByText("updated")).toBeTruthy();
+    expect(screen.getAllByText("2222222").length).toBe(2);
+  });
+
+  it("edits only the case's own preconditions and labels, never what commons give it", async () => {
+    const user = userEvent.setup();
+    const common = "apps/web/context/tests/_common.yaml";
+    answers.resolve = () => {
+      const answer = resolvedCase("active");
+      // `resolve` prepends commons preconditions and merges commons labels per key.
+      Object.assign(answer.value.case, {
+        preconditions: ["The site is up", "An account exists"],
+        labels: { team: "web", risk: "auth", tags: ["smoke", "web"] },
+      });
+      answer.value.inherited = [
+        { field: "preconditions.0", value: "The site is up", origin: common },
+        { field: "preconditions.1", value: "An account exists", origin: "(the case)" },
+        { field: "labels.team", value: "web", origin: common },
+        { field: "labels.risk", value: "auth", origin: "(the case)" },
+        { field: "labels.tags", value: '["smoke","web"]', origin: "(the case)" },
+      ] as never[];
+      return answer;
+    };
+    answers.review = () => reviewed("review(login): edit TC-0001", "active");
+    render(<CaseDetail caseRef="web/TC-0001" />);
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+
+    const shown = screen.getByRole("list", { name: "Inherited preconditions" }).textContent;
+    expect(shown).toContain("The site is up");
+    expect(shown).toContain(`from ${common}`);
+    expect(screen.getByRole("list", { name: "Inherited labels" }).textContent).toContain(
+      "team: web",
+    );
+    expect((screen.getByLabelText("Precondition 1") as HTMLInputElement).value).toBe(
+      "An account exists",
+    );
+    expect(screen.queryByLabelText("Precondition 2")).toBeNull();
+    expect(screen.queryByLabelText("Label 3 key")).toBeNull();
+
+    await user.type(screen.getByLabelText("Precondition 1"), " and is active");
+    await user.click(screen.getByRole("button", { name: "Remove label 1" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await screen.findByText(/edit TC-0001/);
+    expect(reviews()[0]?.set).toEqual({
+      preconditions: ["An account exists and is active"],
+      labels: { tags: ["smoke", "web"] },
+    });
+  });
+
+  it("calls nothing when no field changed", async () => {
+    const user = userEvent.setup();
+    answers.resolve = () => resolvedCase("active");
+    render(<CaseDetail caseRef="web/TC-0001" />);
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(screen.getByRole("status").textContent).toBe("Nothing changed.");
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.getByRole("heading", { name: "Sign in" })).toBeTruthy();
+    expect(reviews()).toEqual([]);
+  });
+
+  it("puts a field's error under the field and any other error whole above the form", async () => {
+    const user = userEvent.setup();
+    answers.resolve = () => resolvedCase("active");
+    answers.review = () => ({
+      ok: false,
+      errors: [
+        { code: "operation.invalid_input", field: "set.steps.0.expect", message: "Too small" },
+        {
+          code: "label.undeclared",
+          field: "set.labels.team",
+          message: "label 'team' is not declared",
+        },
+        { code: "ui.commit_failed", message: "git commit failed: nothing staged" },
+      ],
+    });
+    render(<CaseDetail caseRef="web/TC-0001" />);
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    await user.clear(screen.getByLabelText("Step 1 expected result"));
+    await user.click(screen.getByRole("button", { name: "Add label" }));
+    await user.type(screen.getByLabelText("Label 3 key"), "team");
+    await user.type(screen.getByLabelText("Label 3 value"), "web");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    const step = (await screen.findByText("Too small")).closest("li");
+    expect(step?.textContent).toContain("Step 1");
+    expect(step?.textContent).toContain("operation.invalid_input");
+    expect(screen.getByLabelText("Step 1 expected result").getAttribute("aria-invalid")).toBe(
+      "true",
+    );
+    const label = screen.getByText("label 'team' is not declared").closest("li");
+    expect(label?.querySelector("input")?.value).toBe("team");
+    const whole = screen.getByText("git commit failed: nothing staged").closest('[role="alert"]');
+    expect(whole?.textContent).toContain("ui.commit_failed");
+    // The form stays open with what the QA typed.
+    expect(screen.getByRole("form", { name: "Edit case" })).toBeTruthy();
+    expect(reviews()[0]?.set).toMatchObject({ labels: { team: "web" } });
+  });
+
+  it("approves a draft after a confirmation, with one review call", async () => {
+    const user = userEvent.setup();
+    let state = "draft";
+    answers.resolve = () => resolvedCase(state);
+    answers.review = () => {
+      state = "active";
+      return reviewed("review(login): approve TC-0001", "active");
+    };
+    render(<CaseDetail caseRef="web/TC-0001" />);
+    await user.click(await screen.findByRole("button", { name: "Approve" }));
+    expect(screen.queryByRole("button", { name: "Retire" })).toBeNull();
+    const dialog = screen.getByRole("alertdialog");
+    expect(dialog.textContent).toContain("It moves from draft to active.");
+    expect(reviews()).toEqual([]);
+    await user.click(within(dialog).getByRole("button", { name: "Approve" }));
+
+    expect(await screen.findByText(/approve TC-0001/)).toBeTruthy();
+    expect(reviews()).toEqual([{ ref: "web/TC-0001", to: "active", base: "c-1" }]);
+    // Now active: the page offers Retire, and never automated or flaky.
+    expect(await screen.findByRole("button", { name: "Retire" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /automated|flaky/i })).toBeNull();
+  });
+
+  it("retires an active case after a confirmation; Cancel calls nothing", async () => {
+    const user = userEvent.setup();
+    answers.resolve = () => resolvedCase("active");
+    answers.review = () => reviewed("review(login): retire TC-0001", "retired");
+    render(<CaseDetail caseRef="web/TC-0001" />);
+    await user.click(await screen.findByRole("button", { name: "Retire" }));
+    expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
+    await user.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", { name: "Cancel" }),
+    );
+    expect(reviews()).toEqual([]);
+
+    await user.click(screen.getByRole("button", { name: "Retire" }));
+    await user.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", { name: "Retire" }),
+    );
+    expect(await screen.findByText(/retire TC-0001/)).toBeTruthy();
+    expect(reviews()).toEqual([{ ref: "web/TC-0001", to: "retired", base: "c-1" }]);
+  });
+
+  it("shows a refused write whole", async () => {
+    const user = userEvent.setup();
+    answers.resolve = () => resolvedCase("draft");
+    answers.review = () => ({
+      ok: false,
+      errors: [{ code: "ui.forbidden", message: "a write needs the page's session token" }],
+    });
+    render(<CaseDetail caseRef="web/TC-0001" />);
+    await user.click(await screen.findByRole("button", { name: "Approve" }));
+    await user.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", { name: "Approve" }),
+    );
+    const alert = (await screen.findByText("a write needs the page's session token")).closest(
+      '[role="alert"]',
+    );
+    expect(alert?.textContent).toContain("ui.forbidden");
+    expect(screen.queryByRole("status")).toBeNull();
   });
 });
 
