@@ -33,7 +33,10 @@ before `/casefile-setup`; running it again is safe.
 3. Never writes under `context/` (the agent owns it) and never creates or edits
    the product's own `package.json`.
 4. Installs nothing. The setup skill runs
-   `npm install --prefix .casefile --ignore-scripts` afterwards.
+   `npm install --prefix .casefile --ignore-scripts` afterwards. Without the
+   npm registry, the release's toolchain tarball is unpacked into `.casefile/`
+   first and `init` runs from it (`casefile spec setup`); `init` keeps what is
+   already there.
 5. Runs where the workspace is: inside an existing workspace (a `casefile.yaml`
    at or above `--cwd`) it acts at that workspace's root, so running it again
    from a subdirectory never nests a second workspace; elsewhere it creates one

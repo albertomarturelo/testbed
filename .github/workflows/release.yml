@@ -2,6 +2,9 @@
 # `chore(release)` PR; this workflow checks, packs, smoke-tests and publishes
 # @casefile/core then @casefile/cli with provenance. A manual run, or a PR that
 # touches packaging, is a dry run.
+# ADR 2026-11-09-release-toolchain-tarball: it also builds the toolchain tarball
+# (the node_modules npm would install) from the same packed tarballs, tests it
+# without the registry and attaches it, with its checksum, to the GitHub release.
 name: Release
 
 on:
@@ -12,6 +15,7 @@ on:
     paths:
       - .github/workflows/release.yml
       - scripts/release.mjs
+      - scripts/toolchain-tarball.mjs
       - packages/core/package.json
       - packages/core/README.md
       - apps/cli/package.json
@@ -72,6 +76,30 @@ jobs:
           test -f casefile.yaml
           test -f .claude/skills/qa-cover/SKILL.md
           grep -q "\"@casefile/cli\": \"$version\"" .casefile/package.json
+      - name: Build the toolchain tarball
+        run: node scripts/toolchain-tarball.mjs "$RUNNER_TEMP/pack" "$RUNNER_TEMP/toolchain"
+      - name: Smoke-test the toolchain tarball (no npm, no registry)
+        run: |
+          version=$(node -p "require('./apps/cli/package.json').version")
+          (cd "$RUNNER_TEMP/toolchain" && sha256sum -c "casefile-toolchain-$version.tgz.sha256")
+          mkdir "$RUNNER_TEMP/offline" && cd "$RUNNER_TEMP/offline" && git init -q
+          mkdir .casefile
+          tar -xzf "$RUNNER_TEMP/toolchain/casefile-toolchain-$version.tgz" -C .casefile
+          test "$(.casefile/node_modules/.bin/casefile --version)" = "$version"
+          .casefile/node_modules/.bin/casefile init --skills-into .claude/skills
+          test -f casefile.yaml
+          test -f .claude/skills/qa-cover/SKILL.md
+          grep -q "\"@casefile/cli\": \"$version\"" .casefile/package.json
+          # Installed at its pin: no toolchain finding. A new workspace still
+          # has other findings (no projects), so the exit code is not checked.
+          .casefile/node_modules/.bin/casefile validate --json > validate.json || true
+          if grep -q '"toolchain\.' validate.json; then cat validate.json; exit 1; fi
+      - uses: actions/upload-artifact@v7
+        with:
+          name: toolchain
+          path: ${{ runner.temp }}/toolchain/
+          if-no-files-found: error
+          retention-days: 7
       - name: Publish core, then the CLI
         env:
           # The token reaches the step only when it publishes.
@@ -102,6 +130,10 @@ jobs:
     permissions:
       contents: write
     steps:
-      - run: gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes
+      - uses: actions/download-artifact@v8
+        with:
+          name: toolchain
+          path: toolchain
+      - run: gh release create "$GITHUB_REF_NAME" toolchain/* --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes
         env:
           GH_TOKEN: ${{ github.token }}

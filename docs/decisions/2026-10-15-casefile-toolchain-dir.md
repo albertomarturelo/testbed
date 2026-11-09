@@ -6,6 +6,8 @@ Accepted — 2026-10-15 (#29). Amends [org-commons-via-extension](2026-10-15-org
 (which lockfile pins extensions) and extends `init` in
 [agent-driven-setup](2026-10-15-agent-driven-setup.md). The pinned package is `@casefile/cli`
 (bin `casefile`) since [npm-scope-casefile](2026-10-17-npm-scope-casefile.md).
+Amended by [release-toolchain-tarball](2026-11-09-release-toolchain-tarball.md):
+`.casefile/node_modules` may also be unpacked from the release's tarball, without npm.
 
 ## Context
 

@@ -4,7 +4,9 @@
 
 Accepted — 2026-10-20 (#97). Fulfils the release consequence of
 [npm-scope-casefile](2026-10-17-npm-scope-casefile.md) (§5: `private` until a
-release process exists).
+release process exists). Amended by
+[release-toolchain-tarball](2026-11-09-release-toolchain-tarball.md): the
+release also carries the toolchain tarball and its checksum.
 
 ## Context
 
