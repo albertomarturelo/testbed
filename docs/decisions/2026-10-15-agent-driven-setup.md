@@ -7,6 +7,8 @@ Accepted — 2026-10-15 (#23). Amends [specs-ship-with-operations](2026-10-15-sp
 [casefile-toolchain-dir](2026-10-15-casefile-toolchain-dir.md) (`init` also writes
 `.casefile/`). `project add <name> <path>` amended by
 [cli-generic-host](2026-10-17-cli-generic-host.md): `project add <name> --path <path>`.
+Who types `init` amended by [agent-runs-init-on-request](2026-11-09-agent-runs-init-on-request.md):
+the agent may, when the human asked and confirmed.
 
 ## Context
 

@@ -3,7 +3,10 @@
 Creates the files a casefile workspace starts from. Run once by the human,
 before `/casefile-setup`; running it again is safe.
 
-- **Actor:** human
+- **Actor:** human. An agent may type it for the human when they asked for
+  the install and confirmed the version and the skills directory, and then
+  without `CASEFILE_ACTOR=agent` (ADR agent-runs-init-on-request; the
+  repository's `QUICKSTART.md` is that procedure)
 - **CLI:** `casefile init [--skills-into <dir>]…`; without `--skills-into` it only
   lists the skills and the command that copies them (no prompt)
 - **Writes:** `casefile.yaml`, `.casefile/package.json`, `.casefile/.gitignore`,

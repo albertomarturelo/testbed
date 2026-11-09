@@ -22,7 +22,8 @@ So `casefile.yaml` (`version: 1`, `projects: []`) and `.casefile/package.json`
 (`@casefile/cli` pinned to an exact version) exist. Never run
 `npx casefile`: the unscoped npm package `casefile` is a different tool. If `casefile.yaml` is missing,
 stop and ask the human to run `casefile init`: it is theirs to run
-(`casefile spec init`).
+(`casefile spec init`), or yours only when they ask you to install casefile
+and confirm the version and the skills directory.
 
 Where the npm registry is blocked, the human unpacked the release's toolchain
 tarball into `.casefile/` and ran `init` from it instead (see *Without the npm
