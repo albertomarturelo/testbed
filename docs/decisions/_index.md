@@ -38,3 +38,4 @@
 | [2026-10-19-human-writes-through-operations](2026-10-19-human-writes-through-operations.md) | The QA writes cases from the viewer through core operations | Accepted | 2026-10-19 |
 | [2026-10-20-release-process](2026-10-20-release-process.md) | Releases are tagged by the maintainer and published by CI | Accepted | 2026-10-20 |
 | [2026-10-23-identity-override](2026-10-23-identity-override.md) | The person's identity: flag, then `CASEFILE_USER_EMAIL`, then git config | Accepted | 2026-10-23 |
+| [2026-11-09-release-toolchain-tarball](2026-11-09-release-toolchain-tarball.md) | Each release ships a toolchain tarball, so casefile installs without npm | Accepted | 2026-11-09 |

@@ -111,6 +111,33 @@ an unrelated package. `init` pins `@casefile/cli` in `.casefile/package.json`;
 the setup skill installs it there (`npm install --prefix .casefile
 --ignore-scripts`), so every clone of your repository runs the same version.
 
+### Without the npm registry
+
+If your network blocks `registry.npmjs.org` but reaches GitHub, use the
+toolchain tarball attached to each
+[release](https://github.com/albertomarturelo/testbed/releases) after `v0.1.0`.
+It is the `node_modules/` npm would install (casefile, `yaml`, `zod`), built
+from the same packages
+([why](docs/decisions/2026-11-09-release-toolchain-tarball.md)). From your
+repository's root, with `v` set to the release you want:
+
+```bash
+v=<x.y.z>
+base=https://github.com/albertomarturelo/testbed/releases/download/v$v
+curl -fsSLO "$base/casefile-toolchain-$v.tgz"
+curl -fsSLO "$base/casefile-toolchain-$v.tgz.sha256"
+shasum -a 256 -c "casefile-toolchain-$v.tgz.sha256"
+mkdir -p .casefile && tar -xzf "casefile-toolchain-$v.tgz" -C .casefile
+rm "casefile-toolchain-$v.tgz" "casefile-toolchain-$v.tgz.sha256"
+.casefile/node_modules/.bin/casefile init --skills-into .claude/skills
+```
+
+Only unpack it if the checksum says `OK`. `.casefile/node_modules/` is
+ignored by Git, so each clone repeats the download; to upgrade, change the pin
+in `.casefile/package.json`, delete `.casefile/node_modules` and unpack the
+new version. Tell your agent the toolchain is already installed. Extensions
+are not in the tarball and still need npm.
+
 ### From source
 
 To try what is on `main` before it is released, build casefile once and link
@@ -234,7 +261,8 @@ titled `chore(release): v<x.y.z>`. This README is the npm page of
 `@casefile/cli` and npm keeps it per version, so the same PR updates the
 install section and the Today / Next table when the release changes them. After it merges, the maintainer tags that
 commit `v<x.y.z>` on `main` and pushes the tag; the Release workflow checks,
-packs, smoke-tests and publishes both with provenance. Running the workflow
+packs, smoke-tests and publishes both with provenance, and attaches the
+toolchain tarball and its checksum to the GitHub release. Running the workflow
 by hand is a dry run.
 
 ## License

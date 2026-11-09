@@ -129,7 +129,7 @@ export const FINDING_CODES = {
     severity: "error",
     description:
       "`.casefile/package.json` declares casefile but it is not installed, or not at its pinned version",
-    hint: "npm install --prefix .casefile --ignore-scripts (in CI: npm ci --prefix .casefile --ignore-scripts)",
+    hint: "npm install --prefix .casefile --ignore-scripts (in CI: npm ci --prefix .casefile --ignore-scripts); without the npm registry, unpack the release's casefile-toolchain-<version>.tgz into .casefile (casefile spec setup)",
   },
   "toolchain.unpinned": {
     severity: "warning",

@@ -24,6 +24,10 @@ So `casefile.yaml` (`version: 1`, `projects: []`) and `.casefile/package.json`
 stop and ask the human to run `casefile init`: it is theirs to run
 (`casefile spec init`).
 
+Where the npm registry is blocked, the human unpacked the release's toolchain
+tarball into `.casefile/` and ran `init` from it instead (see *Without the npm
+registry*). Then `.casefile/node_modules/.bin/casefile` already runs.
+
 Run every casefile command below with `CASEFILE_ACTOR=agent`.
 
 ## The sequence
@@ -35,7 +39,9 @@ Run every casefile command below with `CASEFILE_ACTOR=agent`.
    ```
 
    Never run install scripts (`--ignore-scripts`), and never create or edit the
-   product's own `package.json` (ADR casefile-toolchain-dir).
+   product's own `package.json` (ADR casefile-toolchain-dir). If the registry
+   cannot be reached, do not retry or look for a mirror: follow *Without the npm
+   registry* below instead.
 2. **Explore.** Find the projects: directories that ship on their own and
    would own their tests, such as an app, a service, a mobile client, or a
    library with its own release. A single-product repo is one project at `.`.
@@ -87,9 +93,11 @@ Run every casefile command below with `CASEFILE_ACTOR=agent`.
    ```
 
    In CI, install with `npm ci --prefix .casefile --ignore-scripts` and run
-   `.casefile/node_modules/.bin/casefile validate`.
+   `.casefile/node_modules/.bin/casefile validate`. A workspace installed from
+   the tarball has no lockfile: skip the Dependabot entry, and in CI unpack the
+   tarball of the pinned version the same way.
 8. **Commit** `casefile.yaml`, `.casefile/package.json`,
-   `.casefile/package-lock.json`, `.casefile/.gitignore` and every
+   `.casefile/package-lock.json` (if npm wrote one), `.casefile/.gitignore` and every
    `context/tests/` scaffold in one commit. Author it as
    `casefile-agent <casefile-agent@casefile.invalid>`, the fixed agent
    identity (ADR agent-runs-the-commit). The subject is
@@ -175,12 +183,43 @@ review:
   mode: post_hoc
 ```
 
+## Without the npm registry
+
+Every release from the one after `v0.1.0` carries
+`casefile-toolchain-<version>.tgz`: the `node_modules/` that step 1 would
+install, and nothing else (ADR release-toolchain-tarball). Use it when
+`registry.npmjs.org` is blocked and GitHub is not. `<version>` is the exact pin
+in `.casefile/package.json`; in a repository that has none yet, the latest
+release. From the repository root:
+
+```bash
+v=<version>
+base=https://github.com/albertomarturelo/testbed/releases/download/v$v
+curl -fsSLO "$base/casefile-toolchain-$v.tgz"
+curl -fsSLO "$base/casefile-toolchain-$v.tgz.sha256"
+shasum -a 256 -c "casefile-toolchain-$v.tgz.sha256"
+mkdir -p .casefile && tar -xzf "casefile-toolchain-$v.tgz" -C .casefile
+rm "casefile-toolchain-$v.tgz" "casefile-toolchain-$v.tgz.sha256"
+```
+
+- Stop if the checksum does not say `OK`. Do not unpack the file.
+- `gh release download v$v --repo albertomarturelo/testbed --pattern 'casefile-toolchain-*'`
+  replaces the two `curl` lines. On Linux, `sha256sum -c` replaces `shasum`.
+- This replaces step 1. No `package-lock.json` is written, and
+  `.casefile/node_modules/` stays ignored: every clone unpacks it again.
+- To change version: edit the pin in `.casefile/package.json`, delete
+  `.casefile/node_modules`, and unpack the tarball of the new version.
+- Where `tar` cannot create the `.bin/casefile` symlink (Windows without
+  developer mode), run `node .casefile/node_modules/@casefile/cli/dist/bin.js`.
+- The tarball holds casefile only. An extension listed in `casefile.yaml`
+  still needs npm; tell the human instead of working around it.
+
 ## Findings you will meet
 
 | Code | What to do |
 |---|---|
 | `scaffold.todo` | A `TODO` is left; replace it with a value from its comment. |
-| `toolchain.not_installed` | Run step 1. |
+| `toolchain.not_installed` | Run step 1, or *Without the npm registry*. |
 | `label.undeclared` | Declare the label key in that project's `context/tests/_properties.yaml`, or remove it. |
 | `workspace.no_projects` | Step 4 has not run yet. |
 | `project.missing` | A project path in `casefile.yaml` does not exist; fix the path. |
