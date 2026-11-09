@@ -115,7 +115,7 @@ the setup skill installs it there (`npm install --prefix .casefile
 
 If your network blocks `registry.npmjs.org` but reaches GitHub, use the
 toolchain tarball attached to each
-[release](https://github.com/albertomarturelo/testbed/releases) after `v0.1.0`.
+[release](https://github.com/albertomarturelo/testbed/releases) from `v0.1.1`.
 It is the `node_modules/` npm would install (casefile, `yaml`, `zod`), built
 from the same packages
 ([why](docs/decisions/2026-11-09-release-toolchain-tarball.md)). From your
@@ -193,8 +193,8 @@ Every command has `--help`, `--json` for scripts and agents, and a SPEC:
 | `casefile project add` | Registers a project and scaffolds its `context/tests/` |
 | `casefile validate` | Checks the whole workspace; lists every problem with how to fix it |
 | `casefile cover` | Writes the cases the agent proposes for a feature, as drafts |
-| `casefile review` | Edits, approves or retires one case, for the agent or the QA (on `main`, ships in the next release) |
-| `casefile run` | Records the result of a case someone executed by hand; casefile runs nothing (on `main`, ships in the next release) |
+| `casefile review` | Edits, approves or retires one case, for the agent or the QA |
+| `casefile run` | Records the result of a case someone executed by hand; casefile runs nothing |
 | `casefile ingest junit` | Turns a JUnit report into run events matched by `automation.ref` |
 | `casefile overview` | Every project with its cases, automation status and last run |
 | `casefile runs` | One case's run events, newest first, with why each one failed |
@@ -202,7 +202,7 @@ Every command has `--help`, `--json` for scripts and agents, and a SPEC:
 | `casefile resolve` | Shows a case after inheritance, with where each value came from, and its Markdown body |
 | `casefile id next` | The next free case id of a project |
 | `casefile spec <name>` | Prints the SPEC of an operation or topic |
-| `casefile whoami` | Who writes are made as: `CASEFILE_USER_EMAIL` when set, else `git config user.email` (on `main`, ships in the next release) |
+| `casefile whoami` | Who writes are made as: `CASEFILE_USER_EMAIL` when set, else `git config user.email` |
 
 ## Principles
 
@@ -229,12 +229,12 @@ The reasons behind each one are in [docs/decisions](docs/decisions/_index.md).
 
 ## Today / Next
 
-| Today (`0.1.0`) | Next (ranked by the [authoring loop](docs/decisions/2026-10-19-authoring-loop-first.md)) |
+| Today (`0.1.1`) | Next (ranked by the [authoring loop](docs/decisions/2026-10-19-authoring-loop-first.md)) |
 |---|---|
-| `init`, `project add`, `validate`, `cover`, `overview`, `runs`, `query`, `resolve`, `id next`, `spec` | `review` (edit, approve, retire a case) and `run` (record a result by hand), for the agent or the QA, are on `main` and ship in the next release |
+| `init`, `project add`, `validate`, `cover`, `review` (edit, approve, retire a case), `run` (record a result by hand), `overview`, `runs`, `query`, `resolve`, `id next`, `whoami`, `spec` | |
 | Skills `casefile-setup` and `qa-cover` | Skills `qa-bootstrap` (a project's feature tree and first drafts from its code) and `qa-review` (#85) |
-| Read-only local UI (`pnpm ui`): projects, feature tree, cases, each case's runs and why they failed | On `main`, in the next release: the case page reads as a document, coverage per feature (#86, #87), and the QA edits, approves and retires a case from it (#92, [decided](docs/decisions/2026-10-19-human-writes-through-operations.md)). Then: record a result and create a case from the viewer (#93, #94); live reload (#26) |
-| `@casefile/cli` and `@casefile/core` on npm, published by CI with provenance ([release process](docs/decisions/2026-10-20-release-process.md)) | `casefile ui`: the viewer from the installed CLI, without a clone |
+| Local UI (`pnpm ui`, from a clone): projects, feature tree with coverage, cases that read as documents, each case's runs and why they failed; the QA edits, approves and retires a case from its page ([decided](docs/decisions/2026-10-19-human-writes-through-operations.md)) | Record a result and create a case from the viewer (#93, #94); live reload (#26) |
+| `@casefile/cli` and `@casefile/core` on npm, published by CI with provenance ([release process](docs/decisions/2026-10-20-release-process.md)); a toolchain tarball on each GitHub release for networks without the npm registry ([decided](docs/decisions/2026-11-09-release-toolchain-tarball.md)) | `casefile ui`: the viewer from the installed CLI, without a clone |
 | `ingest junit` (Playwright, Surefire), keeping failure messages and attachments | |
 | Release gate evaluation in core | Complements, when the real case needs them: CTRF and Allure, environment-blocked results, CI run files ([decided](docs/decisions/2026-10-17-ci-commits-run-files.md)), `casefile gates`, MCP, Zephyr and Xray bridges |
 
