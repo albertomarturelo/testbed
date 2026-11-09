@@ -1,9 +1,28 @@
-import { ArrowLeft } from "lucide-react";
+import { Archive, ArrowLeft, Check, Pencil } from "lucide-react";
 import { Fragment, useEffect, useId, useState } from "react";
-import { type CaseRuns, call, type Resolved, type Result } from "@/api";
+import {
+  type CasefileError,
+  type CaseRuns,
+  call,
+  type Resolved,
+  type Result,
+  type Reviewed,
+} from "@/api";
 import { ErrorList } from "@/components/ErrorList";
 import { AutomationBadge, RunBadge } from "@/components/StatusBadge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -15,9 +34,28 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatRoute } from "@/route";
+import { CaseEditor } from "@/views/CaseEditor";
 
 type Step = { do?: string; expect?: string };
-type HistoryEntry = { at?: string; by?: string; via?: string; event?: string };
+type HistoryEntry = {
+  at?: string;
+  by?: string;
+  via?: string;
+  event?: string;
+  change?: string;
+  commit?: string | null;
+};
+
+/** The state moves the page offers (`casefile spec review`, Transitions); never automated or flaky. */
+const MOVES: Record<string, { to: string; label: string; says: string }> = {
+  draft: { to: "active", label: "Approve", says: "It moves from draft to active." },
+  in_review: { to: "active", label: "Approve", says: "It moves from in review to active." },
+  active: {
+    to: "retired",
+    label: "Retire",
+    says: "It moves from active to retired. It can be reopened later as a draft.",
+  },
+};
 
 /**
  * One case after inheritance (`resolve`), read as a test-case document (#86,
@@ -27,9 +65,15 @@ type HistoryEntry = { at?: string; by?: string; via?: string; event?: string };
  */
 export function CaseDetail({ caseRef }: { caseRef: string }) {
   const [result, setResult] = useState<Result<Resolved> | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [saved, setSaved] = useState<Reviewed | null>(null);
+  const [actionErrors, setActionErrors] = useState<CasefileError[]>([]);
   useEffect(() => {
     let current = true;
     setResult(null);
+    setEditing(false);
+    setSaved(null);
+    setActionErrors([]);
     call<Resolved>("resolve", { ref: caseRef }).then((r) => current && setResult(r));
     return () => {
       current = false;
@@ -57,6 +101,15 @@ export function CaseDetail({ caseRef }: { caseRef: string }) {
 
   const { value } = result;
   const c = value.case;
+  /** After a write: say what was committed and read the case again from its file. */
+  const done = async (reviewed: Reviewed) => {
+    setEditing(false);
+    setActionErrors([]);
+    setSaved(reviewed);
+    setResult(await call<Resolved>("resolve", { ref: caseRef }));
+  };
+  const base = (Array.isArray(c.history) ? (c.history as HistoryEntry[]) : []).at(-1)?.change;
+  const move = MOVES[String(c.state)];
   const automation = c.automation as { status: string; ref?: string; eligible: boolean };
   const steps = Array.isArray(c.steps) ? (c.steps as Step[]) : [];
   const preconditions = Array.isArray(c.preconditions) ? (c.preconditions as string[]) : [];
@@ -85,99 +138,142 @@ export function CaseDetail({ caseRef }: { caseRef: string }) {
             Automated by <span className="font-mono text-xs">{automation.ref}</span>
           </p>
         )}
+        {editing ? null : (
+          <div className="flex flex-wrap gap-2 pt-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSaved(null);
+                setActionErrors([]);
+                setEditing(true);
+              }}
+            >
+              <Pencil /> Edit
+            </Button>
+            {move === undefined ? null : (
+              <MoveButton
+                caseRef={value.ref}
+                title={String(c.title)}
+                move={move}
+                base={base}
+                onDone={done}
+                onFailed={(errors) => {
+                  setSaved(null);
+                  setActionErrors(errors);
+                }}
+              />
+            )}
+          </div>
+        )}
+        {saved === null ? null : (
+          <p role="status" className="text-sm">
+            Committed{" "}
+            <span className="font-mono text-xs" title={saved.commit.sha}>
+              {saved.commit.sha.slice(0, 7)}
+            </span>
+            : {saved.commit.message.split("\n")[0]}
+          </p>
+        )}
       </header>
 
-      <Card className="min-w-0">
-        <CardContent className="flex flex-col gap-6">
-          {body === "" ? null : (
-            // The body is Markdown kept as text: casefile shows it as written, it does not render it.
-            <p className="max-w-prose whitespace-pre-wrap break-words text-sm leading-relaxed">
-              {body}
-            </p>
-          )}
-          {preconditions.length === 0 ? null : (
-            <Section title="Preconditions">
-              <ul className="flex list-disc flex-col gap-1 pl-5 text-sm">
-                {preconditions.map((item, i) => (
-                  // biome-ignore lint/suspicious/noArrayIndexKey: preconditions are ordered by position
-                  <li key={i}>{item}</li>
-                ))}
-              </ul>
-            </Section>
-          )}
-          {data.length === 0 ? null : (
-            <Section title="Data">
-              <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-                {data.map(([key, item]) => (
-                  <Fragment key={key}>
-                    <dt className="font-mono text-muted-foreground text-xs leading-5">{key}</dt>
-                    <dd className="min-w-0 break-words">
-                      {typeof item === "string" ? item : JSON.stringify(item)}
-                    </dd>
-                  </Fragment>
-                ))}
-              </dl>
-            </Section>
-          )}
-          <Section title="Steps">
-            {steps.length === 0 ? (
-              <p className="text-muted-foreground text-sm">No steps.</p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-8">#</TableHead>
-                    <TableHead>Action</TableHead>
-                    <TableHead>Expected result</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {steps.map((step, i) => (
-                    // biome-ignore lint/suspicious/noArrayIndexKey: steps are ordered by position
-                    <TableRow key={i} className="align-top">
-                      <TableCell className="text-muted-foreground">{i + 1}</TableCell>
-                      <TableCell className="w-1/2 whitespace-normal break-words">
-                        {step.do}
-                      </TableCell>
-                      <TableCell className="w-1/2 whitespace-normal break-words">
-                        {step.expect ?? <span className="text-muted-foreground">—</span>}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+      {actionErrors.length === 0 ? null : <ErrorList errors={actionErrors} />}
+
+      {editing ? (
+        <CaseEditor resolved={value} onSaved={done} onCancel={() => setEditing(false)} />
+      ) : (
+        <Card className="min-w-0">
+          <CardContent className="flex flex-col gap-6">
+            {body === "" ? null : (
+              // The body is Markdown kept as text: casefile shows it as written, it does not render it.
+              <p className="max-w-prose whitespace-pre-wrap break-words text-sm leading-relaxed">
+                {body}
+              </p>
             )}
-          </Section>
-          {acceptance.length === 0 && workItems.length === 0 ? null : (
-            <Section title="References">
-              <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-                {acceptance.length === 0 ? null : (
-                  <>
-                    <dt className="text-muted-foreground">Acceptance criteria</dt>
-                    <dd className="flex min-w-0 flex-wrap gap-x-3 gap-y-1">
-                      {acceptance.map((ref, i) => (
-                        // biome-ignore lint/suspicious/noArrayIndexKey: a ref may be listed twice
-                        <Reference key={i} text={ref} />
-                      ))}
-                    </dd>
-                  </>
-                )}
-                {workItems.length === 0 ? null : (
-                  <>
-                    <dt className="text-muted-foreground">Work items</dt>
-                    <dd className="flex min-w-0 flex-wrap gap-x-3 gap-y-1">
-                      {workItems.map((item, i) => (
-                        // biome-ignore lint/suspicious/noArrayIndexKey: an item may be listed twice
-                        <Reference key={i} text={item} prefixed />
-                      ))}
-                    </dd>
-                  </>
-                )}
-              </dl>
+            {preconditions.length === 0 ? null : (
+              <Section title="Preconditions">
+                <ul className="flex list-disc flex-col gap-1 pl-5 text-sm">
+                  {preconditions.map((item, i) => (
+                    // biome-ignore lint/suspicious/noArrayIndexKey: preconditions are ordered by position
+                    <li key={i}>{item}</li>
+                  ))}
+                </ul>
+              </Section>
+            )}
+            {data.length === 0 ? null : (
+              <Section title="Data">
+                <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+                  {data.map(([key, item]) => (
+                    <Fragment key={key}>
+                      <dt className="font-mono text-muted-foreground text-xs leading-5">{key}</dt>
+                      <dd className="min-w-0 break-words">
+                        {typeof item === "string" ? item : JSON.stringify(item)}
+                      </dd>
+                    </Fragment>
+                  ))}
+                </dl>
+              </Section>
+            )}
+            <Section title="Steps">
+              {steps.length === 0 ? (
+                <p className="text-muted-foreground text-sm">No steps.</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-8">#</TableHead>
+                      <TableHead>Action</TableHead>
+                      <TableHead>Expected result</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {steps.map((step, i) => (
+                      // biome-ignore lint/suspicious/noArrayIndexKey: steps are ordered by position
+                      <TableRow key={i} className="align-top">
+                        <TableCell className="text-muted-foreground">{i + 1}</TableCell>
+                        <TableCell className="w-1/2 whitespace-normal break-words">
+                          {step.do}
+                        </TableCell>
+                        <TableCell className="w-1/2 whitespace-normal break-words">
+                          {step.expect ?? <span className="text-muted-foreground">—</span>}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </Section>
-          )}
-        </CardContent>
-      </Card>
+            {acceptance.length === 0 && workItems.length === 0 ? null : (
+              <Section title="References">
+                <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+                  {acceptance.length === 0 ? null : (
+                    <>
+                      <dt className="text-muted-foreground">Acceptance criteria</dt>
+                      <dd className="flex min-w-0 flex-wrap gap-x-3 gap-y-1">
+                        {acceptance.map((ref, i) => (
+                          // biome-ignore lint/suspicious/noArrayIndexKey: a ref may be listed twice
+                          <Reference key={i} text={ref} />
+                        ))}
+                      </dd>
+                    </>
+                  )}
+                  {workItems.length === 0 ? null : (
+                    <>
+                      <dt className="text-muted-foreground">Work items</dt>
+                      <dd className="flex min-w-0 flex-wrap gap-x-3 gap-y-1">
+                        {workItems.map((item, i) => (
+                          // biome-ignore lint/suspicious/noArrayIndexKey: an item may be listed twice
+                          <Reference key={i} text={item} prefixed />
+                        ))}
+                      </dd>
+                    </>
+                  )}
+                </dl>
+              </Section>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {history.length === 0 ? null : (
         <Card>
@@ -186,15 +282,27 @@ export function CaseDetail({ caseRef }: { caseRef: string }) {
           </CardHeader>
           <CardContent>
             <ul className="flex flex-col gap-1 text-sm">
-              {history.map((entry, i) => (
-                // biome-ignore lint/suspicious/noArrayIndexKey: history is append-only
-                <li key={i} className="flex flex-wrap gap-x-3">
-                  <span className="font-medium">{entry.event}</span>
-                  <span className="text-muted-foreground">{entry.at}</span>
-                  <span>{entry.by}</span>
-                  <span className="font-mono text-muted-foreground text-xs">{entry.via}</span>
-                </li>
-              ))}
+              {history.map((entry, i) => {
+                // Core derives `commit` from `change` once its git lookup lands (#51);
+                // until then the page knows the commit of the write it just made.
+                const commit =
+                  entry.commit ??
+                  (saved !== null && entry.change === saved.change ? saved.commit.sha : null);
+                return (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: history is append-only
+                  <li key={i} className="flex flex-wrap gap-x-3">
+                    <span className="font-medium">{entry.event}</span>
+                    <span className="text-muted-foreground">{entry.at}</span>
+                    <span>{entry.by}</span>
+                    <span className="font-mono text-muted-foreground text-xs">{entry.via}</span>
+                    {commit ? (
+                      <span className="font-mono text-xs" title={commit}>
+                        {commit.slice(0, 7)}
+                      </span>
+                    ) : null}
+                  </li>
+                );
+              })}
             </ul>
           </CardContent>
         </Card>
@@ -292,6 +400,59 @@ function webUrl(text: string): string | null {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+/** Approve or retire: one `review` call with `to`, after the QA confirms it. */
+function MoveButton({
+  caseRef,
+  title,
+  move,
+  base,
+  onDone,
+  onFailed,
+}: {
+  caseRef: string;
+  title: string;
+  move: { to: string; label: string; says: string };
+  base: string | undefined;
+  onDone: (reviewed: Reviewed) => void;
+  onFailed: (errors: CasefileError[]) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const confirm = async () => {
+    setBusy(true);
+    const result = await call<Reviewed>("review", {
+      ref: caseRef,
+      to: move.to,
+      ...(base === undefined ? {} : { base }),
+    });
+    setBusy(false);
+    if (result.ok) onDone(result.value);
+    else onFailed(result.errors);
+  };
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button variant={move.to === "retired" ? "outline" : "default"} size="sm" disabled={busy}>
+          {move.to === "retired" ? <Archive /> : <Check />} {move.label}
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            {move.label} {caseRef.split("/").at(-1)}?
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {title}. {move.says} The change is committed as you.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={() => void confirm()}>{move.label}</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
 }
 
 /** The case's run events (`runs`), newest first, each with why it ended as it did. */
