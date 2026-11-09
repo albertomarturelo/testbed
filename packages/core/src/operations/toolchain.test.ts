@@ -58,6 +58,14 @@ describe("toolchainDelegation", () => {
         hint: expect.stringContaining("npm install --prefix .casefile --ignore-scripts"),
       },
     });
+  });
+
+  it("names the release tarball for networks without the npm registry", () => {
+    const result = toolchainDelegation(toolchain({ "@casefile/cli": "0.4.1" }), "1.0.0");
+    expect(result).toMatchObject({
+      action: "fail",
+      error: { hint: expect.stringContaining("casefile-toolchain-<version>.tgz into .casefile") },
+    });
     // A stale install (not at its exact pin) is not installed either.
     expect(
       toolchainDelegation(

@@ -49,7 +49,7 @@ shadcn/ui itself is not a dependency: its CLI (`shadcn@4.21.4`, run with
 | Runtime | Node.js `>=22` (CI: 22 and 24) |
 | Package manager | pnpm 10.33.2 (`packageManager` field), workspaces `apps/*`, `packages/*` |
 | Module system | ESM only, `module`/`moduleResolution` `NodeNext`, target ES2023 |
-| CI | GitHub Actions: `actions/checkout@v7`, `pnpm/action-setup@v6`, `actions/setup-node@v7` |
+| CI | GitHub Actions: `actions/checkout@v7`, `pnpm/action-setup@v6`, `actions/setup-node@v7`; the release workflow also `actions/upload-artifact@v7` and `actions/download-artifact@v8` (the toolchain tarball, ADR release-toolchain-tarball) |
 | License | MIT |
 
 ## Workflow tooling
