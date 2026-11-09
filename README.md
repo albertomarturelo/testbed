@@ -111,6 +111,17 @@ an unrelated package. `init` pins `@casefile/cli` in `.casefile/package.json`;
 the setup skill installs it there (`npm install --prefix .casefile
 --ignore-scripts`), so every clone of your repository runs the same version.
 
+### Let your agent install it
+
+Or tell your agent, in your repository:
+
+> Install casefile following
+> https://github.com/albertomarturelo/testbed/blob/main/QUICKSTART.md
+
+[QUICKSTART.md](QUICKSTART.md) is written for the agent: it picks the release,
+uses npm or the tarball below, asks you once, runs `init` for you and
+continues with the setup.
+
 ### Without the npm registry
 
 If your network blocks `registry.npmjs.org` but reaches GitHub, use the
