@@ -86,9 +86,12 @@ ingested separately into one run id conflict in Git (`specs/ingest.md`).
 
 ## Consequences
 
-- `ingest` gains `commit` in its output and an optional `tested_commit` host
-  input; the ingester-contract consequence "the operation makes no commit"
-  becomes "the operation returns the commit; the caller runs it".
+- `ingest` gains `commit` in its output and an optional `testedCommit` input
+  that CI passes (`--tested-commit "$GITHUB_SHA"`; #73). It is not filled by
+  the host: the CLI's rules are vendor-neutral, and the record job's `HEAD` is
+  the branch tip, not the tested commit. The ingester-contract consequence "the
+  operation makes no commit" becomes "the operation returns the commit; the
+  caller runs it".
 - A protected branch needs a push credential with a bypass; it can push
   anything, so the audit is the real limit and unsigned authorship stays
   spoofable (git-is-identity). Owners who refuse the bypass record no CI runs.

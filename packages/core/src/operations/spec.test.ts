@@ -25,6 +25,11 @@ describe("readSpec", () => {
     expect(CORE_SPECS_DIR).toBe(join(CORE_PACKAGE_DIR, "specs"));
   });
 
+  it("reads the ci topic that ingest's next steps cite", async () => {
+    const result = await readSpec(new Map(), "ci");
+    expect(result.ok && result.value.startsWith("# ci\n")).toBe(true);
+  });
+
   it("fails with spec.unknown for unknown names and never leaves specs/", async () => {
     for (const name of ["nope", "../README", "Init"]) {
       expect(await readSpec(specs, name)).toEqual({

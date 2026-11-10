@@ -176,6 +176,12 @@ Adapt it to the repository:
 - **No `concurrency:` on the record job.** GitHub keeps one pending job per
   group and cancels the others, so a run's record would be dropped. The retry
   of rule 5 is what serializes the pushes.
+- **A cancelled run records only what finished.** `always()` starts the record
+  job even then. The shards that finished before the cancel uploaded their
+  reports and are recorded; the cancelled ones uploaded none. With no report
+  at all, the download fails, and so does the record job. Re-run the workflow
+  to record the rest: the re-run keeps the run id, and ingest appends only
+  what is missing.
 
 ## Setup: the push credential
 
