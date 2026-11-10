@@ -10,8 +10,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useStoredFlag } from "@/lib/stored";
 import { cn } from "@/lib/utils";
 import { DRAFT, formatRoute, parseRoute, type Route, type StateFilter } from "@/route";
-import { CaseDetail } from "@/views/CaseDetail";
 import { CaseList } from "@/views/CaseList";
+import { CaseSheet } from "@/views/CaseSheet";
 import { NewCase } from "@/views/NewCase";
 import { QueryView } from "@/views/QueryView";
 import { ValidateView } from "@/views/ValidateView";
@@ -68,6 +68,13 @@ export function App() {
     );
   }, [route]);
 
+  // The list a case was opened from stays behind its Sheet (#146); any other view forgets it.
+  const [listBehind, setListBehind] = useState<CasesRoute | null>(null);
+  useEffect(() => {
+    if (route.view === "cases") setListBehind(route);
+    else if (route.view !== "case") setListBehind(null);
+  }, [route]);
+
   const load = useCallback(() => {
     call<Overview>("overview").then(setOverview);
   }, []);
@@ -78,8 +85,22 @@ export function App() {
     setReload((n) => n + 1);
   };
 
-  const project = route.view === "case" ? route.ref.split("/")[0] : route.project;
   const projects = overview?.ok ? overview.value.projects : [];
+  // A case opened from a link or a reload: its own project and feature's list.
+  const list: CasesRoute | undefined =
+    route.view === "cases"
+      ? route
+      : route.view === "case"
+        ? (listBehind ?? {
+            view: "cases",
+            project: route.ref.split("/")[0],
+            feature: overview?.ok
+              ? overview.value.cases.find((c) => c.ref === route.ref)?.feature
+              : undefined,
+          })
+        : undefined;
+  // Over a case, the header names the list behind it.
+  const project = route.view === "case" ? list?.project : route.project;
   const unresolved = projects
     .filter((p) => project === undefined || p.name === project)
     .reduce((sum, p) => sum + p.unresolved, 0);
@@ -153,7 +174,7 @@ export function App() {
           <ErrorList errors={overview.errors} />
         ) : (
           <>
-            {unresolved > 0 && route.view === "cases" ? (
+            {unresolved > 0 && list !== undefined ? (
               <p className="text-muted-foreground text-sm">
                 {unresolved} case {unresolved === 1 ? "file does" : "files do"} not resolve and
                 {unresolved === 1 ? " is" : " are"} not listed:{" "}
@@ -163,13 +184,7 @@ export function App() {
                 .
               </p>
             ) : null}
-            {route.view === "case" ? (
-              <CaseDetail
-                key={`${route.ref}:${reload}`}
-                caseRef={route.ref}
-                written={created?.created.some((c) => c.ref === route.ref) ? created : undefined}
-              />
-            ) : route.view === "new" ? (
+            {route.view === "new" ? (
               <NewCase
                 key={`${route.project ?? ""}:${route.feature ?? ""}`}
                 projects={projects.map((p) => p.name)}
@@ -182,20 +197,33 @@ export function App() {
               <QueryView key={project ?? ""} project={project} />
             ) : route.view === "validate" ? (
               <ValidateView key={reload} project={project} />
-            ) : (
+            ) : list !== undefined ? (
+              // The same element for the list and for a case over it: the list is not
+              // mounted again, so it keeps its scroll and what is folded in the tree.
               <CasesPage
                 overview={overview.value}
-                project={project}
-                feature={route.feature}
-                state={route.state}
+                project={list.project}
+                feature={list.feature}
+                state={list.state}
               />
-            )}
+            ) : null}
+            <CaseSheet
+              caseRef={route.view === "case" ? route.ref : undefined}
+              reload={reload}
+              created={created}
+              onWritten={load}
+              onClose={() => {
+                if (list !== undefined) window.location.hash = formatRoute(list);
+              }}
+            />
           </>
         )}
       </main>
     </div>
   );
 }
+
+type CasesRoute = Extract<Route, { view: "cases" }>;
 
 /** Remembers, per viewer, whether the case list shows Automation and Last run (#110). */
 export const RUN_COLUMNS_KEY = "casefile.caseList.runColumns";

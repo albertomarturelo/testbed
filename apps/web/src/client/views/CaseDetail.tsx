@@ -1,4 +1,4 @@
-import { Archive, ArrowLeft, Check, ClipboardCheck, Pencil } from "lucide-react";
+import { Archive, Check, ClipboardCheck, Pencil } from "lucide-react";
 import { Fragment, useEffect, useId, useState } from "react";
 import {
   type CasefileError,
@@ -41,7 +41,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatRoute } from "@/route";
 import { CaseEditor } from "@/views/CaseEditor";
 import { RunRecorder } from "@/views/RunRecorder";
 
@@ -77,10 +76,13 @@ const MOVES: Record<string, { to: string; label: string; says: string }> = {
 export function CaseDetail({
   caseRef,
   written,
+  onWritten,
 }: {
   caseRef: string;
   /** The write that just created this case (#94): its page names the commit, as after an edit. */
   written?: Written;
+  /** After an edit, a move or a recorded result: the list behind reads the workspace again (#146). */
+  onWritten?: () => void;
 }) {
   const [result, setResult] = useState<Result<Resolved> | null>(null);
   const [editing, setEditing] = useState(false);
@@ -98,24 +100,8 @@ export function CaseDetail({
     };
   }, [caseRef, written]);
 
-  const project = caseRef.split("/")[0];
-  const back = (
-    <a
-      href={formatRoute({ view: "cases", project })}
-      className="inline-flex items-center gap-1 text-muted-foreground text-sm hover:text-foreground"
-    >
-      <ArrowLeft className="size-4" /> Cases
-    </a>
-  );
   if (result === null) return <Skeleton className="h-64 w-full" />;
-  if (!result.ok) {
-    return (
-      <div className="flex flex-col gap-4">
-        {back}
-        <ErrorList errors={result.errors} />
-      </div>
-    );
-  }
+  if (!result.ok) return <ErrorList errors={result.errors} />;
 
   const { value } = result;
   const c = value.case;
@@ -125,6 +111,7 @@ export function CaseDetail({
     setActionErrors([]);
     setSaved(reviewed);
     setResult(await call<Resolved>("resolve", { ref: caseRef }));
+    onWritten?.();
   };
   const base = (Array.isArray(c.history) ? (c.history as HistoryEntry[]) : []).at(-1)?.change;
   const move = MOVES[String(c.state)];
@@ -140,7 +127,6 @@ export function CaseDetail({
 
   return (
     <div className="flex flex-col gap-4">
-      {back}
       <header className="flex flex-col gap-2">
         {/* Reading order: the title, then where the case stands. */}
         <h1 className="font-semibold text-2xl tracking-tight">{String(c.title)}</h1>
@@ -330,7 +316,10 @@ export function CaseDetail({
         caseRef={caseRef}
         // A run changes no case file, but automation is derived from runs: read
         // it again, so the badge is what core says (a human run proves nothing).
-        onRecorded={async () => setResult(await call<Resolved>("resolve", { ref: caseRef }))}
+        onRecorded={async () => {
+          setResult(await call<Resolved>("resolve", { ref: caseRef }));
+          onWritten?.();
+        }}
       />
 
       <Card className="min-w-0">

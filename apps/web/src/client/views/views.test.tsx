@@ -1277,6 +1277,147 @@ describe("App: a new case from the list (#94)", () => {
   });
 });
 
+describe("App: a case opens in a Sheet over the list (#146)", () => {
+  const row = (ref: string, title: string, feature: string, state = "draft") => ({
+    ref,
+    project: "web",
+    feature,
+    title,
+    state,
+    priority: "P1",
+    automation: "manual",
+    automation_ref: null,
+    eligible: false,
+    last_run: null,
+    last_run_at: null,
+  });
+  const titles: Record<string, string> = {
+    "web/TC-0001": "Sign in",
+    "web/TC-0002": "Lock after five tries",
+    "web/TC-0003": "Sign out",
+  };
+  let state = "draft";
+  beforeEach(() => {
+    state = "draft";
+    answers.overview = () => ({
+      ok: true,
+      value: {
+        projects: [{ name: "web", path: "apps/web", cases: 3, unresolved: 0 }],
+        cases: [
+          row("web/TC-0001", "Sign in", "login", state),
+          row("web/TC-0002", "Lock after five tries", "login"),
+          row("web/TC-0003", "Sign out", "logout"),
+        ],
+      },
+    });
+    answers.resolve = (input) => {
+      const ref = input.ref as string;
+      return {
+        ok: true,
+        value: {
+          ref,
+          path: `apps/web/context/tests/${ref.slice(4)}.md`,
+          inherited: [],
+          case: {
+            id: ref.slice(4),
+            title: titles[ref],
+            state: ref === "web/TC-0001" ? state : "draft",
+            priority: "P1",
+            automation: { status: "manual", eligible: false },
+            steps: [{ do: "Open the page", expect: "It shows" }],
+            history: [{ event: "created", change: "c-1", commit: "1111111aaaaaaa" }],
+          },
+        },
+      };
+    };
+    answers.runs = (input) => ({ ok: true, value: { ref: input.ref, runs: [] } });
+  });
+  const sheet = () => screen.getByRole("dialog");
+
+  it("opens the case over the list, which stays behind it; the X brings the list back", async () => {
+    const user = userEvent.setup();
+    window.location.hash = "#/cases?project=web&feature=login";
+    render(<App />);
+    const link = await screen.findByRole("link", { name: "Sign in" });
+    await user.click(link);
+
+    expect(window.location.hash).toBe("#/case/web/TC-0001");
+    expect(await within(sheet()).findByRole("heading", { name: "Sign in" })).toBeTruthy();
+    // The dialog is named by the case's ref, its header line.
+    expect(screen.getByRole("dialog", { name: "web/TC-0001" })).toBe(sheet());
+    // The list is still mounted behind the Sheet, hidden from assistive tech while it is open.
+    expect(screen.getByRole("link", { name: "Lock after five tries", hidden: true })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Lock after five tries" })).toBeNull();
+
+    await user.click(within(sheet()).getByRole("button", { name: "Close" }));
+    expect(window.location.hash).toBe("#/cases?project=web&feature=login");
+    await vi.waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    // Focus goes back to the case's row: its id cell, the first link to it.
+    // Radix moves focus after the Sheet unmounts, on its own timer.
+    await vi.waitFor(() =>
+      expect(document.activeElement?.getAttribute("href")).toBe("#/case/web/TC-0001"),
+    );
+    expect(screen.getByRole("link", { name: "Lock after five tries" })).toBeTruthy();
+  });
+
+  it("closes on Escape, back to the list it was opened from, filter included", async () => {
+    const user = userEvent.setup();
+    window.location.hash = "#/cases?project=web&state=draft";
+    render(<App />);
+    await user.click(await screen.findByRole("link", { name: "Sign out" }));
+    expect(await within(sheet()).findByRole("heading", { name: "Sign out" })).toBeTruthy();
+    await user.keyboard("{Escape}");
+    expect(window.location.hash).toBe("#/cases?project=web&state=draft");
+  });
+
+  it("opens a pasted link over the case's own feature, and closes to it", async () => {
+    const user = userEvent.setup();
+    window.location.hash = "#/case/web/TC-0003";
+    render(<App />);
+    expect(
+      await within(await screen.findByRole("dialog")).findByRole("heading", { name: "Sign out" }),
+    ).toBeTruthy();
+    // Behind it, the list of logout only.
+    expect(screen.getByRole("link", { name: "Sign out", hidden: true })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Sign in", hidden: true })).toBeNull();
+    await user.click(within(sheet()).getByRole("button", { name: "Close" }));
+    expect(window.location.hash).toBe("#/cases?project=web&feature=logout");
+  });
+
+  it("reads the list again after a write in the Sheet, so the row shows it", async () => {
+    const user = userEvent.setup();
+    answers.review = () => {
+      state = "active";
+      return {
+        ok: true,
+        value: {
+          ref: "web/TC-0001",
+          path: "apps/web/context/tests/TC-0001.md",
+          change: "c-2",
+          state: "active",
+          changed: [],
+          events: [],
+          commit: { message: "review(login): approve TC-0001", files: [], sha: "2222222bbbbbbb" },
+          next: [],
+        },
+      };
+    };
+    window.location.hash = "#/cases?project=web&feature=login";
+    render(<App />);
+    await user.click(await screen.findByRole("link", { name: "Sign in" }));
+    await user.click(await within(sheet()).findByRole("button", { name: "Approve" }));
+    await user.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", { name: "Approve" }),
+    );
+    expect(await within(sheet()).findByRole("status")).toBeTruthy();
+    expect(calls.filter((c) => c.name === "overview")).toHaveLength(2);
+    // The Sheet is still open on the case; the row behind it now says active.
+    expect(window.location.hash).toBe("#/case/web/TC-0001");
+    const signIn = screen.getByRole("link", { name: "Sign in", hidden: true }).closest("tr");
+    await vi.waitFor(() => expect(signIn?.textContent).toContain("active"));
+  });
+});
+
 describe("QueryView", () => {
   it("runs the query in the selected project and points at a DSL error", async () => {
     answers.query = () => ({
