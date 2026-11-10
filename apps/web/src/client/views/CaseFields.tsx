@@ -51,6 +51,7 @@ export function CaseFields({
   errors,
   prefix,
   fromCommons = [],
+  eligibleHint,
 }: {
   draft: Draft;
   update: (patch: Partial<Draft>) => void;
@@ -58,6 +59,8 @@ export function CaseFields({
   /** Where the case sits in the operation's input: `set` for `review`, `cases.0` for `cover`. */
   prefix: string;
   fromCommons?: readonly FromCommons[];
+  /** Said under "Can be automated" when the form cannot show what the case inherits. */
+  eligibleHint?: string;
 }) {
   const at = (key: string) => errors.get(key) ?? [];
   /** Whether the operation refused this input of step `i` (`<prefix>.steps.<i>.do` / `.expect`). */
@@ -300,6 +303,7 @@ export function CaseFields({
             Can be automated
           </FieldLabel>
         </Field>
+        {eligibleHint === undefined ? null : <FieldDescription>{eligibleHint}</FieldDescription>}
         <Field data-invalid={at("automation").length > 0 || undefined}>
           <FieldLabel htmlFor="case-automation-ref">Linked test</FieldLabel>
           <Input

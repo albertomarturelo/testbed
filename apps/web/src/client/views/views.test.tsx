@@ -1085,6 +1085,8 @@ describe("NewCase: create a case (#94)", () => {
     // The feature the list was on is filled in; one empty step is there to write.
     expect((screen.getByLabelText("Feature") as HTMLInputElement).value).toBe("login");
     expect(screen.queryByLabelText("Project")).toBeNull();
+    // The form cannot show what commons give the case: it says who decides when unticked.
+    expect(screen.getByText(/Left unticked, the feature's commons decide/)).toBeTruthy();
 
     await user.type(screen.getByLabelText("Title"), "Lock after five tries");
     await user.selectOptions(screen.getByLabelText("Priority"), "P1");
@@ -1267,6 +1269,11 @@ describe("App: a new case from the list (#94)", () => {
     window.location.hash = "#/cases?project=web&feature=login";
     expect(await screen.findByRole("link", { name: "Lock after five tries" })).toBeTruthy();
     expect(screen.getByRole("navigation", { name: "Features" }).textContent).toContain("2");
+
+    // Said once, like an edit's commit: back on its page later, the notice is gone.
+    window.location.hash = "#/case/web/TC-0003";
+    expect(await screen.findByRole("heading", { name: "Lock after five tries" })).toBeTruthy();
+    expect(screen.queryByRole("status")).toBeNull();
   });
 });
 

@@ -156,7 +156,13 @@ export function NewCase({
                 <FieldErrors errors={at("feature")} />
               </Field>
             </FieldGroup>
-            <CaseFields draft={draft} update={update} errors={placed.byField} prefix={PREFIX} />
+            <CaseFields
+              draft={draft}
+              update={update}
+              errors={placed.byField}
+              prefix={PREFIX}
+              eligibleHint="Left unticked, the feature's commons decide: a _common.yaml may make it eligible."
+            />
           </CardContent>
         </Card>
         <div className="flex flex-wrap items-center gap-2">

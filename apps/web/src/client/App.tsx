@@ -59,12 +59,21 @@ export function App() {
   const [reload, setReload] = useState(0);
   /** The last case created here: its page names the commit until core derives it (#51). */
   const [created, setCreated] = useState<Covered | null>(null);
+  // Said once, like an edit's commit: leaving the new case's page forgets it.
+  useEffect(() => {
+    setCreated((last) =>
+      last !== null && route.view === "case" && last.created.some((c) => c.ref === route.ref)
+        ? last
+        : null,
+    );
+  }, [route]);
 
   const load = useCallback(() => {
     call<Overview>("overview").then(setOverview);
   }, []);
   useEffect(load, [load]);
   const refresh = () => {
+    setCreated(null);
     load();
     setReload((n) => n + 1);
   };
