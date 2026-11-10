@@ -129,7 +129,9 @@ Setup is done by the user's agent; the library scaffolds and validates
    the inbox item moves to `done` / `failed` with `result`.
 4. **Results**: CI runs an ingester (JUnit / CTRF / Allure) that **appends** events
    to `.runs/*.jsonl` and never touches a case file; a matching `automation.ref`
-   is what makes the resolver report `automated`.
+   is what makes the resolver report `automated`. It returns the commit of the
+   run file, and the record job commits it as `casefile-ci` and pushes it to the
+   shared branch it tested ([ci-commits-run-files](decisions/2026-10-17-ci-commits-run-files.md), `casefile spec ci`).
 5. **Gates**: `casefile gates <release>` evaluates `policy.yaml` scopes (DSL) against
    resolved cases + each case's latest run of that release; per gate `green`/`red`
    with reasons ([release-gate-evaluation](decisions/2026-10-17-release-gate-evaluation.md)).

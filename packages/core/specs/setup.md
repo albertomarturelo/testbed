@@ -96,7 +96,10 @@ Run every casefile command below with `CASEFILE_ACTOR=agent`.
    In CI, install with `npm ci --prefix .casefile --ignore-scripts` and run
    `.casefile/node_modules/.bin/casefile validate`. A workspace installed from
    the tarball has no lockfile: skip the Dependabot entry, and in CI unpack the
-   tarball of the pinned version the same way.
+   tarball of the pinned version the same way. To record the test runs of the
+   shared branches, `casefile spec ci` has the GitHub Actions workflows and the
+   push credential they need. That credential is the repository owner's to
+   grant, so offer it to the human and do not set it up yourself.
 8. **Commit** `casefile.yaml`, `.casefile/package.json`,
    `.casefile/package-lock.json` (if npm wrote one), `.casefile/.gitignore` and every
    `context/tests/` scaffold in one commit. Author it as

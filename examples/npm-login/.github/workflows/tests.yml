@@ -1,0 +1,86 @@
+# From `casefile spec ci` (packages/core/specs/ci.md), for this example: the
+# product repository it models would keep this at .github/workflows/. GitHub
+# runs workflows only from a repository's root, so in testbed it never runs.
+
+name: tests
+
+on:
+  push:
+    branches: [main]   # the recorded branches (rule 1)
+    paths-ignore: ["**/context/tests/.runs/**"]   # a record commit runs no tests (rule 6)
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1/2, 2/2]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test --shard=${{ matrix.shard }} --reporter=blob
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: blob-report-${{ strategy.job-index }}
+          path: blob-report/
+          retention-days: 7
+
+  record:
+    needs: test
+    if: ${{ always() && github.event_name == 'push' }}   # failures too; never a pull request (rules 1, 2)
+    runs-on: ubuntu-latest
+    environment: casefile-record   # holds the push credential (see Setup)
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.ref_name }}   # the branch tip, not $GITHUB_SHA (rule 3)
+          ssh-key: ${{ secrets.CASEFILE_CI_DEPLOY_KEY }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: npm ci
+      - run: npm ci --prefix .casefile --ignore-scripts
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: blob-report-*
+          path: all-blob-reports
+          merge-multiple: true
+      - name: Merge the shard reports
+        run: npx playwright merge-reports --reporter=junit all-blob-reports
+        env:
+          PLAYWRIGHT_JUNIT_OUTPUT_NAME: results/junit.xml
+      - name: Record the run
+        env:
+          CASEFILE_ACTOR: ci
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4 5; do
+            out=$(.casefile/node_modules/.bin/casefile ingest junit results/junit.xml \
+              --run "$GITHUB_RUN_ID" --executor ci:github-actions \
+              --tested-commit "$GITHUB_SHA" --json)
+            if [ "$(jq 'has("commit")' <<<"$out")" != true ]; then
+              echo "Nothing new to record"; exit 0
+            fi
+            jq -r '.commit.message' <<<"$out" > "$RUNNER_TEMP/message"
+            mapfile -t files < <(jq -r '.commit.files[]' <<<"$out")
+            git add -- "${files[@]}"
+            git -c user.name=casefile-ci -c user.email=casefile-ci@casefile.invalid \
+              commit -F "$RUNNER_TEMP/message" -- "${files[@]}"
+            if git push origin "HEAD:$BRANCH"; then exit 0; fi
+            # Rejected: someone pushed first. Start again from the new tip (rule 5).
+            git fetch --depth=1 origin "$BRANCH"
+            git reset --hard FETCH_HEAD
+            sleep $((attempt * 5))
+          done
+          echo "::error::could not push the run file after 5 tries"; exit 1

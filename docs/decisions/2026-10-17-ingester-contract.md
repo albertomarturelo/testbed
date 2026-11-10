@@ -96,5 +96,7 @@ ingesters. JUnit is XML, and core has no XML parser (CONVENTIONS 10).
 - A report outside the workspace is `path.outside_workspace`: CI copies it in.
 - §9 merges within one report only: shard reports that split a test's projects
   are merged before ingest (`playwright merge-reports`), as the SPEC says.
-- The operation makes no commit: CI commits `.runs/` (or ships it) itself.
+- The operation makes no commit: it returns the commit of the run file
+  (`casefile-ci` for CI, `casefile-agent` for an agent) and the caller runs it
+  (amended by [ci-commits-run-files](2026-10-17-ci-commits-run-files.md), #73).
 - Failure messages and attachments: see [run-event-note](2026-10-17-run-event-note.md).

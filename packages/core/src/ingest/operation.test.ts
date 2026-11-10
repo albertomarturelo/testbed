@@ -41,6 +41,7 @@ type Ingested = {
   events: number;
   appended: number;
   unmatched: { ref: string; status: string }[];
+  commit?: { author?: string; message: string; files: string[] };
   next: string[];
 };
 
@@ -84,8 +85,15 @@ describe("ingest junit", () => {
         { ref: "login.spec.ts::signs out from the account menu", status: "passed" },
         { ref: "search.spec.ts::finds a product by name & shows its price", status: "passed" },
       ],
+      commit: {
+        author: "casefile-ci <casefile-ci@casefile.invalid>",
+        message:
+          "ingest(web): record run pw-1\n\nCasefile-Run: pw-1\nExecutor: ci:github-actions\n",
+        files: [`${RUNS}/pw-1.jsonl`],
+      },
       next: [
-        `Commit ${RUNS}/pw-1.jsonl: casefile reads runs from the repository, and ingest commits nothing`,
+        "Commit the run file with commit.author and commit.message taken from --json output, staging only it (`git commit -F <message> -- <path>`)",
+        "Push it; if the push is rejected, reset to the new tip and ingest again, never resolve a conflict (`casefile spec ci`)",
         "5 results match no case's automation.ref: set that ref on the case it verifies (`casefile spec cover`), or leave it unmatched",
       ],
     });
@@ -110,6 +118,7 @@ describe("ingest junit", () => {
     const first = await read(`${RUNS}/pw-1.jsonl`);
     const again = await ingested();
     expect(again).toMatchObject({ events: 2, appended: 0 });
+    expect(again.commit).toBeUndefined();
     expect(again.next[0]).toBe(`Nothing new: every event is already in ${RUNS}/pw-1.jsonl`);
     expect(await read(`${RUNS}/pw-1.jsonl`)).toBe(first);
   });
@@ -263,11 +272,40 @@ describe("ingest junit", () => {
     expect(findings.filter((f) => f.path?.startsWith(RUNS))).toEqual([]);
   });
 
-  it("lets an agent ingest as agent:<name>", async () => {
-    expect(await ingested({ executor: "agent:claude-code" }, "agent")).toMatchObject({
+  it("lets an agent ingest as agent:<name>, and returns a casefile-agent commit", async () => {
+    const value = await ingested({ executor: "agent:claude-code" }, "agent");
+    expect(value).toMatchObject({
       appended: 1,
+      commit: {
+        author: "casefile-agent <casefile-agent@casefile.invalid>",
+        message:
+          "ingest(web): record run pw-1\n\nCasefile-Run: pw-1\nExecutor: agent:claude-code\n",
+        files: [`${RUNS}/pw-1.jsonl`],
+      },
     });
+    // Pushing and retrying is CI's job (`casefile spec ci`); an agent only commits.
+    expect(value.next.some((line) => line.startsWith("Push"))).toBe(false);
     expect((await events())[0]?.executor).toBe("agent:claude-code");
+  });
+
+  it("names the tested commit in a trailer, and nowhere in the run file", async () => {
+    const sha = "4f1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c";
+    const value = await ingested({ testedCommit: sha });
+    expect(value.commit?.message).toBe(
+      `ingest(web): record run pw-1\n\nCasefile-Run: pw-1\nExecutor: ci:github-actions\nTested-Commit: ${sha}\n`,
+    );
+    expect(await read(`${RUNS}/pw-1.jsonl`)).not.toContain(sha);
+  });
+
+  it("returns no commit when the report matches no case", async () => {
+    await put(
+      REPORT,
+      `<testsuites id="" name=""><testsuite name="x.spec.ts"><testcase name="t" classname="x.spec.ts" time="1"/></testsuite></testsuites>`,
+    );
+    const value = await ingested();
+    expect(value).toMatchObject({ events: 0, appended: 0 });
+    expect(value.commit).toBeUndefined();
+    await expect(read(`${RUNS}/pw-1.jsonl`)).rejects.toThrow();
   });
 
   it.each([
@@ -280,6 +318,7 @@ describe("ingest junit", () => {
     [{ project: "mobile" }, "ci", "project.unknown"],
     [{ run: "../escape" }, "ci", "operation.invalid_input"],
     [{ executor: "github" }, "ci", "operation.invalid_input"],
+    [{ testedCommit: "main" }, "ci", "operation.invalid_input"],
   ] as const)("refuses %j as %s with %s, writing nothing", async (input, actor, code) => {
     const result = await ingest(input, actor);
     expect(result).toMatchObject({ ok: false, errors: [{ code }] });

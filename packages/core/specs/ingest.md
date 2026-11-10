@@ -3,10 +3,12 @@
 Turns a test report into run events: each test result whose ref is a case's
 `automation.ref` becomes an event in `<project>/context/tests/.runs/<run>.jsonl`.
 Those events are what make a case `automated` (ADR write-ownership). CI runs it
-after the tests; it never touches a case and makes no commit.
+after the tests; it never touches a case. It makes no commit: it returns the
+commit of the run file, and the caller runs it (ADR ci-commits-run-files).
 
 - **Actor:** CI, agent (`CASEFILE_ACTOR=ci` or `agent`)
-- **CLI:** `casefile ingest <format> <report> --run <id> --executor ci:<name> [--env <env>] [--build <build>] [--release <release>] [--project <name>] [--json]`
+- **CLI:** `casefile ingest <format> <report> --run <id> --executor ci:<name> [--tested-commit <sha>] [--env <env>] [--build <build>] [--release <release>] [--project <name>] --json`
+  (read `commit` from the `--json` output: the plain output does not keep the message byte for byte)
 - **Formats:** `junit` (built in); extensions add more (see the last section)
 - **Writes:** `**/context/tests/.runs/*.jsonl` (appends only)
 
@@ -21,6 +23,7 @@ format; built-in formats are described here.
 | `report` | path | The report file, **relative to the workspace root** (where `casefile.yaml` is), inside the workspace. |
 | `run` | file-safe id | The run: names the run file. Use the CI run id (`$GITHUB_RUN_ID`), the same for every shard of one run. |
 | `executor` | `ci:<name>` / `agent:<name>` | Who ran the tests. The prefix must be the actor: CI ingests as `ci:*`, an agent as `agent:*`. Humans record runs with the `run` operation. |
+| `testedCommit` | commit hash, optional | The commit the tests ran on (`--tested-commit "$GITHUB_SHA"`): the `Tested-Commit:` trailer of the returned commit. Never written to the run file. CI passes it because it ingests on the branch tip, which may be newer than the tested commit (`casefile spec ci`). |
 | `env`, `build`, `release` | text | Copied into every event. `build` and `release` are what release gates read (`casefile spec query-grammar`). |
 | `project` | project name | Filled by the host from `--project` or the project containing `--cwd`. Required when the workspace has several projects and `--cwd` is in none. |
 
@@ -48,10 +51,36 @@ format; built-in formats are described here.
    report twice writes nothing the second time, and a second shard of the
    same run adds only its own events. Existing lines are never changed.
    Shards ingested in separate CI checkouts each append to the same file and
-   their commits conflict: ingest all shards from one job, or give each shard
-   its own run id (`9137-1`, `9137-2`). Results merge only within one report
-   (step 2), so when shards can split one test's projects, ingest the merged
-   report (`playwright merge-reports --reporter junit`) instead of each shard.
+   their commits conflict: ingest all shards from one record job
+   (`casefile spec ci`). Results merge only within one report (step 2), so
+   when shards can split one test's projects, ingest the merged report
+   (`playwright merge-reports --reporter junit`) instead of each shard.
+6. **Does not commit.** When it appended events, it returns the commit of the
+   run file: `commit.author` follows the actor, `commit.message` is built by
+   casefile, and `commit.files` is the run file alone. The caller commits
+   exactly that file:
+
+   ```bash
+   git add <run file>
+   git -c user.name=casefile-ci -c user.email=casefile-ci@casefile.invalid \
+     commit -F <message file> -- <run file>
+   ```
+
+   | Actor | `commit.author` |
+   |---|---|
+   | `ci` | `casefile-ci <casefile-ci@casefile.invalid>` |
+   | `agent` | `casefile-agent <casefile-agent@casefile.invalid>` |
+
+   Use the name and email of `commit.author` in `-c user.name=… -c user.email=…`,
+   and keep the `-- <run file>`: anything else staged stays out of the commit.
+   The subject is `ingest(<project>): record run <run>`; the trailers are
+   `Casefile-Run: <run>`, `Executor: <executor>` and, when `testedCommit` was
+   given, `Tested-Commit: <sha>`. A run writes no `history` entry and answers
+   no one's request, so there is no `Requested-by:` or `Casefile-Change:`.
+   When nothing was appended there is no `commit`: there is nothing to
+   commit. CI pushes the commit and, if the push is rejected, resets to the
+   new tip and ingests again (`casefile spec ci`); step 5 makes that retry
+   append only what the branch still lacks.
 
 ```json 9137.jsonl
 {"run_id":"9137","case_id":"TC-0001","status":"passed","executor":"ci:github-actions","at":"2026-10-17T09:12:03Z","build":"web-2.1.0+9","duration_ms":1204,"automation_ref":"login.spec.ts::signs in with valid credentials"}
@@ -64,14 +93,21 @@ format; built-in formats are described here.
   "path": "apps/web/context/tests/.runs/9137.jsonl",
   "results": 6, "events": 1, "appended": 1,
   "unmatched": [{ "ref": "login.spec.ts::rejects an empty password", "status": "failed" }],
-  "next": ["Commit apps/web/context/tests/.runs/9137.jsonl: …"] }
+  "commit": {
+    "author": "casefile-ci <casefile-ci@casefile.invalid>",
+    "message": "ingest(web): record run 9137\n\nCasefile-Run: 9137\nExecutor: ci:github-actions\nTested-Commit: 4f1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c\n",
+    "files": ["apps/web/context/tests/.runs/9137.jsonl"] },
+  "next": ["Commit the run file with commit.author and commit.message taken from --json output, staging only it (`git commit -F <message> -- <path>`)",
+           "Push it; if the push is rejected, reset to the new tip and ingest again, never resolve a conflict (`casefile spec ci`)",
+           "1 result matches no case's automation.ref: …"] }
 ```
 
 `events` counts the events the report gives; `appended` the ones written now.
-Unmatched results are expected for tests no case describes yet: give the case
-that `automation.ref` (`casefile spec cover`) and the next run matches it. CI
-commits the run file (or ships it to where the repository is updated);
-casefile reads runs only from the repository.
+`commit` is there only when `appended` is above 0. For an agent, `commit.author`
+is `casefile-agent` and `next` does not say to push. Unmatched results are
+expected for tests no case describes yet: give the case that `automation.ref`
+(`casefile spec cover`) and the next run matches it. casefile reads runs only
+from the repository, so a run counts once its commit is on the branch.
 
 ## JUnit (`casefile ingest junit`)
 
@@ -125,6 +161,7 @@ report points to.
 | `ingest.invalid_report` | the report does not parse (with `line` and `column`) or is not of this format |
 | `ingest.invalid_result` | an ingester returned a result that is not `{ ref, status, … }` (with `field: results.<i>.<field>`) |
 | `ingest.invalid_event` | a result made an event that does not match the run-event schema |
+| `operation.invalid_input` | an input does not match its schema (with the field), e.g. a `testedCommit` that is not a commit hash |
 | `path.outside_workspace` | `report` leaves the workspace: copy the report inside it first |
 | `operation.actor_not_allowed` | the actor is `human` |
 | `project.required` / `project.unknown` | as in `casefile spec cover` |

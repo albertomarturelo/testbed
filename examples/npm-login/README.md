@@ -21,7 +21,9 @@ package.json, package-lock.json   the product's own dev dependency: @playwright/
 playwright.config.ts              baseURL https://www.npmjs.com, JUnit to results/junit.xml
 e2e/login.spec.ts                 six front-end checks, no credentials
 casefile.yaml                     workspace: one project, npm-login, at `.`
-.casefile/package.json            toolchain pin: @casefile/cli
+.casefile/package.json            toolchain pin: @casefile/cli, @casefile/web
+.casefile/package-lock.json       its lockfile, for `npm ci --prefix .casefile` in CI
+.github/workflows/                tests.yml (tests + record job), casefile-validate.yml (#73)
 context/tests/
   _common.yaml                    surfaces [web], e2e, P2, eligible, review required
   login/TC-0001 … TC-0009.md      nine drafts from qa-cover
@@ -98,6 +100,24 @@ cd examples/npm-login && npm install && npx playwright install chromium && npx p
 The tests hit the live site, so results depend on it. Its bot protection may
 challenge a headless browser; casefile never tries to get around that.
 
+## Record runs from CI
+
+`.github/workflows/` holds the two workflows of `casefile spec ci`. The
+product repository this example models would keep them at its root:
+
+- `tests.yml` runs the specs in two shards. On a push to `main`, a `record` job
+  merges the shard reports and ingests them on the branch tip. It then commits
+  the run file as `casefile-ci`, with a `Tested-Commit:` trailer, and pushes
+  it. A rejected push resets to the new tip and ingests again.
+- `casefile-validate.yml` runs `casefile validate` on every push, the record
+  commits included.
+
+GitHub runs workflows only from a repository's root, so in this repository
+they never run. `packages/core/src/npm-login.test.ts` checks that they follow
+the rules of the SPEC. The run committed here is still the one the agent
+ingested locally. Since #73, `ingest` returns that commit too, as
+`casefile-agent`.
+
 ## Open it in the UI
 
 ```bash
@@ -124,5 +144,6 @@ failure message of each failed one.
   keeps the message as `note`, and the case page lists its runs.
 - **#69:** the UI does not tell "linked, never ran" from manual, and the table
   hides "Last run" at narrow widths.
-- **#70:** nothing says how a CI job gets its run file into the repository.
-  This run was ingested locally by the agent for that reason.
+- **#70:** nothing said how a CI job gets its run file into the repository,
+  so this run was ingested locally by the agent. Solved: ADR
+  ci-commits-run-files, and #73 added the workflows (*Record runs from CI*).

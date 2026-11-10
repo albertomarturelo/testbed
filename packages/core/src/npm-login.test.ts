@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { workflowProblems } from "./ci-workflow.fixture.js";
 import { NPM_LOGIN_EXPECTED, NPM_LOGIN_ROOT } from "./demo.fixture.js";
 import { loadWorkspace } from "./load/workspace.js";
 import { createRegistry } from "./operations/registry.js";
@@ -30,6 +31,14 @@ describe("examples/npm-login, the first real case", async () => {
       expect(byId.get(id)?.automation).toEqual({ eligible: false, status: "manual" });
     }
   });
+
+  it.each(["tests.yml", "casefile-validate.yml"])(
+    "records CI runs with %s, following `casefile spec ci`",
+    async (name) => {
+      const text = await readFile(join(NPM_LOGIN_ROOT, ".github/workflows", name), "utf8");
+      expect(workflowProblems(text)).toEqual([]);
+    },
+  );
 
   it("links every automated case to a test that exists in e2e/login.spec.ts", async () => {
     const spec = await readFile(join(NPM_LOGIN_ROOT, "e2e/login.spec.ts"), "utf8");

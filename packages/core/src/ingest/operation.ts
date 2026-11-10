@@ -1,10 +1,12 @@
 import { posix } from "node:path";
 import { z } from "zod";
 import { type CasefileError, fail, ok, type Result } from "../errors.js";
+import { AGENT_AUTHOR, CI_AUTHOR, runCommitMessage } from "../git/trailers.js";
 import { TESTS_DIR } from "../load/paths.js";
 import { loadWorkspace } from "../load/workspace.js";
+import { WriteCommit } from "../operations/case-file.js";
 import { requireProject } from "../operations/cases.js";
-import { defineOperation, type Operation } from "../operations/operation.js";
+import { type Actor, defineOperation, type Operation } from "../operations/operation.js";
 import { Executor, FileSafeId, RunEvent, RunStatus, Slug } from "../schema/index.js";
 import { IngestedResult, type Ingester } from "./ingester.js";
 import { boundNote } from "./note.js";
@@ -19,8 +21,15 @@ const IngestInput = z.strictObject({
   env: z.string().min(1).optional(),
   build: z.string().min(1).optional(),
   release: z.string().min(1).optional(),
+  /** The commit the tests ran on (`$GITHUB_SHA`): the `Tested-Commit:` trailer. */
+  testedCommit: z
+    .string()
+    .regex(/^[0-9a-f]{7,64}$/, "a commit hash: 7 to 64 lowercase hex digits")
+    .optional(),
   project: z.string().min(1).optional().meta({ host: "project" }),
 });
+
+type RunFileCommit = z.infer<typeof WriteCommit>;
 
 const IngestOutput = z.strictObject({
   project: z.string(),
@@ -35,6 +44,8 @@ const IngestOutput = z.strictObject({
   appended: z.number().int(),
   /** Results whose ref is no case's `automation.ref`: reported, never written. */
   unmatched: z.array(z.strictObject({ ref: z.string(), status: RunStatus })),
+  /** The commit of the run file, when events were appended (ADR ci-commits-run-files §2). */
+  commit: WriteCommit.optional(),
   next: z.array(z.string()),
 });
 
@@ -42,7 +53,9 @@ const IngestOutput = z.strictObject({
  * The operation `ingest-<format>` for an ingester (ADR ingester-contract §2):
  * `casefile ingest <format> <report> --run <id> --executor ci:<name>`. Matches
  * results to the project's cases by `automation.ref` and appends new run events
- * to `<project>/context/tests/.runs/<run>.jsonl`. Makes no commit.
+ * to `<project>/context/tests/.runs/<run>.jsonl`. Makes no commit: it returns
+ * the one the caller runs, as `casefile-ci` or `casefile-agent` (ADR
+ * ci-commits-run-files §2).
  */
 export function ingestOperation(ingester: Ingester): Operation {
   return defineOperation({
@@ -154,11 +167,18 @@ export function ingestOperation(ingester: Ingester): Operation {
         await context.writeText(path, `${existing}${separator}${lines}`);
       }
 
+      let commit: RunFileCommit | undefined;
+      if (fresh.length > 0) commit = runFileCommit(input, project.name, path, context.actor);
       const next: string[] = [];
-      if (fresh.length > 0) {
+      if (commit !== undefined) {
         next.push(
-          `Commit ${path}: casefile reads runs from the repository, and ingest commits nothing`,
+          "Commit the run file with commit.author and commit.message taken from --json output, staging only it (`git commit -F <message> -- <path>`)",
         );
+        if (context.actor === "ci") {
+          next.push(
+            "Push it; if the push is rejected, reset to the new tip and ingest again, never resolve a conflict (`casefile spec ci`)",
+          );
+        }
       } else if (events.length > 0) {
         next.push(`Nothing new: every event is already in ${path}`);
       }
@@ -175,10 +195,31 @@ export function ingestOperation(ingester: Ingester): Operation {
         events: events.length,
         appended: fresh.length,
         unmatched,
+        ...(commit === undefined ? {} : { commit }),
         next,
       });
     },
   });
+}
+
+/**
+ * The commit of the run file (ADR ci-commits-run-files §2): authored by
+ * `casefile-ci` for CI and `casefile-agent` for an agent, with `Tested-Commit:`
+ * when the host passed it.
+ */
+function runFileCommit(
+  input: z.infer<typeof IngestInput>,
+  project: string,
+  path: string,
+  actor: Actor,
+): RunFileCommit {
+  const trailers = { run: input.run, executor: input.executor };
+  const tested = input.testedCommit;
+  const message = runCommitMessage(
+    `ingest(${project}): record run ${input.run}`,
+    tested === undefined ? trailers : { ...trailers, testedCommit: tested },
+  );
+  return { author: actor === "ci" ? CI_AUTHOR : AGENT_AUTHOR, message, files: [path] };
 }
 
 function isResultList(value: unknown): value is Result<unknown[]> {

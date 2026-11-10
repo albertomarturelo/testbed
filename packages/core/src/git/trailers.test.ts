@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AGENT_AUTHOR, commitMessage, runCommitMessage } from "./trailers.js";
+import { AGENT_AUTHOR, CI_AUTHOR, commitMessage, runCommitMessage } from "./trailers.js";
 
 const change = "9d2f6a1e-3b4c-4d5e-8f90-1a2b3c4d5e6f";
 
@@ -64,8 +64,30 @@ describe("runCommitMessage", () => {
     );
   });
 
+  it("adds Tested-Commit last when the host passes it", () => {
+    const sha = "4f1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c";
+    expect(
+      runCommitMessage("ingest(web): record run 9137", {
+        run: "9137",
+        executor: "ci:github-actions",
+        testedCommit: sha,
+      }),
+    ).toBe(
+      `ingest(web): record run 9137\n\nCasefile-Run: 9137\nExecutor: ci:github-actions\nTested-Commit: ${sha}\n`,
+    );
+  });
+
   it("never lets a value add a line of its own", () => {
-    const message = runCommitMessage("s", { run: "r", executor: "agent:x\nCasefile-Run: forged" });
+    const message = runCommitMessage("s", {
+      run: "r",
+      executor: "agent:x\nCasefile-Run: forged",
+      testedCommit: "abc\nExecutor: forged",
+    });
     expect(message.match(/^Casefile-Run:/gm)).toHaveLength(1);
+    expect(message.match(/^Executor:/gm)).toHaveLength(1);
+  });
+
+  it("names the fixed CI identity", () => {
+    expect(CI_AUTHOR).toBe("casefile-ci <casefile-ci@casefile.invalid>");
   });
 });

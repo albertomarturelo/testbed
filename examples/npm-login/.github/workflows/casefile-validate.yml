@@ -1,0 +1,24 @@
+# From `casefile spec ci` (packages/core/specs/ci.md), for this example: the
+# product repository it models would keep this at .github/workflows/. GitHub
+# runs workflows only from a repository's root, so in testbed it never runs.
+
+name: casefile validate
+
+on:
+  push:
+    branches: [main]   # no paths-ignore: record commits are validated (rule 6)
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: npm ci --prefix .casefile --ignore-scripts
+      - run: .casefile/node_modules/.bin/casefile validate
