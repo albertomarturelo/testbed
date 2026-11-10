@@ -1,9 +1,25 @@
 {
   "name": "@casefile/web",
-  "version": "0.0.0",
-  "description": "casefile local UI: the QA reads and writes the workspace through core operations (ADR local-ui-stack).",
-  "private": true,
+  "version": "0.1.1",
+  "description": "casefile viewer: the local UI where a QA reads, edits and approves the test cases kept in the repository.",
   "license": "MIT",
+  "keywords": [
+    "testing",
+    "test-cases",
+    "qa",
+    "test-management",
+    "ai-agent",
+    "ui"
+  ],
+  "homepage": "https://github.com/albertomarturelo/testbed#readme",
+  "bugs": {
+    "url": "https://github.com/albertomarturelo/testbed/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/albertomarturelo/testbed.git",
+    "directory": "apps/web"
+  },
   "type": "module",
   "engines": {
     "node": ">=22"
@@ -17,7 +33,9 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json && vite build",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.client.json",
-    "dev": "vite"
+    "dev": "vite",
+    "prepack": "node -e \"require('node:fs').cpSync('../../LICENSE','LICENSE')\"",
+    "postpack": "node -e \"require('node:fs').rmSync('LICENSE',{force:true})\""
   },
   "dependencies": {
     "@casefile/core": "workspace:*"

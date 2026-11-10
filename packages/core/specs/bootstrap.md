@@ -73,8 +73,8 @@ Run every casefile command with `CASEFILE_ACTOR=agent`.
 7. **Report and stop.** Tell the human, per feature: the case refs written,
    the ones linked to a test, the ones not eligible, and the questions you
    could not answer from the code. Point them to the viewer to read the
-   drafts (today it starts from a casefile checkout, `pnpm ui --cwd
-   <workspace>`; `casefile ui` comes with the npm release), and offer
+   drafts (`casefile ui`; if it answers `ui.not_installed`, its hint says
+   how to install the viewer), and offer
    `/qa-review` to change, approve or retire them (`casefile spec review`).
    Do not approve anything yourself.
 

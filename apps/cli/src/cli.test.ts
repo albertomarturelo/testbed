@@ -178,6 +178,7 @@ describe("casefile init → project add", () => {
     expect(init.stdout).toContain("gpg.format ssh");
     const pinned = JSON.parse(await readFile(join(tmp, ".casefile/package.json"), "utf8"));
     expect(pinned.dependencies["@casefile/cli"]).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(pinned.dependencies["@casefile/web"]).toBe(pinned.dependencies["@casefile/cli"]);
 
     await mkdir(join(tmp, "apps/web"), { recursive: true });
     const asHuman = await cli(["project", "add", "web", "--path", "apps/web", "--cwd", tmp]);

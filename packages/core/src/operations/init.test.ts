@@ -53,6 +53,7 @@ describe("init", () => {
     expect(config).toEqual({ ok: true, value: { version: 1, projects: [] } });
     expect(JSON.parse(await read(".casefile/package.json")).dependencies).toEqual({
       "@casefile/cli": "0.4.1",
+      "@casefile/web": "0.4.1",
     });
     expect(await read(".casefile/.gitignore")).toBe("node_modules/\n");
   });

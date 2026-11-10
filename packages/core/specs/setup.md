@@ -19,7 +19,7 @@ npx @casefile/cli init --skills-into .claude/skills
 ```
 
 So `casefile.yaml` (`version: 1`, `projects: []`) and `.casefile/package.json`
-(`@casefile/cli` pinned to an exact version) exist. Never run
+(`@casefile/cli` and the viewer `@casefile/web` pinned to one exact version) exist. Never run
 `npx casefile`: the unscoped npm package `casefile` is a different tool. If `casefile.yaml` is missing,
 stop and ask the human to run `casefile init`: it is theirs to run
 (`casefile spec init`), or yours only when they ask you to install casefile

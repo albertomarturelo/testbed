@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // ADR 2026-11-09-release-toolchain-tarball: the release also ships the
 // `node_modules/` npm would install, for networks without the npm registry.
-// Installs the packed @casefile/core and @casefile/cli tarballs of <pack dir>
+// Installs the packed @casefile/core, @casefile/cli and @casefile/web tarballs of <pack dir>
 // in an empty directory and archives the result as
 // <out dir>/casefile-toolchain-<version>.tgz, with its `.sha256` beside it.
 // Unpack into a workspace's `.casefile/`.
@@ -20,10 +20,12 @@ if (packArg === undefined || outArg === undefined) {
 const packDir = resolve(packArg);
 const outDir = resolve(outArg);
 const packed = readdirSync(packDir)
-  .filter((name) => /^casefile-(core|cli)-\d+\.\d+\.\d+\.tgz$/.test(name))
+  .filter((name) => /^casefile-(core|cli|web)-\d+\.\d+\.\d+\.tgz$/.test(name))
   .map((name) => join(packDir, name));
-if (packed.length !== 2) {
-  console.error(`${packDir} must hold the packed core and cli tarballs (found ${packed.length})`);
+if (packed.length !== 3) {
+  console.error(
+    `${packDir} must hold the packed core, cli and web tarballs (found ${packed.length})`,
+  );
   process.exit(1);
 }
 

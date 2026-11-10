@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { parseArgs } from "node:util";
 import {
   type Actor,
   type CasefileError,
@@ -31,6 +32,7 @@ import {
 } from "./args.js";
 import { planDelegation, type Reexec, reexec } from "./delegate.js";
 import { renderErrors, renderValue } from "./render.js";
+import { planUi, type RunUi, runUi } from "./ui.js";
 
 const pkg = createRequire(import.meta.url)("../package.json") as { version: string };
 
@@ -66,6 +68,8 @@ export type CliEnvironment = {
   env: Readonly<Record<string, string | undefined>>;
   /** How to re-execute the pinned casefile; tests replace it. Default: `reexec`. */
   reexec?: Reexec;
+  /** How to run the installed viewer; tests replace it. Default: `runUi`. */
+  runUi?: RunUi;
 };
 
 /**
@@ -105,6 +109,7 @@ export async function run(
   if (first === "-v" || first === "--version") return out(pkg.version);
   if (first === "spec") return spec(argv.slice(1), host);
   if (first === "whoami") return whoami(argv.slice(1), root ?? cwd, environment.env);
+  if (first === "ui") return ui(argv.slice(1), located, environment.runUi ?? runUi);
 
   if (first.startsWith("-")) {
     return result(
@@ -252,6 +257,50 @@ async function whoami(
   return result(ok({ email, ...(name === undefined ? {} : { name }), source, from }), json);
 }
 
+const UI_USAGE = `Usage: casefile ui [--port <n>]
+
+Opens the viewer for this workspace on http://127.0.0.1:<port> (default 4321)
+and runs until stopped. The viewer is the @casefile/web installed in .casefile/,
+at this casefile's version.`;
+
+/**
+ * `casefile ui` (ADR casefile-ui-command): runs the viewer installed next to
+ * the CLI as a child process. A host command: it serves, it is not an operation.
+ */
+async function ui(
+  args: readonly string[],
+  located: Result<string>,
+  start: RunUi,
+): Promise<CliResult> {
+  const json = args.includes("--json");
+  let values: { cwd?: string; port?: string; json?: boolean; help?: boolean };
+  try {
+    ({ values } = parseArgs({
+      args: [...args],
+      options: {
+        cwd: { type: "string" },
+        port: { type: "string" },
+        json: { type: "boolean" },
+        help: { type: "boolean", short: "h" },
+      },
+      strict: true,
+    }));
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    return result(
+      fail({ code: "cli.usage", message: `${reason}; usage: casefile ui [--port <n>]` }),
+      json,
+    );
+  }
+  if (values.help) return out(UI_USAGE);
+  if (!located.ok) return result(located, json);
+  const plan = await planUi(located.value, pkg.version);
+  if (plan.kind === "fail") return result(fail(plan.error), json);
+  const port = values.port === undefined ? [] : ["--port", values.port];
+  // The viewer prints its own address and errors (a busy port, a bad --port).
+  return { code: await start(plan.bin, ["--cwd", located.value, ...port]), stdout: "", stderr: "" };
+}
+
 /** `casefile spec <name>`: words join with `-`, so `spec project add` works too. */
 async function spec(args: readonly string[], host: HostRegistry): Promise<CliResult> {
   const json = args.includes("--json");
@@ -297,6 +346,7 @@ async function usage(commands: readonly Command[], host: HostRegistry): Promise<
   }
   rows.push(["spec <name>", "Prints the SPEC of an operation or topic."]);
   rows.push(["whoami", "Shows who writes are made as, and where that comes from."]);
+  rows.push(["ui", "Opens the viewer for this workspace on http://127.0.0.1."]);
   const width = Math.max(...rows.map(([name]) => name.length)) + 2;
   return `casefile ${pkg.version} (preview)
 

@@ -8,6 +8,7 @@ Accepted — 2026-10-15 (#29). Amends [org-commons-via-extension](2026-10-15-org
 (bin `casefile`) since [npm-scope-casefile](2026-10-17-npm-scope-casefile.md).
 Amended by [release-toolchain-tarball](2026-11-09-release-toolchain-tarball.md):
 `.casefile/node_modules` may also be unpacked from the release's tarball, without npm.
+`init` also pins the viewer `@casefile/web` since [casefile-ui-command](2026-11-09-casefile-ui-command.md).
 
 ## Context
 

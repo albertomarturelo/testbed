@@ -103,6 +103,12 @@ export const CASEFILE_PACKAGE = "@casefile/cli";
 /** The command it installs. Not the package name: the unscoped npm `casefile` is another package. */
 export const CASEFILE_BIN = "casefile";
 
+/** The npm package of the viewer; `init` pins it next to the CLI (ADR casefile-ui-command). */
+export const WEB_PACKAGE = "@casefile/web";
+
+/** The command it installs; `casefile ui` runs it. */
+export const WEB_BIN = "casefile-web";
+
 /** What `.casefile/` declares and holds, for the validator's environment level. */
 export type Toolchain = {
   /** `dependencies` of `.casefile/package.json`; `{}` if unreadable, `null` if absent. */

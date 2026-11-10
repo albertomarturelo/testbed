@@ -4,7 +4,8 @@
 
 > **Preview (`0.x`).** casefile is under active development: a breaking change
 > bumps the minor version. The CLI is on npm as `@casefile/cli`; the viewer
-> still runs from a clone of this repository. *Today* works; *Next* is planned,
+> still runs from a clone of this repository until the next release brings
+> `casefile ui`. *Today* works; *Next* is planned,
 > not built.
 
 ## What it does
@@ -107,7 +108,8 @@ npx @casefile/cli init --skills-into .claude/skills
 ```
 
 Use `.agents/skills` instead for Codex. Never `npx casefile`: that npm name is
-an unrelated package. `init` pins `@casefile/cli` in `.casefile/package.json`;
+an unrelated package. `init` pins `@casefile/cli` (and, from the next release,
+the viewer `@casefile/web`) in `.casefile/package.json`;
 the setup skill installs it there (`npm install --prefix .casefile
 --ignore-scripts`), so every clone of your repository runs the same version.
 
@@ -191,10 +193,11 @@ repository (the toolchain `init` pinned); the skills already call it that way.
      --run local-1 --executor agent:claude-code
    ```
 
-4. **Look at it**: `casefile overview` in the terminal. The viewer is not in
-   the npm package yet: from a clone of this repository (built as in *From
-   source*), run `pnpm ui --cwd /absolute/path/to/your-repo` and open
-   <http://127.0.0.1:4321>.
+4. **Look at it**: `casefile overview` in the terminal, and the viewer with
+   `casefile ui`, then open <http://127.0.0.1:4321>. `casefile ui` is on
+   `main` and ships in the next release; until then, from a clone of this
+   repository (built as in *From source*), run
+   `pnpm ui --cwd /absolute/path/to/your-repo`.
 
 Every command has `--help`, `--json` for scripts and agents, and a SPEC:
 
@@ -213,6 +216,7 @@ Every command has `--help`, `--json` for scripts and agents, and a SPEC:
 | `casefile resolve` | Shows a case after inheritance, with where each value came from, and its Markdown body |
 | `casefile id next` | The next free case id of a project |
 | `casefile spec <name>` | Prints the SPEC of an operation or topic |
+| `casefile ui` | Opens the viewer for this workspace on `127.0.0.1`; it runs the `@casefile/web` that `init` pins next to the CLI (on `main`, ships in the next release) |
 | `casefile whoami` | Who writes are made as: `CASEFILE_USER_EMAIL` when set, else `git config user.email` |
 
 ## Principles
@@ -245,7 +249,7 @@ The reasons behind each one are in [docs/decisions](docs/decisions/_index.md).
 | `init`, `project add`, `validate`, `cover`, `review` (edit, approve, retire a case), `run` (record a result by hand), `overview`, `runs`, `query`, `resolve`, `id next`, `whoami`, `spec` | |
 | Skills `casefile-setup` and `qa-cover` | Skills `qa-bootstrap` (a project's feature tree and first drafts from its code) and `qa-review` (#85) |
 | Local UI (`pnpm ui`, from a clone): projects, feature tree with coverage, cases that read as documents, each case's runs and why they failed; the QA edits, approves and retires a case from its page ([decided](docs/decisions/2026-10-19-human-writes-through-operations.md)) | Record a result and create a case from the viewer (#93, #94); live reload (#26) |
-| `@casefile/cli` and `@casefile/core` on npm, published by CI with provenance ([release process](docs/decisions/2026-10-20-release-process.md)); a toolchain tarball on each GitHub release for networks without the npm registry ([decided](docs/decisions/2026-11-09-release-toolchain-tarball.md)) | `casefile ui`: the viewer from the installed CLI, without a clone |
+| `@casefile/cli` and `@casefile/core` on npm, published by CI with provenance ([release process](docs/decisions/2026-10-20-release-process.md)); a toolchain tarball on each GitHub release for networks without the npm registry ([decided](docs/decisions/2026-11-09-release-toolchain-tarball.md)) | `casefile ui`: the viewer from the installed CLI, without a clone, on npm and in the tarball. On `main`, ships in the next release ([decided](docs/decisions/2026-11-09-casefile-ui-command.md)) |
 | `ingest junit` (Playwright, Surefire), keeping failure messages and attachments | |
 | Release gate evaluation in core | Complements, when the real case needs them: CTRF and Allure, environment-blocked results, CI run files ([decided](docs/decisions/2026-10-17-ci-commits-run-files.md)), `casefile gates`, MCP, Zephyr and Xray bridges |
 
