@@ -66,6 +66,16 @@ export type Reviewed = {
   next: string[];
 };
 
+/** What `cover` answers (`casefile spec cover`): the drafts it wrote and the commit made. */
+export type Covered = {
+  project: string;
+  feature: string;
+  change: string;
+  created: { ref: string; path: string }[];
+  commit: Commit;
+  next: string[];
+};
+
 /**
  * What `run` answers (`casefile spec run`): the event and the commit the viewer
  * made. A retry of a result already recorded appends nothing and has no commit.

@@ -45,6 +45,8 @@ import { formatRoute } from "@/route";
 import { CaseEditor } from "@/views/CaseEditor";
 import { RunRecorder } from "@/views/RunRecorder";
 
+/** A write whose commit the page names: an edit, approve or retire, or the one that created the case. */
+type Written = Pick<Reviewed, "change" | "commit">;
 type Step = { do?: string; expect?: string };
 type HistoryEntry = {
   at?: string;
@@ -72,22 +74,29 @@ const MOVES: Record<string, { to: string; label: string; says: string }> = {
  * data, numbered steps, references; then history, runs, and the inherited
  * values with the file each came from.
  */
-export function CaseDetail({ caseRef }: { caseRef: string }) {
+export function CaseDetail({
+  caseRef,
+  written,
+}: {
+  caseRef: string;
+  /** The write that just created this case (#94): its page names the commit, as after an edit. */
+  written?: Written;
+}) {
   const [result, setResult] = useState<Result<Resolved> | null>(null);
   const [editing, setEditing] = useState(false);
-  const [saved, setSaved] = useState<Reviewed | null>(null);
+  const [saved, setSaved] = useState<Written | null>(written ?? null);
   const [actionErrors, setActionErrors] = useState<CasefileError[]>([]);
   useEffect(() => {
     let current = true;
     setResult(null);
     setEditing(false);
-    setSaved(null);
+    setSaved(written ?? null);
     setActionErrors([]);
     call<Resolved>("resolve", { ref: caseRef }).then((r) => current && setResult(r));
     return () => {
       current = false;
     };
-  }, [caseRef]);
+  }, [caseRef, written]);
 
   const project = caseRef.split("/")[0];
   const back = (
