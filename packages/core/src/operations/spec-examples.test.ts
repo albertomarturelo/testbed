@@ -60,13 +60,35 @@ describe("the workflow check", () => {
 
   it.each([
     ["no paths-ignore", tests.replace(/^ {4}paths-ignore:.*\n/m, ""), "the tests must ignore"],
-    ["the tested commit checked out", tests.replace("ref: ${{ github.ref_name }}", "ref: ${{ github.sha }}"), "branch tip"],
+    [
+      "the tested commit checked out",
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: GitHub Actions expressions
+      tests.replace("ref: ${{ github.ref_name }}", "ref: ${{ github.sha }}"),
+      "branch tip",
+    ],
     ["records pull requests", tests.replace(" && github.event_name == 'push'", ""), "pull request"],
     ["skips failed tests", tests.replace("always() && ", ""), "when the tests failed"],
-    ["commits everything staged", tests.replace('/message" -- "${files[@]}"', '/message"'), "-- <paths>"],
-    ["merges on rejection", tests.replace("git reset --hard FETCH_HEAD", "git pull --rebase"), "never resolve"],
-    ["a concurrency group", tests.replace("  record:\n", "  record:\n    concurrency: record\n"), "concurrency"],
-    ["validate skipping run files", validate.replace("branches: [main", 'paths-ignore: ["**/.runs/**"]\n    branches: [main'), "validate must not skip"],
+    [
+      "commits everything staged",
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: a shell array, not a template
+      tests.replace('/message" -- "${files[@]}"', '/message"'),
+      "-- <paths>",
+    ],
+    [
+      "merges on rejection",
+      tests.replace("git reset --hard FETCH_HEAD", "git pull --rebase"),
+      "never resolve",
+    ],
+    [
+      "a concurrency group",
+      tests.replace("  record:\n", "  record:\n    concurrency: record\n"),
+      "concurrency",
+    ],
+    [
+      "validate skipping run files",
+      validate.replace("branches: [main", 'paths-ignore: ["**/.runs/**"]\n    branches: [main'),
+      "validate must not skip",
+    ],
   ])("finds a template with %s", (_, text, problem) => {
     expect([tests, validate], "the replacement changed nothing").not.toContain(text);
     expect(workflowProblems(text).join("\n")).toContain(problem);

@@ -1,5 +1,8 @@
 import { parse } from "yaml";
 
+// biome-ignore lint/suspicious/noTemplateCurlyInString: a GitHub Actions expression, not a template
+const BRANCH_TIP = "${{ github.ref_name }}";
+
 /**
  * What a GitHub Actions workflow from `casefile spec ci` must keep (ADR
  * ci-commits-run-files §4–§5), as problems; `[]` when it keeps them all. A
@@ -44,15 +47,18 @@ export function workflowProblems(text: string): string[] {
     problems.push("record must have no concurrency group: GitHub cancels pending jobs");
   }
   const checkout = steps(record).find((step) => step.uses?.startsWith("actions/checkout@"));
-  if (checkout?.with?.ref !== "${{ github.ref_name }}") {
-    problems.push("record must check out the branch tip (ref: ${{ github.ref_name }})");
+  if (checkout?.with?.ref !== BRANCH_TIP) {
+    problems.push(`record must check out the branch tip (ref: ${BRANCH_TIP})`);
   }
   const script = scripts(record).join("\n");
   const required: [RegExp, string][] = [
     [/casefile ingest \S+/, "record must run casefile ingest"],
     [/--tested-commit "\$GITHUB_SHA"/, "ingest must pass --tested-commit"],
     [/--json/, "ingest must print --json, to read commit byte for byte"],
-    [/user\.name=casefile-ci -c user\.email=casefile-ci@casefile\.invalid/, "commit as casefile-ci"],
+    [
+      /user\.name=casefile-ci -c user\.email=casefile-ci@casefile\.invalid/,
+      "commit as casefile-ci",
+    ],
     [/commit -F \S+ -- /, "commit only the returned files (-- <paths>)"],
     [/git reset --hard/, "a rejected push resets to the new tip and ingests again"],
   ];
