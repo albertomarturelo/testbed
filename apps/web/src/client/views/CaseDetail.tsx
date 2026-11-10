@@ -1,9 +1,10 @@
-import { Archive, ArrowLeft, Check, Pencil } from "lucide-react";
+import { Archive, ArrowLeft, Check, ClipboardCheck, Pencil } from "lucide-react";
 import { Fragment, useEffect, useId, useState } from "react";
 import {
   type CasefileError,
   type CaseRuns,
   call,
+  type Recorded,
   type Resolved,
   type Result,
   type Reviewed,
@@ -23,7 +24,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -35,6 +43,7 @@ import {
 } from "@/components/ui/table";
 import { formatRoute } from "@/route";
 import { CaseEditor } from "@/views/CaseEditor";
+import { RunRecorder } from "@/views/RunRecorder";
 
 type Step = { do?: string; expect?: string };
 type HistoryEntry = {
@@ -308,7 +317,12 @@ export function CaseDetail({ caseRef }: { caseRef: string }) {
         </Card>
       )}
 
-      <RunsCard caseRef={caseRef} />
+      <RunsCard
+        caseRef={caseRef}
+        // A run changes no case file, but automation is derived from runs: read
+        // it again, so the badge is what core says (a human run proves nothing).
+        onRecorded={async () => setResult(await call<Resolved>("resolve", { ref: caseRef }))}
+      />
 
       <Card className="min-w-0">
         <CardHeader>
@@ -455,25 +469,76 @@ function MoveButton({
   );
 }
 
-/** The case's run events (`runs`), newest first, each with why it ended as it did. */
-function RunsCard({ caseRef }: { caseRef: string }) {
+/**
+ * The case's run events (`runs`), newest first, each with why it ended as it
+ * did; and "Record a result" (#93): what the QA saw executing the case by hand,
+ * through one `run` call, after which the list is read again.
+ */
+function RunsCard({ caseRef, onRecorded }: { caseRef: string; onRecorded: () => void }) {
   const [result, setResult] = useState<Result<CaseRuns> | null>(null);
+  const [recording, setRecording] = useState(false);
+  const [recorded, setRecorded] = useState<Recorded | null>(null);
   useEffect(() => {
     let current = true;
     setResult(null);
+    setRecording(false);
+    setRecorded(null);
     call<CaseRuns>("runs", { ref: caseRef }).then((r) => current && setResult(r));
     return () => {
       current = false;
     };
   }, [caseRef]);
 
+  const done = async (value: Recorded) => {
+    setRecording(false);
+    setRecorded(value);
+    setResult(await call<CaseRuns>("runs", { ref: caseRef }));
+    onRecorded();
+  };
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Runs</CardTitle>
         <CardDescription>Newest first, from the project&apos;s run files.</CardDescription>
+        {recording ? null : (
+          <CardAction>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setRecorded(null);
+                setRecording(true);
+              }}
+            >
+              <ClipboardCheck /> Record a result
+            </Button>
+          </CardAction>
+        )}
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex flex-col gap-4">
+        {recording ? (
+          <RunRecorder caseRef={caseRef} onRecorded={done} onCancel={() => setRecording(false)} />
+        ) : null}
+        {recorded === null ? null : (
+          <p role="status" className="text-sm">
+            {recorded.commit === undefined ? (
+              <>
+                Already recorded: {recorded.event.status} is still this case&apos;s last result in
+                run <span className="font-mono text-xs">{recorded.run}</span>. Nothing was written.
+              </>
+            ) : (
+              <>
+                Recorded {recorded.event.status} in run{" "}
+                <span className="font-mono text-xs">{recorded.run}</span>. Committed{" "}
+                <span className="font-mono text-xs" title={recorded.commit.sha}>
+                  {recorded.commit.sha.slice(0, 7)}
+                </span>
+                .
+              </>
+            )}
+          </p>
+        )}
         {result === null ? (
           <Skeleton className="h-16 w-full" />
         ) : !result.ok ? (

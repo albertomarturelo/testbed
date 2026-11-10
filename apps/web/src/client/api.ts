@@ -66,6 +66,20 @@ export type Reviewed = {
   next: string[];
 };
 
+/**
+ * What `run` answers (`casefile spec run`): the event and the commit the viewer
+ * made. A retry of a result already recorded appends nothing and has no commit.
+ */
+export type Recorded = {
+  ref: string;
+  run: string;
+  path: string;
+  appended: boolean;
+  event: { status: string };
+  commit?: Commit;
+  next: string[];
+};
+
 /** One line of a `.runs/*.jsonl` file, with that file (`casefile spec runs`). */
 export type CaseRun = {
   run_id: string;

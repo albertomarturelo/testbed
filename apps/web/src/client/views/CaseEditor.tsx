@@ -392,7 +392,7 @@ function Inherited({ items, noun }: { items: readonly FromCommons[]; noun: strin
 }
 
 /** A field's errors under it, with their code, as the CLI names them. */
-function FieldErrors({ errors }: { errors: readonly CasefileError[] }) {
+export function FieldErrors({ errors }: { errors: readonly CasefileError[] }) {
   if (errors.length === 0) return null;
   return (
     <FieldError>
