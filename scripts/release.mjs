@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// ADR 2026-10-20-release-process: @casefile/core and @casefile/cli share one
-// version. `set` writes it into both package.json files and into the pins of
+// ADR 2026-10-20-release-process: @casefile/core, @casefile/cli and
+// @casefile/web share one version. `set` writes it into their package.json files and into the pins of
 // the examples' toolchains (scripts/link-toolchain.mjs needs pin = source);
 // `check` makes the release workflow refuse a tag that does not match them.
 // Usage: node scripts/release.mjs set <x.y.z>
@@ -9,7 +9,8 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 
 const root = resolve(dirname(new URL(import.meta.url).pathname), "..");
-const PACKAGES = ["packages/core/package.json", "apps/cli/package.json"];
+// core, cli and web move together (ADR release-process §1, casefile-ui-command §1).
+const PACKAGES = ["packages/core/package.json", "apps/cli/package.json", "apps/web/package.json"];
 const SEMVER = /^\d+\.\d+\.\d+$/;
 const [command, value] = process.argv.slice(2);
 
@@ -18,7 +19,11 @@ if (command === "set" && SEMVER.test(value ?? "")) {
   for (const example of readdirSync(join(root, "examples"))) {
     const path = join("examples", example, ".casefile/package.json");
     if (!existsSync(join(root, path))) continue;
-    update(path, (pkg) => (pkg.dependencies["@casefile/cli"] = value));
+    update(path, (pkg) => {
+      pkg.dependencies["@casefile/cli"] = value;
+      // Examples open the viewer with `casefile ui`: pinned like a new workspace.
+      pkg.dependencies["@casefile/web"] = value;
+    });
   }
   console.log(
     `version ${value}: commit it as chore(release): v${value}, then tag v${value} on main`,

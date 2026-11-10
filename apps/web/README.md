@@ -1,12 +1,36 @@
 # @casefile/web — local UI
 
+The viewer of [casefile](https://github.com/albertomarturelo/testbed#readme).
 A view of a casefile workspace for the human who follows what the agent
 writes, and from #91 the host through which they write back (same origin +
 session token; the commit is run as them, ADR identity-override): projects, feature tree, cases with their automation status and
 latest run, a case's resolved values and where they come from, the query DSL,
-and `validate` findings. ADR: [local-ui-stack](../../docs/decisions/2026-10-17-local-ui-stack.md).
+and `validate` findings. ADR: [local-ui-stack](https://github.com/albertomarturelo/testbed/blob/main/docs/decisions/2026-10-17-local-ui-stack.md).
 
 ## Open it
+
+You do not install this package by hand. `casefile init` pins it next to the
+CLI in your repository's `.casefile/` directory, and the CLI starts it (ADR
+[casefile-ui-command](https://github.com/albertomarturelo/testbed/blob/main/docs/decisions/2026-11-09-casefile-ui-command.md)):
+
+```bash
+.casefile/node_modules/.bin/casefile ui            # http://127.0.0.1:4321
+.casefile/node_modules/.bin/casefile ui --port 5000
+```
+
+It is released together with `@casefile/cli` and `@casefile/core`, always at
+the same version; `casefile ui` refuses a viewer of another version
+(`ui.not_installed`). A workspace created before the viewer was published pins
+only the CLI. Add it:
+
+```bash
+npm install --prefix .casefile --ignore-scripts --save-exact @casefile/web@<the CLI's version>
+```
+
+Without the npm registry, pin it in `.casefile/package.json` and unpack the
+release's toolchain tarball (see the casefile README).
+
+### From a clone of casefile
 
 From the repository root:
 
@@ -25,9 +49,6 @@ press **Refresh**.
 Developing the client with hot reload: run `pnpm ui --cwd <workspace>` in one
 terminal and `pnpm --filter @casefile/web dev` in another; Vite proxies `/api`
 to port 4321.
-
-`casefile ui` arrives with the npm publishing decision (the CLI may not depend
-on another app).
 
 ## How it works
 

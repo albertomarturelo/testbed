@@ -2,7 +2,8 @@
 // ADR 2026-10-17-npm-scope-casefile §6: until @casefile/cli is published, a
 // workspace inside this repository links its toolchain to the source. Symlinks
 // <workspace>/.casefile/node_modules/@casefile/cli to apps/cli (and .bin/casefile
-// to its bin); that path is
+// to its bin) and @casefile/web to apps/web, so `casefile ui` finds the viewer
+// (ADR casefile-ui-command §7); that path is
 // gitignored by .casefile/.gitignore, so nothing linked is committed.
 // Usage: node scripts/link-toolchain.mjs <workspace dir>   (run `pnpm build` first)
 import {
@@ -46,6 +47,12 @@ symlinkSync("../@casefile/cli/dist/bin.js", bin);
 // tsc does not set the executable bit; npm would on install.
 chmodSync(join(cli, "dist/bin.js"), 0o755);
 console.log(`linked ${link} -> ${cli}`);
+// The viewer `casefile ui` runs: the source's, at the same version.
+const web = join(root, "apps/web");
+const webLink = join(workspace, ".casefile/node_modules/@casefile/web");
+if (existsSync(webLink) || isSymlink(webLink)) rmSync(webLink, { recursive: true, force: true });
+symlinkSync(relative(dirname(webLink), web), webLink, "dir");
+console.log(`linked ${webLink} -> ${web}`);
 
 function isSymlink(path) {
   try {

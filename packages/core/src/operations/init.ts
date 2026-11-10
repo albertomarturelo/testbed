@@ -5,7 +5,7 @@ import { z } from "zod";
 import { ok } from "../errors.js";
 import { CONFIG_FILE } from "../load/paths.js";
 import { ExactVersion } from "../schema/index.js";
-import { CASEFILE_PACKAGE } from "./extensions.js";
+import { CASEFILE_PACKAGE, WEB_PACKAGE } from "./extensions.js";
 import { defineOperation } from "./operation.js";
 import { writeIfAbsent } from "./write-if-absent.js";
 
@@ -58,7 +58,8 @@ function toolchainPackage(version: string): string {
   const pkg = {
     private: true,
     description: "casefile toolchain of this workspace; install with npm --prefix .casefile",
-    dependencies: { [CASEFILE_PACKAGE]: version },
+    // The viewer is installed by default, at the CLI's version (ADR casefile-ui-command §2).
+    dependencies: { [CASEFILE_PACKAGE]: version, [WEB_PACKAGE]: version },
   };
   return `${JSON.stringify(pkg, null, 2)}\n`;
 }

@@ -6,7 +6,8 @@ Accepted — 2026-10-20 (#97). Fulfils the release consequence of
 [npm-scope-casefile](2026-10-17-npm-scope-casefile.md) (§5: `private` until a
 release process exists). Amended by
 [release-toolchain-tarball](2026-11-09-release-toolchain-tarball.md): the
-release also carries the toolchain tarball and its checksum.
+release also carries the toolchain tarball and its checksum. Three packages
+(`@casefile/web` too) since [casefile-ui-command](2026-11-09-casefile-ui-command.md).
 
 ## Context
 

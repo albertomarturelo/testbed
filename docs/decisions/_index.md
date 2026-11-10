@@ -40,3 +40,4 @@
 | [2026-10-23-identity-override](2026-10-23-identity-override.md) | The person's identity: flag, then `CASEFILE_USER_EMAIL`, then git config | Accepted | 2026-10-23 |
 | [2026-11-09-release-toolchain-tarball](2026-11-09-release-toolchain-tarball.md) | Each release ships a toolchain tarball, so casefile installs without npm | Accepted | 2026-11-09 |
 | [2026-11-09-agent-runs-init-on-request](2026-11-09-agent-runs-init-on-request.md) | An agent may run `init` when the human asks; a quickstart tells it how | Accepted | 2026-11-09 |
+| [2026-11-09-casefile-ui-command](2026-11-09-casefile-ui-command.md) | `casefile ui` runs the viewer installed next to the CLI | Accepted | 2026-11-09 |

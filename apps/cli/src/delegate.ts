@@ -49,7 +49,10 @@ export async function planDelegation(
   if (decision.action === "run") return { kind: "self" };
   if (decision.action === "fail") return { kind: "fail", errors: [decision.error] };
 
-  const bin = await installedBin(join(root, TOOLCHAIN_DIR, "node_modules", CASEFILE_PACKAGE));
+  const bin = await installedBin(
+    join(root, TOOLCHAIN_DIR, "node_modules", CASEFILE_PACKAGE),
+    CASEFILE_BIN,
+  );
   if (bin === null) {
     return {
       kind: "fail",
@@ -78,8 +81,8 @@ export const reexec: Reexec = (plan, argv) => {
   return child.status ?? 1;
 };
 
-/** The `casefile` entry of a package's `bin`, as an absolute path; `null` when it has none. */
-async function installedBin(packageDir: string): Promise<string | null> {
+/** The `name` entry of a package's `bin`, as an absolute path; `null` when it has none. */
+export async function installedBin(packageDir: string, name: string): Promise<string | null> {
   const text = await readFile(join(packageDir, "package.json"), "utf8").catch(() => null);
   if (text === null) return null;
   let bin: unknown;
@@ -92,7 +95,7 @@ async function installedBin(packageDir: string): Promise<string | null> {
     typeof bin === "string"
       ? bin
       : bin !== null && typeof bin === "object"
-        ? (bin as Record<string, unknown>)[CASEFILE_BIN]
+        ? (bin as Record<string, unknown>)[name]
         : undefined;
   if (typeof entry !== "string") return null;
   const file = resolve(packageDir, entry);

@@ -1,6 +1,7 @@
 # ADR 2026-10-20-release-process: the maintainer tags v<x.y.z> on main after the
 # `chore(release)` PR; this workflow checks, packs, smoke-tests and publishes
-# @casefile/core then @casefile/cli with provenance. A manual run, or a PR that
+# @casefile/core, @casefile/web, then @casefile/cli with provenance (three
+# packages since ADR 2026-11-09-casefile-ui-command). A manual run, or a PR that
 # touches packaging, is a dry run.
 # ADR 2026-11-09-release-toolchain-tarball: it also builds the toolchain tarball
 # (the node_modules npm would install) from the same packed tarballs, tests it
@@ -16,6 +17,9 @@ on:
       - .github/workflows/release.yml
       - scripts/release.mjs
       - scripts/toolchain-tarball.mjs
+      - scripts/smoke-ui.mjs
+      - apps/web/package.json
+      - apps/web/README.md
       - packages/core/package.json
       - packages/core/README.md
       - apps/cli/package.json
@@ -63,6 +67,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/pack"
           (cd packages/core && pnpm pack --pack-destination "$RUNNER_TEMP/pack")
           (cd apps/cli && pnpm pack --pack-destination "$RUNNER_TEMP/pack")
+          (cd apps/web && pnpm pack --pack-destination "$RUNNER_TEMP/pack")
           ls -l "$RUNNER_TEMP/pack"
       - name: Smoke-test the packed CLI
         run: |
@@ -76,6 +81,11 @@ jobs:
           test -f casefile.yaml
           test -f .claude/skills/qa-cover/SKILL.md
           grep -q "\"@casefile/cli\": \"$version\"" .casefile/package.json
+          grep -q "\"@casefile/web\": \"$version\"" .casefile/package.json
+          # The toolchain as npm lays it out, from the packed tarballs (the
+          # version is not on npm yet), then the viewer through `casefile ui`.
+          npm install --prefix .casefile --ignore-scripts --no-save --no-audit --no-fund "$RUNNER_TEMP"/pack/*.tgz
+          node "$GITHUB_WORKSPACE/scripts/smoke-ui.mjs" .casefile/node_modules/.bin/casefile .
       - name: Build the toolchain tarball
         run: node scripts/toolchain-tarball.mjs "$RUNNER_TEMP/pack" "$RUNNER_TEMP/toolchain"
       - name: Smoke-test the toolchain tarball (no npm, no registry)
@@ -94,13 +104,14 @@ jobs:
           # has other findings (no projects), so the exit code is not checked.
           .casefile/node_modules/.bin/casefile validate --json > validate.json || true
           if grep -q '"toolchain\.' validate.json; then cat validate.json; exit 1; fi
+          node "$GITHUB_WORKSPACE/scripts/smoke-ui.mjs" .casefile/node_modules/.bin/casefile .
       - uses: actions/upload-artifact@v7
         with:
           name: toolchain
           path: ${{ runner.temp }}/toolchain/
           if-no-files-found: error
           retention-days: 7
-      - name: Publish core, then the CLI
+      - name: Publish core, web, then the CLI
         env:
           # The token reaches the step only when it publishes.
           NODE_AUTH_TOKEN: ${{ (github.event_name == 'push' && github.ref_type == 'tag') && secrets.NPM_TOKEN || '' }}
@@ -108,7 +119,7 @@ jobs:
           version=$(node -p "require('./apps/cli/package.json').version")
           flags="--access public"
           if [ "$PUBLISH" = "true" ]; then flags="$flags --provenance"; else flags="$flags --dry-run"; fi
-          for pkg in core cli; do
+          for pkg in core web cli; do
             # npm refuses a version it already has, even with --dry-run (#123).
             # Publishing, that is a rerun after a partial publish; dry, a PR
             # between releases. Either way the tarball was packed and smoke-tested.

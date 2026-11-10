@@ -8,7 +8,7 @@
 > validator (finding contract, code catalogue, level runner; levels workspace → file
 > schemas → cross-file → resolution → environment, fed by `loadWorkspace` and
 > `loadToolchain`); `apps/cli` renders the registry and `apps/web` is the
-> local UI (`pnpm ui`; reads open, writes same-origin + token, committed as the human); the
+> local UI (`casefile ui` runs the installed `@casefile/web` as a child process, ADR casefile-ui-command; `pnpm ui` from source; reads open, writes same-origin + token, committed as the human); the
 > rest is the **target** architecture taken from the founding brief. Anything not stated in the brief is marked
 > "(inferred — confirm)". Decisions are recorded in [decisions/](decisions/_index.md).
 

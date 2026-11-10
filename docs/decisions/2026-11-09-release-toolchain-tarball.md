@@ -5,6 +5,7 @@
 Accepted — 2026-11-09. Amends [casefile-toolchain-dir](2026-10-15-casefile-toolchain-dir.md)
 (§1 "managed with npm only", §2 and §5: a second way to fill `.casefile/node_modules`)
 and [release-process](2026-10-20-release-process.md) (§4: one more release asset).
+The tarball also carries the viewer since [casefile-ui-command](2026-11-09-casefile-ui-command.md).
 
 ## Context
 

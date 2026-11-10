@@ -5,7 +5,8 @@
 Accepted — 2026-10-17 (#63). Amends the package names of
 [build-and-test-tooling](2026-10-15-build-and-test-tooling.md) §4 and
 [apps-vs-packages](2026-10-15-apps-vs-packages.md) rule 4, and the pinned package of
-[casefile-toolchain-dir](2026-10-15-casefile-toolchain-dir.md).
+[casefile-toolchain-dir](2026-10-15-casefile-toolchain-dir.md). `@casefile/web` is
+published since [casefile-ui-command](2026-11-09-casefile-ui-command.md).
 
 ## Context
 
