@@ -40,6 +40,10 @@ ls casefile.yaml .casefile/package.json 2>/dev/null
 - `casefile.yaml` already exists: casefile was set up before. Skip to step 5
   only if `.casefile/node_modules` is missing (use the version pinned in
   `.casefile/package.json`); otherwise go to step 7.
+- The human asks for the viewer in a repository set up with `0.1.1`: tell
+  them the plan first, then set both `@casefile/cli` and `@casefile/web` to
+  the new version in `.casefile/package.json`, delete
+  `.casefile/node_modules`, and redo step 5 with that version.
 
 ## 2. Pick the version
 
@@ -49,7 +53,8 @@ Unless the human named one, use the latest release:
 curl -fsSLI -o /dev/null -w '%{url_effective}\n' https://github.com/albertomarturelo/testbed/releases/latest
 ```
 
-The URL ends in `/tag/v<x.y.z>`. The toolchain tarball exists from `v0.1.1`.
+The URL ends in `/tag/v<x.y.z>`. The toolchain tarball exists from `v0.1.1`;
+from `v0.1.2` it carries the viewer.
 
 ## 3. Pick the channel
 
@@ -152,5 +157,6 @@ When the setup procedure ends, tell the human:
   clone repeats step 5 with the pinned version; to upgrade, change the pin in
   `.casefile/package.json`, delete `.casefile/node_modules` and unpack the new
   tarball
-- the viewer is not installed by either channel yet; it runs from a clone of
-  the casefile repository
+- how to open the viewer: `.casefile/node_modules/.bin/casefile ui`, then
+  <http://127.0.0.1:4321> (from `v0.1.2`; both channels install it). Do not
+  start it yourself unless they ask: it runs until stopped

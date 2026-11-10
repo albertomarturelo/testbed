@@ -3,10 +3,9 @@
 **Your test cases live in your repo, next to the code they verify. Your AI agent writes and maintains them; you review.**
 
 > **Preview (`0.x`).** casefile is under active development: a breaking change
-> bumps the minor version. The CLI is on npm as `@casefile/cli`; the viewer
-> still runs from a clone of this repository until the next release brings
-> `casefile ui`. *Today* works; *Next* is planned,
-> not built.
+> bumps the minor version. The CLI is on npm as `@casefile/cli` and
+> opens the viewer with `casefile ui`. *Today* works; *Next* is planned, not
+> built.
 
 ## What it does
 
@@ -108,9 +107,9 @@ npx @casefile/cli init --skills-into .claude/skills
 ```
 
 Use `.agents/skills` instead for Codex. Never `npx casefile`: that npm name is
-an unrelated package. `init` pins `@casefile/cli` (and, from the next release,
-the viewer `@casefile/web`) in `.casefile/package.json`;
-the setup skill installs it there (`npm install --prefix .casefile
+an unrelated package. `init` pins `@casefile/cli` and the viewer
+`@casefile/web` in `.casefile/package.json`;
+the setup skill installs them there (`npm install --prefix .casefile
 --ignore-scripts`), so every clone of your repository runs the same version.
 
 ### Let your agent install it
@@ -129,7 +128,8 @@ continues with the setup.
 If your network blocks `registry.npmjs.org` but reaches GitHub, use the
 toolchain tarball attached to each
 [release](https://github.com/albertomarturelo/testbed/releases) from `v0.1.1`.
-It is the `node_modules/` npm would install (casefile, `yaml`, `zod`), built
+It is the `node_modules/` npm would install (casefile, its viewer from
+`v0.1.2`, `yaml`, `zod`), built
 from the same packages
 ([why](docs/decisions/2026-11-09-release-toolchain-tarball.md)). From your
 repository's root, with `v` set to the release you want:
@@ -194,10 +194,9 @@ repository (the toolchain `init` pinned); the skills already call it that way.
    ```
 
 4. **Look at it**: `casefile overview` in the terminal, and the viewer with
-   `casefile ui`, then open <http://127.0.0.1:4321>. `casefile ui` is on
-   `main` and ships in the next release; until then, from a clone of this
-   repository (built as in *From source*), run
-   `pnpm ui --cwd /absolute/path/to/your-repo`.
+   `casefile ui`, then open <http://127.0.0.1:4321> (`--port <n>` for another
+   port). A repository set up before `0.1.2` pins only the CLI: `casefile ui`
+   answers `ui.not_installed` and its hint says how to add the viewer.
 
 Every command has `--help`, `--json` for scripts and agents, and a SPEC:
 
@@ -216,7 +215,7 @@ Every command has `--help`, `--json` for scripts and agents, and a SPEC:
 | `casefile resolve` | Shows a case after inheritance, with where each value came from, and its Markdown body |
 | `casefile id next` | The next free case id of a project |
 | `casefile spec <name>` | Prints the SPEC of an operation or topic |
-| `casefile ui` | Opens the viewer for this workspace on `127.0.0.1`; it runs the `@casefile/web` that `init` pins next to the CLI (on `main`, ships in the next release) |
+| `casefile ui` | Opens the viewer for this workspace on `127.0.0.1`; it runs the `@casefile/web` that `init` pins next to the CLI |
 | `casefile whoami` | Who writes are made as: `CASEFILE_USER_EMAIL` when set, else `git config user.email` |
 
 ## Principles
@@ -244,12 +243,12 @@ The reasons behind each one are in [docs/decisions](docs/decisions/_index.md).
 
 ## Today / Next
 
-| Today (`0.1.1`) | Next (ranked by the [authoring loop](docs/decisions/2026-10-19-authoring-loop-first.md)) |
+| Today (`0.1.2`) | Next (ranked by the [authoring loop](docs/decisions/2026-10-19-authoring-loop-first.md)) |
 |---|---|
 | `init`, `project add`, `validate`, `cover`, `review` (edit, approve, retire a case), `run` (record a result by hand), `overview`, `runs`, `query`, `resolve`, `id next`, `whoami`, `spec` | |
 | Skills `casefile-setup` and `qa-cover` | Skills `qa-bootstrap` (a project's feature tree and first drafts from its code) and `qa-review` (#85) |
-| Local UI (`pnpm ui`, from a clone): projects, feature tree with coverage, cases that read as documents, each case's runs and why they failed; the QA edits, approves and retires a case from its page ([decided](docs/decisions/2026-10-19-human-writes-through-operations.md)) | Record a result and create a case from the viewer (#93, #94); live reload (#26) |
-| `@casefile/cli` and `@casefile/core` on npm, published by CI with provenance ([release process](docs/decisions/2026-10-20-release-process.md)); a toolchain tarball on each GitHub release for networks without the npm registry ([decided](docs/decisions/2026-11-09-release-toolchain-tarball.md)) | `casefile ui`: the viewer from the installed CLI, without a clone, on npm and in the tarball. On `main`, ships in the next release ([decided](docs/decisions/2026-11-09-casefile-ui-command.md)) |
+| Local UI (`casefile ui`, installed with the CLI): projects, feature tree with coverage, cases that read as documents, each case's runs and why they failed; the QA edits, approves and retires a case from its page ([decided](docs/decisions/2026-10-19-human-writes-through-operations.md)) | Record a result and create a case from the viewer (#93, #94); live reload (#26) |
+| `@casefile/cli`, `@casefile/web` (the viewer, [decided](docs/decisions/2026-11-09-casefile-ui-command.md)) and `@casefile/core` on npm, published by CI with provenance ([release process](docs/decisions/2026-10-20-release-process.md)); a toolchain tarball on each GitHub release for networks without the npm registry ([decided](docs/decisions/2026-11-09-release-toolchain-tarball.md)) | |
 | `ingest junit` (Playwright, Surefire), keeping failure messages and attachments | |
 | Release gate evaluation in core | Complements, when the real case needs them: CTRF and Allure, environment-blocked results, CI run files ([decided](docs/decisions/2026-10-17-ci-commits-run-files.md)), `casefile gates`, MCP, Zephyr and Xray bridges |
 
@@ -270,13 +269,13 @@ pnpm lint
 ```
 
 **Releasing** ([ADR release-process](docs/decisions/2026-10-20-release-process.md)):
-`@casefile/core` and `@casefile/cli` share one version. Open a PR with
+`@casefile/core`, `@casefile/cli` and `@casefile/web` share one version. Open a PR with
 `node scripts/release.mjs set <x.y.z>` (it also updates the examples' pins),
 titled `chore(release): v<x.y.z>`. This README is the npm page of
 `@casefile/cli` and npm keeps it per version, so the same PR updates the
 install section and the Today / Next table when the release changes them. After it merges, the maintainer tags that
 commit `v<x.y.z>` on `main` and pushes the tag; the Release workflow checks,
-packs, smoke-tests and publishes both with provenance, and attaches the
+packs, smoke-tests and publishes them with provenance, and attaches the
 toolchain tarball and its checksum to the GitHub release. Running the workflow
 by hand is a dry run.
 
