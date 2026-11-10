@@ -8,13 +8,14 @@ import { parse } from "yaml";
  * npm-login example are checked by it, so neither drifts from the rules.
  */
 export function workflowProblems(text: string): string[] {
-  let workflow: Workflow;
+  let workflow: Workflow | null;
   try {
-    workflow = parse(text) as Workflow;
+    workflow = parse(text) as Workflow | null;
   } catch (error) {
     return [`not YAML: ${(error as Error).message}`];
   }
-  const push = workflow?.on?.push;
+  if (workflow === null || typeof workflow !== "object") return ["not a workflow"];
+  const push = workflow.on?.push;
   if (push === undefined || push === null) return ["no push trigger: nothing would be recorded"];
   const steps = (job: Job | undefined) => job?.steps ?? [];
   const scripts = (job: Job | undefined) => steps(job).map((step) => step.run ?? "");
@@ -70,4 +71,4 @@ type Job = {
 type Workflow = {
   on?: { push?: { "paths-ignore"?: string[] } | null };
   jobs?: Record<string, Job>;
-} | null;
+};
