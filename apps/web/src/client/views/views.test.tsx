@@ -851,6 +851,204 @@ describe("CaseDetail: edit, approve and retire (#92)", () => {
   });
 });
 
+describe("CaseDetail: record a result (#93)", () => {
+  const path = "apps/web/context/tests/.runs/manual-2026-11-09.jsonl";
+  /** A case linked to a test that no CI or agent run reported: `linked`, whatever a human records. */
+  const linked = () => ({
+    ok: true as const,
+    value: {
+      ref: "web/TC-0001",
+      path: "apps/web/context/tests/login/TC-0001.md",
+      inherited: [],
+      case: {
+        id: "TC-0001",
+        title: "Sign in",
+        state: "active",
+        priority: "P2",
+        automation: { status: "manual", ref: "login.spec.ts::signs in", eligible: true },
+        steps: [{ do: "Open the login page", expect: "The form shows" }],
+      },
+    },
+  });
+  let recordedRuns: Record<string, unknown>[] = [];
+  const recorded = (status: string, extra: Record<string, unknown> = {}) => {
+    const event = {
+      run_id: "manual-2026-11-09",
+      case_id: "TC-0001",
+      status,
+      executor: "human:qa@acme.example",
+      at: "2026-11-09T10:00:00Z",
+      ...extra,
+    };
+    recordedRuns = [{ ...event, path }, ...recordedRuns];
+    return {
+      ok: true as const,
+      value: {
+        ref: "web/TC-0001",
+        run: "manual-2026-11-09",
+        path,
+        appended: true,
+        event,
+        commit: {
+          message: `run(login): record TC-0001 as ${status}\n\nCasefile-Run: manual-2026-11-09`,
+          files: [path],
+          sha: "3333333ccccccc",
+        },
+        next: [],
+      },
+    };
+  };
+  const runCalls = () => calls.filter((c) => c.name === "run").map((c) => c.input);
+
+  beforeEach(() => {
+    recordedRuns = [];
+    answers.resolve = linked;
+    answers.runs = () => ({ ok: true, value: { ref: "web/TC-0001", runs: recordedRuns } });
+  });
+
+  it("records a passed result with one run call, then shows it; the automation badge stays", async () => {
+    const user = userEvent.setup();
+    answers.run = (input) => recorded(String(input.status));
+    render(<CaseDetail caseRef="web/TC-0001" />);
+    expect(await screen.findByText("Never ran.")).toBeTruthy();
+    expect(screen.getByText("linked")).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: "Record a result" }));
+    const form = screen.getByRole("form", { name: "Record a result" });
+    // Nothing is preselected, and the four results are the ones `run` takes.
+    const result = within(form).getByLabelText("Result") as HTMLSelectElement;
+    expect(result.value).toBe("");
+    expect([...result.options].map((o) => o.value)).toEqual([
+      "",
+      "passed",
+      "failed",
+      "blocked",
+      "skipped",
+    ]);
+    await user.selectOptions(result, "passed");
+    await user.click(within(form).getByRole("button", { name: "Record" }));
+
+    const status = await screen.findByRole("status");
+    expect(status.textContent).toBe("Recorded passed in run manual-2026-11-09. Committed 3333333.");
+    // Only what the QA filled is sent.
+    expect(runCalls()).toEqual([{ ref: "web/TC-0001", status: "passed" }]);
+    // The form closes and the list is read again: the new event is there.
+    expect(screen.queryByRole("form", { name: "Record a result" })).toBeNull();
+    expect(await screen.findByText("human:qa@acme.example")).toBeTruthy();
+    expect(screen.queryByText("Never ran.")).toBeNull();
+    // A human run proves nothing: the case is read again and is still only linked.
+    expect(calls.filter((c) => c.name === "resolve")).toHaveLength(2);
+    expect(screen.getByText("linked")).toBeTruthy();
+    expect(screen.queryByText("automated")).toBeNull();
+  });
+
+  it("records a failed result with a multi-line note and where it ran", async () => {
+    const user = userEvent.setup();
+    answers.run = (input) => {
+      const { ref: _ref, status, ...rest } = input;
+      return recorded(String(status), rest);
+    };
+    render(<CaseDetail caseRef="web/TC-0001" />);
+    await user.click(await screen.findByRole("button", { name: "Record a result" }));
+    await user.selectOptions(screen.getByLabelText("Result"), "failed");
+    await user.type(
+      screen.getByLabelText("Note"),
+      "  The banner says Something went wrong{Enter}instead of Wrong password  ",
+    );
+    await user.type(screen.getByLabelText("Environment"), " staging ");
+    await user.type(screen.getByLabelText("Build"), "web-2.1.0+9");
+    await user.click(screen.getByRole("button", { name: "Record" }));
+
+    expect((await screen.findByRole("status")).textContent).toContain("Recorded failed");
+    // The note keeps its line break; blank edges and empty fields are not sent.
+    expect(runCalls()).toEqual([
+      {
+        ref: "web/TC-0001",
+        status: "failed",
+        note: "The banner says Something went wrong\ninstead of Wrong password",
+        env: "staging",
+        build: "web-2.1.0+9",
+      },
+    ]);
+    const note = await screen.findByRole("region", {
+      name: "Note of the failed run manual-2026-11-09",
+    });
+    expect(note.textContent).toBe(
+      "The banner says Something went wrong\ninstead of Wrong password",
+    );
+    expect(screen.getByText("staging")).toBeTruthy();
+    expect(screen.getByText("web-2.1.0+9")).toBeTruthy();
+  });
+
+  it("asks for a result before calling, and shows the operation's errors in place", async () => {
+    const user = userEvent.setup();
+    answers.run = () => ({
+      ok: false,
+      errors: [
+        { code: "operation.invalid_input", field: "env", message: "Too big" },
+        {
+          code: "identity.missing",
+          field: "identity",
+          message: "no identity: set CASEFILE_USER_EMAIL",
+        },
+      ],
+    });
+    render(<CaseDetail caseRef="web/TC-0001" />);
+    await user.click(await screen.findByRole("button", { name: "Record a result" }));
+    await user.click(screen.getByRole("button", { name: "Record" }));
+    expect(screen.getByText("Choose what happened.")).toBeTruthy();
+    expect(screen.getByLabelText("Result").getAttribute("aria-invalid")).toBe("true");
+    expect(runCalls()).toEqual([]);
+
+    await user.selectOptions(screen.getByLabelText("Result"), "blocked");
+    expect(screen.queryByText("Choose what happened.")).toBeNull();
+    await user.type(screen.getByLabelText("Environment"), "staging");
+    await user.click(screen.getByRole("button", { name: "Record" }));
+
+    // An error on a form input sits under it; any other shows whole.
+    const under = (await screen.findByText("Too big")).closest('[data-slot="field"]');
+    expect(under?.querySelector("input")?.value).toBe("staging");
+    expect(under?.textContent).toContain("operation.invalid_input");
+    expect(screen.getByLabelText("Environment").getAttribute("aria-invalid")).toBe("true");
+    const whole = screen
+      .getByText("no identity: set CASEFILE_USER_EMAIL")
+      .closest('[role="alert"]');
+    expect(whole?.textContent).toContain("identity.missing");
+    // Nothing was recorded: the form stays with what the QA typed, and no status line.
+    expect(screen.getByRole("form", { name: "Record a result" })).toBeTruthy();
+    expect((screen.getByLabelText("Result") as HTMLSelectElement).value).toBe("blocked");
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(screen.getByText("Never ran.")).toBeTruthy();
+  });
+
+  it("says so when the result was already recorded, and Cancel calls nothing", async () => {
+    const user = userEvent.setup();
+    answers.run = () => ({
+      ok: true,
+      value: {
+        ref: "web/TC-0001",
+        run: "manual-2026-11-09",
+        path,
+        appended: false,
+        event: { status: "skipped" },
+        next: [],
+      },
+    });
+    render(<CaseDetail caseRef="web/TC-0001" />);
+    await user.click(await screen.findByRole("button", { name: "Record a result" }));
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("form", { name: "Record a result" })).toBeNull();
+    expect(runCalls()).toEqual([]);
+
+    await user.click(screen.getByRole("button", { name: "Record a result" }));
+    await user.selectOptions(screen.getByLabelText("Result"), "skipped");
+    await user.click(screen.getByRole("button", { name: "Record" }));
+    expect((await screen.findByRole("status")).textContent).toBe(
+      "Already recorded: skipped is still this case's last result in run manual-2026-11-09. Nothing was written.",
+    );
+  });
+});
+
 describe("QueryView", () => {
   it("runs the query in the selected project and points at a DSL error", async () => {
     answers.query = () => ({
