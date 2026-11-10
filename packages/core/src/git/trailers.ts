@@ -4,6 +4,12 @@
  */
 export const AGENT_AUTHOR = "casefile-agent <casefile-agent@casefile.invalid>";
 
+/**
+ * The identity CI commits run files with (ADR ci-commits-run-files §3): the
+ * same in every repository and CI vendor, `.invalid` for the same reason.
+ */
+export const CI_AUTHOR = "casefile-ci <casefile-ci@casefile.invalid>";
+
 export type CommitTrailers = {
   /** The human who asked: `git config user.email` or the inbox item's author. */
   requestedBy: string;
@@ -35,17 +41,22 @@ export type RunTrailers = {
   run: string;
   /** The events' `executor`: `human:<email>`, `agent:<name>`, `ci:<name>`. */
   executor: string;
+  /** The commit the tests ran on, when the host passes it (`$GITHUB_SHA`). */
+  testedCommit?: string;
 };
 
 /**
  * The commit message of a run file (ADR ci-commits-run-files §2): the trailers
- * `Casefile-Run:` and `Executor:` replace `Requested-by:` and `Casefile-Change:`,
- * since a run writes no `history` entry and answers no one's request.
+ * `Casefile-Run:`, `Executor:` and, when given, `Tested-Commit:` replace
+ * `Requested-by:` and `Casefile-Change:`, since a run writes no `history` entry
+ * and answers no one's request.
  */
 export function runCommitMessage(subject: string, trailers: RunTrailers): string {
+  const tested = trailers.testedCommit;
   return message(subject, [
     `Casefile-Run: ${line(trailers.run)}`,
     `Executor: ${line(trailers.executor)}`,
+    ...(tested === undefined ? [] : [`Tested-Commit: ${line(tested)}`]),
   ]);
 }
 
