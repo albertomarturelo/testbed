@@ -6,7 +6,7 @@ import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
-import { FieldErrors } from "@/views/CaseEditor";
+import { FieldErrors } from "@/views/CaseFields";
 
 /** The results `run` accepts (`casefile spec run`). */
 const STATUSES = ["passed", "failed", "blocked", "skipped"] as const;

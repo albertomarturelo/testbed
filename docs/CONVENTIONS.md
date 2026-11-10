@@ -79,3 +79,7 @@ Corrections are appended here in the same change that fixes the code.
     (`set.<field>…` for `review`) shows under that input with its code; every
     other error (`ui.*`, `review.stale`, …) shows whole with `ErrorList`.
     Values the case inherits from commons are shown read-only, never sent.
+    The case's fields are one component, `views/CaseFields.tsx`, placed by
+    `placeErrors(errors, prefix)` with the prefix the operation names the case
+    with (`set` for `review`, `cases.0` for `cover`); a new case form reuses it
+    rather than copying fields (#94).

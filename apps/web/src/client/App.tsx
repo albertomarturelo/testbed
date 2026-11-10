@@ -1,8 +1,8 @@
-import { Eye, EyeOff, FilePen, RefreshCw } from "lucide-react";
+import { Eye, EyeOff, FilePen, Plus, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { call, type Overview, type Result, type Session, session } from "@/api";
+import { type Covered, call, type Overview, type Result, type Session, session } from "@/api";
 import { ErrorList } from "@/components/ErrorList";
-import { FeatureTree, inFeature } from "@/components/FeatureTree";
+import { compareFeatures, FeatureTree, inFeature } from "@/components/FeatureTree";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { DRAFT, formatRoute, parseRoute, type Route, type StateFilter } from "@/route";
 import { CaseDetail } from "@/views/CaseDetail";
 import { CaseList } from "@/views/CaseList";
+import { NewCase } from "@/views/NewCase";
 import { QueryView } from "@/views/QueryView";
 import { ValidateView } from "@/views/ValidateView";
 
@@ -56,12 +57,23 @@ export function App() {
   const route = useRoute();
   const [overview, setOverview] = useState<Result<Overview> | null>(null);
   const [reload, setReload] = useState(0);
+  /** The last case created here: its page names the commit until core derives it (#51). */
+  const [created, setCreated] = useState<Covered | null>(null);
+  // Said once, like an edit's commit: leaving the new case's page forgets it.
+  useEffect(() => {
+    setCreated((last) =>
+      last !== null && route.view === "case" && last.created.some((c) => c.ref === route.ref)
+        ? last
+        : null,
+    );
+  }, [route]);
 
   const load = useCallback(() => {
     call<Overview>("overview").then(setOverview);
   }, []);
   useEffect(load, [load]);
   const refresh = () => {
+    setCreated(null);
     load();
     setReload((n) => n + 1);
   };
@@ -72,6 +84,15 @@ export function App() {
     .filter((p) => project === undefined || p.name === project)
     .reduce((sum, p) => sum + p.unresolved, 0);
   const tab = (view: "cases" | "query" | "validate") => formatRoute({ view, project });
+  // A case page or the new-case form is part of the case list: switching project goes back to it.
+  const listView = route.view === "case" || route.view === "new" ? "cases" : route.view;
+  const onCreated = (covered: Covered) => {
+    setCreated(covered);
+    // The tree and the list read the workspace again, so the new case is in them.
+    load();
+    const ref = covered.created[0]?.ref;
+    if (ref !== undefined) window.location.hash = formatRoute({ view: "case", ref });
+  };
 
   return (
     <div className="flex min-h-svh flex-col">
@@ -86,7 +107,7 @@ export function App() {
             <nav aria-label="Projects" className="flex flex-wrap gap-1 text-sm">
               <ProjectLink
                 href={formatRoute({
-                  view: route.view === "case" ? "cases" : route.view,
+                  view: listView,
                   project: undefined,
                 })}
                 active={project === undefined}
@@ -97,7 +118,7 @@ export function App() {
                 <ProjectLink
                   key={p.name}
                   href={formatRoute({
-                    view: route.view === "case" ? "cases" : route.view,
+                    view: listView,
                     project: p.name,
                   })}
                   active={project === p.name}
@@ -109,7 +130,7 @@ export function App() {
           </>
         ) : null}
         <nav aria-label="Views" className="ml-auto flex gap-1 text-sm">
-          <ProjectLink href={tab("cases")} active={route.view === "cases" || route.view === "case"}>
+          <ProjectLink href={tab("cases")} active={listView === "cases"}>
             Cases
           </ProjectLink>
           <ProjectLink href={tab("query")} active={route.view === "query"}>
@@ -143,7 +164,20 @@ export function App() {
               </p>
             ) : null}
             {route.view === "case" ? (
-              <CaseDetail key={`${route.ref}:${reload}`} caseRef={route.ref} />
+              <CaseDetail
+                key={`${route.ref}:${reload}`}
+                caseRef={route.ref}
+                written={created?.created.some((c) => c.ref === route.ref) ? created : undefined}
+              />
+            ) : route.view === "new" ? (
+              <NewCase
+                key={`${route.project ?? ""}:${route.feature ?? ""}`}
+                projects={projects.map((p) => p.name)}
+                features={featuresByProject(overview.value)}
+                project={route.project}
+                feature={route.feature}
+                onCreated={onCreated}
+              />
             ) : route.view === "query" ? (
               <QueryView key={project ?? ""} project={project} />
             ) : route.view === "validate" ? (
@@ -191,6 +225,11 @@ function CasesPage(props: {
       </aside>
       <section className="flex min-w-0 flex-1 flex-col gap-2">
         <div className="flex flex-wrap justify-end gap-1">
+          <Button asChild size="sm" className="mr-auto">
+            <a href={formatRoute({ view: "new", project, feature })}>
+              <Plus /> New case
+            </a>
+          </Button>
           <Button
             variant={draftsOnly ? "secondary" : "ghost"}
             size="sm"
@@ -226,6 +265,22 @@ function CasesPage(props: {
         />
       </section>
     </div>
+  );
+}
+
+/** Each project's features, parents included, in tree order: what a new case can go under. */
+function featuresByProject(overview: Overview): Map<string, string[]> {
+  const byProject = new Map<string, Set<string>>();
+  for (const row of overview.cases) {
+    const features = byProject.get(row.project) ?? new Set<string>();
+    const parts = row.feature.split("/");
+    parts.forEach((_, i) => {
+      features.add(parts.slice(0, i + 1).join("/"));
+    });
+    byProject.set(row.project, features);
+  }
+  return new Map(
+    [...byProject].map(([project, features]) => [project, [...features].sort(compareFeatures)]),
   );
 }
 

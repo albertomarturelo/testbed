@@ -7,6 +7,7 @@ import { type CaseRow, forgetSession, type Result } from "@/api";
 import { FeatureTree, featureOpenKey, tally, tallyLine } from "@/components/FeatureTree";
 import { CaseDetail } from "@/views/CaseDetail";
 import { CaseList } from "@/views/CaseList";
+import { NewCase } from "@/views/NewCase";
 import { QueryView } from "@/views/QueryView";
 import { ValidateView } from "@/views/ValidateView";
 
@@ -1046,6 +1047,233 @@ describe("CaseDetail: record a result (#93)", () => {
     expect((await screen.findByRole("status")).textContent).toBe(
       "Already recorded: skipped is still this case's last result in run manual-2026-11-09. Nothing was written.",
     );
+  });
+});
+
+describe("NewCase: create a case (#94)", () => {
+  const covered = {
+    ok: true as const,
+    value: {
+      project: "web",
+      feature: "login",
+      change: "c-9",
+      created: [{ ref: "web/TC-0003", path: "apps/web/context/tests/login/TC-0003.md" }],
+      commit: {
+        message: "cover(login): TC-0003 Lock after five tries\n\nCasefile-Change: c-9",
+        files: ["apps/web/context/tests/login/TC-0003.md"],
+        sha: "3333333ccccccc",
+      },
+      next: [],
+    },
+  };
+  const covers = () => calls.filter((c) => c.name === "cover").map((c) => c.input);
+  const features = new Map([["web", ["login", "login/errors"]]]);
+
+  it("creates one case with cover, sending only what was filled", async () => {
+    const user = userEvent.setup();
+    answers.cover = () => covered;
+    const onCreated = vi.fn();
+    render(
+      <NewCase
+        projects={["web"]}
+        features={features}
+        project="web"
+        feature="login"
+        onCreated={onCreated}
+      />,
+    );
+    // The feature the list was on is filled in; one empty step is there to write.
+    expect((screen.getByLabelText("Feature") as HTMLInputElement).value).toBe("login");
+    expect(screen.queryByLabelText("Project")).toBeNull();
+    // The form cannot show what commons give the case: it says who decides when unticked.
+    expect(screen.getByText(/Left unticked, the feature's commons decide/)).toBeTruthy();
+
+    await user.type(screen.getByLabelText("Title"), "Lock after five tries");
+    await user.selectOptions(screen.getByLabelText("Priority"), "P1");
+    await user.type(screen.getByLabelText("Step 1 action"), "Fail to sign in five times");
+    await user.type(screen.getByLabelText("Step 1 expected result"), "The account is locked");
+    await user.click(screen.getByRole("button", { name: "Add precondition" }));
+    await user.type(screen.getByLabelText("Precondition 1"), "An account exists");
+    await user.click(screen.getByRole("button", { name: "Add label" }));
+    await user.type(screen.getByLabelText("Label 1 key"), "risk");
+    await user.type(screen.getByLabelText("Label 1 value"), "auth");
+    await user.click(screen.getByRole("button", { name: "Create" }));
+
+    await vi.waitFor(() => expect(onCreated).toHaveBeenCalledWith(covered.value));
+    // The server adds actor `human`, the identity and `via`; core writes `origin: human`.
+    expect(covers()).toEqual([
+      {
+        project: "web",
+        feature: "login",
+        cases: [
+          {
+            title: "Lock after five tries",
+            priority: "P1",
+            preconditions: ["An account exists"],
+            steps: [{ do: "Fail to sign in five times", expect: "The account is locked" }],
+            labels: { risk: "auth" },
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("puts a duplicate title, an undeclared label and a bad feature on their fields", async () => {
+    const user = userEvent.setup();
+    answers.cover = () => ({
+      ok: false,
+      errors: [
+        {
+          code: "cover.duplicate_title",
+          field: "cases.0.title",
+          message: "'Sign in' is already the title of TC-0001 in 'login'",
+        },
+        {
+          code: "label.undeclared",
+          field: "cases.0.labels.team",
+          message: "label 'team' is not declared",
+        },
+        { code: "operation.invalid_input", field: "feature", message: "Invalid string" },
+        { code: "git.commit_failed", message: "the commit failed" },
+      ],
+    });
+    const onCreated = vi.fn();
+    render(<NewCase projects={["web"]} features={features} project="web" onCreated={onCreated} />);
+    await user.type(screen.getByLabelText("Feature"), "Login Page");
+    await user.type(screen.getByLabelText("Title"), "Sign in");
+    await user.type(screen.getByLabelText("Step 1 action"), "Sign in");
+    await user.type(screen.getByLabelText("Step 1 expected result"), "Home opens");
+    await user.click(screen.getByRole("button", { name: "Add label" }));
+    await user.type(screen.getByLabelText("Label 1 key"), "team");
+    await user.type(screen.getByLabelText("Label 1 value"), "web");
+    await user.click(screen.getByRole("button", { name: "Create" }));
+
+    const title = screen.getByLabelText("Title");
+    await vi.waitFor(() => expect(title.getAttribute("aria-invalid")).toBe("true"));
+    const fieldOf = (input: HTMLElement) => input.closest("[data-slot=field]") as HTMLElement;
+    expect(within(fieldOf(title)).getByText("cover.duplicate_title")).toBeTruthy();
+    const feature = screen.getByLabelText("Feature");
+    expect(feature.getAttribute("aria-invalid")).toBe("true");
+    expect(within(fieldOf(feature)).getByText("operation.invalid_input")).toBeTruthy();
+    const label = screen.getByLabelText("Label 1 key");
+    expect(label.getAttribute("aria-invalid")).toBe("true");
+    expect(within(label.closest("li") as HTMLElement).getByText("label.undeclared")).toBeTruthy();
+    // Any other error shows whole, above the form; nothing was created.
+    expect(screen.getByText("the commit failed")).toBeTruthy();
+    expect(onCreated).not.toHaveBeenCalled();
+  });
+
+  it("asks for a project and a feature before calling, when the list showed every project", async () => {
+    const user = userEvent.setup();
+    render(<NewCase projects={["web", "api"]} features={features} onCreated={vi.fn()} />);
+    await user.click(screen.getByRole("button", { name: "Create" }));
+    expect(screen.getByText("Choose a project.")).toBeTruthy();
+    expect(screen.getByText("Name the feature.")).toBeTruthy();
+    expect(covers()).toEqual([]);
+
+    // Choosing the project offers its features as you type.
+    await user.selectOptions(screen.getByLabelText("Project"), "web");
+    const options = document.querySelectorAll("#case-features option");
+    expect([...options].map((o) => o.getAttribute("value"))).toEqual(["login", "login/errors"]);
+  });
+});
+
+describe("App: a new case from the list (#94)", () => {
+  const row = (ref: string, title: string, state: string) => ({
+    ref,
+    project: "web",
+    feature: "login",
+    title,
+    state,
+    priority: "P1",
+    automation: "manual",
+    automation_ref: null,
+    eligible: false,
+    last_run: null,
+    last_run_at: null,
+  });
+
+  it("opens the form in the selected feature, then the new case, listed in the tree", async () => {
+    const user = userEvent.setup();
+    let made = false;
+    answers.overview = () => ({
+      ok: true,
+      value: {
+        projects: [{ name: "web", path: "apps/web", cases: made ? 2 : 1, unresolved: 0 }],
+        cases: [
+          row("web/TC-0001", "Sign in", "active"),
+          ...(made ? [row("web/TC-0003", "Lock after five tries", "draft")] : []),
+        ],
+      },
+    });
+    answers.cover = () => {
+      made = true;
+      return {
+        ok: true,
+        value: {
+          project: "web",
+          feature: "login",
+          change: "c-9",
+          created: [{ ref: "web/TC-0003", path: "apps/web/context/tests/login/TC-0003.md" }],
+          commit: { message: "cover(login): TC-0003", files: [], sha: "3333333ccccccc" },
+          next: [],
+        },
+      };
+    };
+    answers.resolve = () => ({
+      ok: true,
+      value: {
+        ref: "web/TC-0003",
+        path: "apps/web/context/tests/login/TC-0003.md",
+        inherited: [],
+        case: {
+          id: "TC-0003",
+          title: "Lock after five tries",
+          state: "draft",
+          origin: "human",
+          priority: "P1",
+          automation: { status: "manual", eligible: false },
+          steps: [{ do: "Fail five times", expect: "Locked" }],
+          history: [
+            {
+              event: "created",
+              by: "qa@acme.example",
+              via: "ui:cover",
+              change: "c-9",
+              commit: null,
+            },
+          ],
+        },
+      },
+    });
+    answers.runs = () => ({ ok: true, value: { ref: "web/TC-0003", runs: [] } });
+    window.location.hash = "#/cases?project=web&feature=login";
+    render(<App />);
+
+    const link = await screen.findByRole("link", { name: "New case" });
+    expect(link.getAttribute("href")).toBe("#/new?project=web&feature=login");
+    await user.click(link);
+    await user.type(await screen.findByLabelText("Title"), "Lock after five tries");
+    await user.type(screen.getByLabelText("Step 1 action"), "Fail five times");
+    await user.type(screen.getByLabelText("Step 1 expected result"), "Locked");
+    await user.click(screen.getByRole("button", { name: "Create" }));
+
+    // The new case's page opens and names the commit that created it.
+    expect(await screen.findByRole("heading", { name: "Lock after five tries" })).toBeTruthy();
+    expect(window.location.hash).toBe("#/case/web/TC-0003");
+    expect(screen.getByRole("status").textContent).toContain("3333333");
+    expect(screen.getAllByText("3333333").length).toBe(2);
+    expect(calls.filter((c) => c.name === "overview")).toHaveLength(2);
+
+    // Back on the list, the tree and the list read the workspace again.
+    window.location.hash = "#/cases?project=web&feature=login";
+    expect(await screen.findByRole("link", { name: "Lock after five tries" })).toBeTruthy();
+    expect(screen.getByRole("navigation", { name: "Features" }).textContent).toContain("2");
+
+    // Said once, like an edit's commit: back on its page later, the notice is gone.
+    window.location.hash = "#/case/web/TC-0003";
+    expect(await screen.findByRole("heading", { name: "Lock after five tries" })).toBeTruthy();
+    expect(screen.queryByRole("status")).toBeNull();
   });
 });
 

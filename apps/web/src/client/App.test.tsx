@@ -248,6 +248,8 @@ describe("routes and feature tree", () => {
       { view: "cases" as const, project: "web", feature: "login" },
       { view: "cases" as const, project: "web", feature: "login", state: "draft" as const },
       { view: "case" as const, ref: "web/TC-0001" },
+      { view: "new" as const, project: "web", feature: "login/errors" },
+      { view: "new" as const },
       { view: "query" as const, project: "api" },
       { view: "validate" as const },
     ]) {
