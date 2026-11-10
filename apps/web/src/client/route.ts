@@ -1,7 +1,8 @@
 /**
  * Views live in the URL hash (ADR local-ui-stack §4): `#/cases?project=web&feature=login`
  * (`&state=draft` lists only the drafts awaiting review, #87; no other state is a filter),
- * `#/case/web/TC-0001`, `#/new?project=web&feature=login` (create a case there, #94),
+ * `#/case/web/TC-0001` (the case in a Sheet over the list it was opened from, else its
+ * feature's, #146), `#/new?project=web&feature=login` (create a case there, #94),
  * `#/query`, `#/validate`. A reload keeps the view.
  */
 export type Route =
