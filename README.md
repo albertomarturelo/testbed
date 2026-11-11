@@ -243,13 +243,13 @@ The reasons behind each one are in [docs/decisions](docs/decisions/_index.md).
 
 ## Today / Next
 
-| Today (`0.1.2`) | Next (ranked by the [authoring loop](docs/decisions/2026-10-19-authoring-loop-first.md)) |
+| Today (`0.1.3`) | Next (ranked by the [authoring loop](docs/decisions/2026-10-19-authoring-loop-first.md)) |
 |---|---|
 | `init`, `project add`, `validate`, `cover`, `review` (edit, approve, retire a case), `run` (record a result by hand), `overview`, `runs`, `query`, `resolve`, `id next`, `whoami`, `spec` | |
 | Skills `casefile-setup` and `qa-cover` | Skills `qa-bootstrap` (a project's feature tree and first drafts from its code) and `qa-review` (#85) |
-| Local UI (`casefile ui`, installed with the CLI): projects, feature tree with coverage, cases that read as documents, each case's runs and why they failed; the QA edits, approves and retires a case from its page ([decided](docs/decisions/2026-10-19-human-writes-through-operations.md)) | Record a manual result from the case page (#93), create a case from the list (#94) and open a case in a sheet over the list (#146) are on `main` and ship in the next release. Then: live reload (#26) |
+| Local UI (`casefile ui`, installed with the CLI): projects, feature tree with coverage, cases that read as documents, each case's runs and why they failed; the QA creates a case from the list, edits, approves and retires it, and records a manual result from its page; a case opens in a sheet over the list ([decided](docs/decisions/2026-10-19-human-writes-through-operations.md)) | Live reload (#26) |
 | `@casefile/cli`, `@casefile/web` (the viewer, [decided](docs/decisions/2026-11-09-casefile-ui-command.md)) and `@casefile/core` on npm, published by CI with provenance ([release process](docs/decisions/2026-10-20-release-process.md)); a toolchain tarball on each GitHub release for networks without the npm registry ([decided](docs/decisions/2026-11-09-release-toolchain-tarball.md)) | |
-| `ingest junit` (Playwright, Surefire), keeping failure messages and attachments | CI run files ([decided](docs/decisions/2026-10-17-ci-commits-run-files.md), #73) are on `main` and ship in the next release: `ingest` returns the commit, and `casefile spec ci` has a GitHub Actions template that records shared-branch runs as `casefile-ci` |
+| `ingest junit` (Playwright, Surefire), keeping failure messages and attachments; it returns the commit, and `casefile spec ci` has a GitHub Actions template that records shared-branch runs as `casefile-ci` ([decided](docs/decisions/2026-10-17-ci-commits-run-files.md)) | |
 | Release gate evaluation in core | Complements, when the real case needs them: CTRF and Allure, environment-blocked results, `casefile gates`, MCP, Zephyr and Xray bridges |
 
 Planned work is tracked in [issues](https://github.com/albertomarturelo/testbed/issues).

@@ -6,7 +6,7 @@ import {
   pathContains,
   TESTS_DIR,
 } from "../load/paths.js";
-import { CASEFILE_PACKAGE, TOOLCHAIN_DIR, type Toolchain } from "../operations/extensions.js";
+import { CASEFILE_PACKAGE } from "../operations/extensions.js";
 import { NPM_INSTALL, notInstalled, TOOLCHAIN_PACKAGE } from "../operations/toolchain.js";
 import { commonsChain, resolveCase, workspaceLayer } from "../resolve/resolve.js";
 import { ExactVersion } from "../schema/index.js";
