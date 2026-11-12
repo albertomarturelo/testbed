@@ -44,6 +44,9 @@ ls casefile.yaml .casefile/package.json 2>/dev/null
   them the plan first, then set both `@casefile/cli` and `@casefile/web` to
   the new version in `.casefile/package.json`, delete
   `.casefile/node_modules`, and redo step 5 with that version.
+- After an upgrade, run step 6's `init --skills-into` again: it adds the skills
+  the new version ships (`qa-bootstrap` and `qa-review` from `0.1.3`) and keeps
+  the ones already there.
 
 ## 2. Pick the version
 
