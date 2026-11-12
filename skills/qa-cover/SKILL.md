@@ -44,7 +44,8 @@ package `@casefile/cli`, and the unscoped `casefile` package is a different one.
    `cover.duplicate_title` on a retry, the first call already wrote the
    files; commit those instead.
 5. **Commit exactly what it returns** (ADR agent-runs-the-commit). Write
-   `commit.message` from the JSON output to a file, byte for byte, then run:
+   `value.commit.message` from the `--json` output (`{ ok, value }`) to a file,
+   byte for byte, then run:
 
    ```bash
    git add <created paths>

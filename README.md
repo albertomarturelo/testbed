@@ -182,18 +182,26 @@ repository (the toolchain `init` pinned); the skills already call it that way.
    layer, surfaces, review mode), registers the projects and loops on
    `casefile validate` until it exits 0. It commits the setup as
    `casefile-agent`.
-2. **`/qa-cover <feature>`**: say what to cover in your own words ("the sign-in
-   page: validation, keyboard, accessibility; whatever needs an account as
-   manual"). The agent writes the cases as `draft`, linking each automatable one
-   to its test, and commits them.
-3. **Ingest your test results** from a JUnit XML report (Playwright, Surefire, …):
+2. **`/qa-bootstrap <project>`**: the agent reads the project (README, screens,
+   its automated tests), shows you **one** plan (a feature tree and the first
+   case titles per feature, which ones link to a test, which ones stay manual),
+   and after your answer writes them as `draft`, one commit per feature. Later,
+   **`/qa-cover <feature>`** adds cases to one feature: say what to cover in your
+   own words ("the sign-in page: validation, keyboard, accessibility; whatever
+   needs an account as manual").
+3. **Read the drafts and ask in the chat**: open the viewer (step 5) and tell the
+   agent what to change: **`/qa-review`** ("TC-0003 must keep the email filled
+   in; approve TC-0002 and TC-0004"). It applies each change through `casefile
+   review`, one commit per case, and approves only what you asked. You can also
+   edit and approve from the case page yourself.
+4. **Ingest your test results** from a JUnit XML report (Playwright, Surefire, …):
 
    ```bash
    CASEFILE_ACTOR=agent casefile ingest junit results/junit.xml \
      --run local-1 --executor agent:claude-code
    ```
 
-4. **Look at it**: `casefile overview` in the terminal, and the viewer with
+5. **Look at it**: `casefile overview` in the terminal, and the viewer with
    `casefile ui`, then open <http://127.0.0.1:4321> (`--port <n>` for another
    port). A repository set up before `0.1.2` pins only the CLI: `casefile ui`
    answers `ui.not_installed` and its hint says how to add the viewer.
@@ -246,7 +254,7 @@ The reasons behind each one are in [docs/decisions](docs/decisions/_index.md).
 | Today (`0.1.2`) | Next (ranked by the [authoring loop](docs/decisions/2026-10-19-authoring-loop-first.md)) |
 |---|---|
 | `init`, `project add`, `validate`, `cover`, `review` (edit, approve, retire a case), `run` (record a result by hand), `overview`, `runs`, `query`, `resolve`, `id next`, `whoami`, `spec` | |
-| Skills `casefile-setup` and `qa-cover` | Skills `qa-bootstrap` (a project's feature tree and first drafts from its code) and `qa-review` (#85) |
+| Skills `casefile-setup` and `qa-cover` | Skills `qa-bootstrap` (a project's feature tree and first drafts from its code) and `qa-review` (change, approve or retire cases from the chat) are on `main` and ship in the next release |
 | Local UI (`casefile ui`, installed with the CLI): projects, feature tree with coverage, cases that read as documents, each case's runs and why they failed; the QA edits, approves and retires a case from its page ([decided](docs/decisions/2026-10-19-human-writes-through-operations.md)) | Record a manual result from the case page (#93), create a case from the list (#94) and open a case in a sheet over the list (#146) are on `main` and ship in the next release. Then: live reload (#26) |
 | `@casefile/cli`, `@casefile/web` (the viewer, [decided](docs/decisions/2026-11-09-casefile-ui-command.md)) and `@casefile/core` on npm, published by CI with provenance ([release process](docs/decisions/2026-10-20-release-process.md)); a toolchain tarball on each GitHub release for networks without the npm registry ([decided](docs/decisions/2026-11-09-release-toolchain-tarball.md)) | |
 | `ingest junit` (Playwright, Surefire), keeping failure messages and attachments | CI run files ([decided](docs/decisions/2026-10-17-ci-commits-run-files.md), #73) are on `main` and ship in the next release: `ingest` returns the commit, and `casefile spec ci` has a GitHub Actions template that records shared-branch runs as `casefile-ci` |
