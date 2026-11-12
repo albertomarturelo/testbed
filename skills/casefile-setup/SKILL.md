@@ -37,6 +37,6 @@ unscoped `casefile` package is a different one.
    - the projects registered and the commons values you chose
    - the warnings left, and any findings left after 5 rounds
    - the commit you made
-   - the next step from the SPEC
+   - the next step: `/qa-bootstrap <project>` for each project registered
 
    Then stop: do not start covering features.

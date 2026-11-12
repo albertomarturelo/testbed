@@ -173,7 +173,7 @@ describe("casefile init → project add", () => {
     expect(init.stdout).toContain("created:\n  - casefile.yaml");
     // The bundled skills are offered first, with the command that copies them.
     expect(init.stdout).toMatch(
-      /\nNext:\n {2}- Copy the shipped skills \(casefile-setup, qa-cover\)[^\n]*\n {2}- Run \/casefile-setup in your agent/,
+      /\nNext:\n {2}- Copy the shipped skills \(casefile-setup, qa-bootstrap, qa-cover, qa-review\)[^\n]*\n {2}- Run \/casefile-setup in your agent/,
     );
     expect(init.stdout).toContain("gpg.format ssh");
     const pinned = JSON.parse(await readFile(join(tmp, ".casefile/package.json"), "utf8"));
@@ -223,7 +223,9 @@ describe("casefile init → project add", () => {
     for (const target of [".claude/skills", ".agents/skills"]) {
       for (const [skill, spec] of [
         ["casefile-setup", "setup"],
+        ["qa-bootstrap", "bootstrap"],
         ["qa-cover", "cover"],
+        ["qa-review", "review"],
       ] as const) {
         const text = await readFile(join(tmp, target, skill, "SKILL.md"), "utf8");
         expect(text).toContain(`name: ${skill}\n`);
