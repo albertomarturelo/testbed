@@ -379,3 +379,85 @@ describe("App: milestones (#166)", () => {
     await waitFor(() => expect(window.location.hash).toBe("#/milestone/web/web-1.2.0"));
   });
 });
+
+describe("App: dashboards (#187)", () => {
+  const shown = {
+    project: "web",
+    slug: "overview",
+    title: "Overview",
+    description: null,
+    path: "context/dashboards/overview.yaml",
+    date: "2026-11-13",
+    widgets: [
+      {
+        id: "no-test",
+        title: "No test yet",
+        type: "table",
+        width: 12,
+        data: {
+          type: "table",
+          columns: ["id", "title"],
+          rows: [{ id: "TC-0001", cells: ["Sign in"] }],
+          total: 1,
+        },
+      },
+    ],
+  };
+  beforeEach(() => {
+    vi.stubGlobal("fetch", async (url: string, init?: { body: string }) => {
+      const name = url.split("/").at(-1) as string;
+      if (init !== undefined) calls.push({ name, input: JSON.parse(init.body) });
+      const value =
+        name === "dashboard-show"
+          ? shown
+          : name === "dashboard-list"
+            ? { dashboards: [] }
+            : name === "overview"
+              ? overview
+              : null;
+      return new Response(
+        JSON.stringify(
+          value === null
+            ? { ok: false, errors: [{ code: "x", message: name }] }
+            : { ok: true, value },
+        ),
+      );
+    });
+  });
+
+  it("has a Dashboards view that keeps the selected project", async () => {
+    window.location.hash = formatRoute({ view: "cases", project: "web" });
+    render(<App />);
+    const tab = await screen.findByRole("link", { name: "Dashboards" });
+    expect(tab.getAttribute("href")).toBe("#/dashboards?project=web");
+    window.location.hash = "#/dashboards?project=web";
+    fireEvent(window, new HashChangeEvent("hashchange"));
+    expect(await screen.findByRole("heading", { name: "Dashboards" })).toBeTruthy();
+    await waitFor(() =>
+      expect(calls).toContainEqual({ name: "dashboard-list", input: { project: "web" } }),
+    );
+  });
+
+  it("opens a case over its dashboard, and closing returns to the dashboard", async () => {
+    window.location.hash = formatRoute({ view: "dashboard", project: "web", slug: "overview" });
+    render(<App />);
+    const link = await screen.findByRole("link", { name: "TC-0001" });
+    window.location.hash = link.getAttribute("href") as string;
+    fireEvent(window, new HashChangeEvent("hashchange"));
+    const sheet = await screen.findByRole("dialog");
+    expect(sheet.textContent).toContain("web/TC-0001");
+    // The dashboard stays behind the Sheet, and the header calls it Dashboards.
+    expect(screen.getByRole("heading", { name: "Overview", hidden: true })).toBeTruthy();
+    const views = screen.getByRole("navigation", { name: "Views", hidden: true });
+    expect(
+      within(views).getByRole("link", { name: "Dashboards", hidden: true }).className,
+    ).toContain("font-medium");
+    // Switching project from a dashboard goes back to the list of dashboards.
+    const projects = screen.getByRole("navigation", { name: "Projects", hidden: true });
+    expect(
+      within(projects).getByRole("link", { name: /^api/, hidden: true }).getAttribute("href"),
+    ).toBe("#/dashboards?project=api");
+    fireEvent.keyDown(sheet, { key: "Escape" });
+    await waitFor(() => expect(window.location.hash).toBe("#/dashboard/web/overview"));
+  });
+});

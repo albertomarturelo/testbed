@@ -218,6 +218,69 @@ export type MilestoneClosed = {
   next: string[];
 };
 
+/** One row of `dashboard-list` (`casefile spec dashboard`). */
+export type DashboardRow = {
+  project: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  /** How many widgets it has. */
+  widgets: number;
+  path: string;
+};
+
+export type DashboardList = { dashboards: DashboardRow[] };
+
+/** The statuses a `timeseries` day counts, in the order they stack. */
+export const SERIES_STATUSES = ["passed", "failed", "blocked", "skipped", "not_run"] as const;
+export type SeriesStatus = (typeof SERIES_STATUSES)[number];
+
+/** What one widget shows, as core computed it (ADR dashboards-as-files §5). */
+export type WidgetData =
+  | { type: "stat"; value: number }
+  | {
+      type: "bar" | "donut";
+      /** Largest first; `(none)` last. */
+      groups: { value: string; count: number }[];
+      total: number;
+    }
+  | {
+      type: "table";
+      /** `id` first, then the widget's columns. */
+      columns: string[];
+      rows: { id: string; cells: string[] }[];
+      /** The matching cases; `rows` holds the first `limit`. */
+      total: number;
+    }
+  | {
+      type: "timeseries";
+      days: ({ date: string } & Record<SeriesStatus, number>)[];
+      total: number;
+    };
+
+export type WidgetView = {
+  id: string;
+  title: string;
+  type: "stat" | "bar" | "donut" | "table" | "timeseries";
+  /** Columns of 12. */
+  width: number;
+  /** Absent when `error` says why it cannot be computed. */
+  data?: WidgetData;
+  error?: { code: string; message: string };
+};
+
+/** What `dashboard-show` answers: every widget with its data, computed now. */
+export type DashboardShown = {
+  project: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  path: string;
+  /** The day (UTC) the numbers were computed on. */
+  date: string;
+  widgets: WidgetView[];
+};
+
 export type QueryAnswer = {
   count: number;
   cases: { ref: string; state: string; priority: string; title: string }[];
