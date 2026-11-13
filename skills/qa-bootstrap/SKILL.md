@@ -20,6 +20,12 @@ CLI the human installed. Never run `npx casefile`: this tool is the npm
 package `@casefile/cli`, and the unscoped `casefile` package is a different one.
 Run every casefile command with `CASEFILE_ACTOR=agent`.
 
+Read `commit` in `casefile.yaml` once (`casefile spec cover`, *Commit
+subject*). With `agent_trailer: false`, leave `--agent` out: the repository
+does not name AI tools in commits. When `commit.subject` names `{ticket}`,
+pass the key the human gave with `--ticket <key>`; if a call answers
+`commit.ticket_missing`, ask the human for the key once and call again.
+
 1. **Read the procedure.** Run `casefile spec bootstrap` and follow it step by
    step; it is the source of truth. Run `casefile spec cover` too: its input
    table is the only shape `casefile cover` accepts.
@@ -44,7 +50,7 @@ Run every casefile command with `CASEFILE_ACTOR=agent`.
 
    ```bash
    CASEFILE_ACTOR=agent casefile cover <feature> --project <name> --json \
-     --agent <your name> \
+     --agent <your name> [--ticket <key>] \
      --cases "$(cat <cases file>)"
    ```
 

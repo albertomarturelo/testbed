@@ -85,11 +85,12 @@ export const coverOperation = defineOperation({
   spec: "specs/cover.md",
   subject: "feature",
   async run(input, context) {
-    const writer = writtenBy("cover", context.actor, input);
-    if (!writer.ok) return writer;
-    const { by, agent } = writer.value;
     const workspace = await loadWorkspace(context.root);
     if (workspace.config === null) return fail(...workspace.errors);
+    const agentTrailer = workspace.config.commit?.agent_trailer !== false;
+    const writer = writtenBy("cover", context.actor, input, agentTrailer);
+    if (!writer.ok) return writer;
+    const { by, agent, asAgent } = writer.value;
     const selected = requireProject(workspace, input.project);
     if (!selected.ok) return selected;
     const project = selected.value;
@@ -151,7 +152,7 @@ export const coverOperation = defineOperation({
         id,
         feature: input.feature,
         state: "draft",
-        origin: agent === undefined ? "human" : "agent",
+        origin: asAgent ? "agent" : "human",
         ...fields,
         history: [
           {
@@ -216,17 +217,17 @@ export const coverOperation = defineOperation({
         subject.value,
         { requestedBy: by, inbox: input.inbox, agent, change },
         files.map((f) => f.path),
+        asAgent,
       ),
-      next:
-        agent === undefined
-          ? [
-              `Commit the created files with commit.message taken from --json output, as yourself, staging only them (\`git commit -F <message> -- <paths>\`)`,
-              `Review and approve the drafts: ${refs}`,
-            ]
-          : [
-              `Commit the created files with commit.author and commit.message taken from --json output, staging only them (\`git commit -F <message> -- <paths>\`)`,
-              `Ask the human to review the drafts: ${refs}`,
-            ],
+      next: !asAgent
+        ? [
+            `Commit the created files with commit.message taken from --json output, as yourself, staging only them (\`git commit -F <message> -- <paths>\`)`,
+            `Review and approve the drafts: ${refs}`,
+          ]
+        : [
+            `Commit the created files with commit.author and commit.message taken from --json output, staging only them (\`git commit -F <message> -- <paths>\`)`,
+            `Ask the human to review the drafts: ${refs}`,
+          ],
     });
   },
 });

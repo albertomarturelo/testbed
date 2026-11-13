@@ -55,9 +55,20 @@ Run every casefile command below with `CASEFILE_ACTOR=agent`.
    - whether its cases could be automated
    - which test runners it already has, and the report format they write
      (JUnit, CTRF, Allure)
-3. **Ask once.** Show the human one plan: the projects (name, path) and, per
-   project, the commons values you would set, with one reason each. Wait for
-   one confirmation or correction. Do not ask again per field.
+
+   Then read the repository's commit rules, once for the whole workspace:
+   a commitlint config (`commitlint.config.*`, `.commitlintrc*`, a
+   `commitlint` key in `package.json`), a `.gitmessage` template, a PR-title
+   or commit-message check in the CI workflows, and CONTRIBUTING. Note the
+   subject shape they require (a ticket key first, Conventional types) and
+   whether they forbid naming an AI tool in commits. The `commit` section of
+   `casefile.yaml` follows them (`casefile spec cover`, *Commit subject*;
+   ADR commit-shape-follows-host-repo).
+3. **Ask once.** Show the human one plan: the projects (name, path), per
+   project the commons values you would set, and the `commit` values when the
+   repository's rules need any, with one reason each. Wait for one
+   confirmation or correction. Do not ask again per field. Write the `commit`
+   section into `casefile.yaml` by hand: no command writes it.
 4. **Register each project:**
 
    ```bash
@@ -108,7 +119,8 @@ Run every casefile command below with `CASEFILE_ACTOR=agent`.
    (`casefile spec cover`, *Commit subject*) with type `chore`, scope
    `casefile` and summary `register <project names>`: by default
    `chore(casefile): register web api`. The trailers are
-   `Requested-by: <the human's git email>` and `Agent: <your name>`. Commit
+   `Requested-by: <the human's git email>` and `Agent: <your name>` (left
+   out when `commit.agent_trailer` is `false`). Commit
    only those paths (`git commit -F <message> -- <paths>`), never what the
    human had staged. The skills `init` copied are the human's to commit.
 9. **Offer the next step and stop.** Offer `/qa-bootstrap` for each project
@@ -145,6 +157,28 @@ automation:
 review:
   mode: required
 ```
+
+## Example: the repository's commit rules
+
+The repository has `commitlint.config.mjs` extending
+`@commitlint/config-conventional`: casefile's default subjects
+(`test(login): propose 3 cases`, `chore(casefile): register web`) already
+pass, so the plan proposes no `commit` section.
+
+Another repository's CONTRIBUTING says every commit subject starts with the
+issue key in brackets and names no AI tool, and its branches are named
+`feature/PROJ-123-…`. The plan proposes, and setup writes:
+
+```yaml
+commit:
+  subject: "[{ticket}] {type}({scope}): {summary}"
+  ticket_from_branch: "([A-Z][A-Z0-9]+-[0-9]+)"
+  agent_trailer: false
+```
+
+On a branch without a key, the human passes `--ticket`, or setup adds a
+`ticket_default` the repository accepts. The setup commit itself follows the
+template: `[PROJ-123] chore(casefile): register web`, without `Agent:`.
 
 ## Example: a monorepo
 

@@ -153,9 +153,10 @@ export const reviewOperation = defineOperation({
     const { project, case: loaded } = found.value;
     const stored = loaded.file;
 
-    const writer = writtenBy("review", context.actor, input);
+    const agentTrailer = workspace.config.commit?.agent_trailer !== false;
+    const writer = writtenBy("review", context.actor, input, agentTrailer);
     if (!writer.ok) return writer;
-    const { by, agent } = writer.value;
+    const { by, agent, asAgent } = writer.value;
 
     const last = stored.history.at(-1);
     if (input.base !== undefined && input.base !== last?.change) {
@@ -311,11 +312,14 @@ export const reviewOperation = defineOperation({
       state: file.state,
       changed,
       events,
-      commit: writeCommit(subject.value, { requestedBy: by, inbox: input.inbox, agent, change }, [
-        loaded.path,
-      ]),
+      commit: writeCommit(
+        subject.value,
+        { requestedBy: by, inbox: input.inbox, agent, change },
+        [loaded.path],
+        asAgent,
+      ),
       next: [
-        agent === undefined
+        !asAgent
           ? "Commit the file with commit.message taken from --json output, as yourself, staging only it (`git commit -F <message> -- <path>`)"
           : "Commit the file with commit.author and commit.message taken from --json output, staging only it (`git commit -F <message> -- <path>`)",
       ],
