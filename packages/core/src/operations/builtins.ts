@@ -4,6 +4,7 @@ import { coverOperation } from "./cover.js";
 import { dashboardListOperation } from "./dashboard-list.js";
 import { dashboardRemoveOperation } from "./dashboard-remove.js";
 import { dashboardSaveOperation } from "./dashboard-save.js";
+import { dashboardShowOperation } from "./dashboard-show.js";
 import { gatesOperation } from "./gates.js";
 import { idNextOperation } from "./id-next.js";
 import { initOperation } from "./init.js";
@@ -41,6 +42,7 @@ export const builtinOperations: readonly Operation[] = [
   gatesOperation,
   dashboardSaveOperation,
   dashboardListOperation,
+  dashboardShowOperation,
   dashboardRemoveOperation,
   ingestOperation(junitIngester),
 ];

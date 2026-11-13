@@ -13,6 +13,7 @@ import { Dashboard } from "../schema/index.js";
 import { dashboardListOperation } from "./dashboard-list.js";
 import { dashboardRemoveOperation } from "./dashboard-remove.js";
 import { dashboardSaveOperation } from "./dashboard-save.js";
+import { dashboardShowOperation } from "./dashboard-show.js";
 import type { Actor } from "./operation.js";
 import { createRegistry } from "./registry.js";
 
@@ -20,6 +21,7 @@ const registry = createRegistry();
 registry.register(dashboardSaveOperation);
 registry.register(dashboardListOperation);
 registry.register(dashboardRemoveOperation);
+registry.register(dashboardShowOperation);
 
 const DIR = "context/dashboards";
 const host = { identity: "qa@acme.example", via: "cli:dashboard-save" };
@@ -206,6 +208,45 @@ describe("dashboard list", () => {
   it("leaves out a file that does not load", async () => {
     await writeFile(join(root, DIR, "broken.yaml"), "title: Broken\nwidgets: []\n");
     expect((await list()).map((d) => d.slug)).toEqual(["overview", "web-1-2-0"]);
+  });
+});
+
+describe("dashboard show", () => {
+  const show = (slug: string) => registry.invoke("dashboard-show", { slug }, { root, actor: "ci" });
+
+  it("returns every widget with its data, as the oracle says", async () => {
+    const result = await show("overview");
+    if (!result.ok) throw new Error(JSON.stringify(result.errors));
+    const value = result.value as {
+      title: string;
+      path: string;
+      date: string;
+      widgets: { id: string; width: number; data?: { type: string; value?: number } }[];
+    };
+    expect(value).toMatchObject({ title: "Overview", path: `${DIR}/overview.yaml` });
+    expect(value.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(value.widgets.map((w) => w.id)).toEqual(DEMO_EXPECTED.dashboards.overview);
+    expect(value.widgets[0]).toMatchObject({
+      width: 3,
+      data: { type: "stat", value: DEMO_EXPECTED.dashboardData.overview.total },
+    });
+    expect(value.widgets.every((w) => w.data !== undefined)).toBe(true);
+  });
+
+  it("shows a widget whose milestone is gone with its error, the others with data", async () => {
+    await rm(join(root, "context/milestones/web-1.2.0.yaml"));
+    const result = await show("web-1-2-0");
+    if (!result.ok) throw new Error(JSON.stringify(result.errors));
+    const { widgets } = result.value as { widgets: { error?: { code: string } }[] };
+    expect(widgets.map((w) => w.error?.code)).toEqual([
+      "dashboard.unknown_milestone",
+      "dashboard.unknown_milestone",
+      "dashboard.unknown_milestone",
+    ]);
+  });
+
+  it("does not know a dashboard that is not there", async () => {
+    expect(codes(await show("nope"))).toEqual([["dashboard.unknown", "slug"]]);
   });
 });
 

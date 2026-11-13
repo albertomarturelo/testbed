@@ -39,6 +39,25 @@ export const DEMO_EXPECTED = {
     overview: ["total", "by-state", "by-feature", "no-test"],
     "web-1-2-0": ["results", "failed", "executions"],
   },
+  /** What `dashboard show` computes for them (#186); a `timeseries` is `[date, passed, failed]`. */
+  dashboardData: {
+    overview: {
+      total: 7,
+      "by-state": { active: 5, draft: 1, in_review: 1, retired: 1 },
+      "by-feature": { "auth/login": 2, "checkout/payments": 2, "catalog/search": 1 },
+      "no-test": ["TC-0003", "TC-0005"],
+    },
+    "web-1-2-0": {
+      results: { passed: 3, failed: 2 },
+      failed: {
+        "TC-0001": "passed",
+        "TC-0003": "passed",
+        "TC-0004": "passed",
+        "TC-0007": "failed",
+      },
+      executions: [["2026-10-14", 3, 2]],
+    },
+  },
 } as const;
 
 /** Absolute path of `examples/demo-monorepo`, the two-project workspace fixture. */

@@ -115,7 +115,7 @@ function read(path: QueryPath, subject: object, context: QueryContext): unknown 
  * Walks own object keys and array indexes (never `length`); `undefined` as soon
  * as a segment is missing.
  */
-function readPath(root: unknown, segments: readonly string[]): unknown {
+export function readPath(root: unknown, segments: readonly string[]): unknown {
   let current = root;
   for (const segment of segments) {
     if (current === null || typeof current !== "object" || !Object.hasOwn(current, segment))
