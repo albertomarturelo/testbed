@@ -7,8 +7,9 @@ import { TESTS_DIR } from "../load/paths.js";
 import { loadWorkspace } from "../load/workspace.js";
 import { WriteCommit } from "../operations/case-file.js";
 import { requireProject } from "../operations/cases.js";
+import { MilestoneInput, namedMilestone, RELEASE_DEPRECATED } from "../operations/milestones.js";
 import { type Actor, defineOperation, type Operation } from "../operations/operation.js";
-import { Executor, FileSafeId, RunEvent, RunStatus, Slug } from "../schema/index.js";
+import { Executor, FileSafeId, RunEvent, RunStatus, Slug, withMilestone } from "../schema/index.js";
 import { IngestedResult, type Ingester } from "./ingester.js";
 import { boundNote } from "./note.js";
 
@@ -21,7 +22,7 @@ const IngestInput = z.strictObject({
   executor: Executor,
   env: z.string().min(1).optional(),
   build: z.string().min(1).optional(),
-  release: z.string().min(1).optional(),
+  ...MilestoneInput,
   /** The commit the tests ran on (`$GITHUB_SHA`): the `Tested-Commit:` trailer. */
   testedCommit: z
     .string()
@@ -82,6 +83,8 @@ export function ingestOperation(ingester: Ingester): Operation {
       const selected = requireProject(workspace, input.project);
       if (!selected.ok) return selected;
       const project = selected.value;
+      const milestone = namedMilestone(project, input);
+      if (!milestone.ok) return milestone;
       // Checked before anything is written: a refused subject writes nothing.
       const subject = commitSubject(
         workspace.config.commit,
@@ -147,7 +150,7 @@ export function ingestOperation(ingester: Ingester): Operation {
             at: result.at ?? now,
             env: input.env,
             build: input.build,
-            release: input.release,
+            milestone: milestone.value,
             duration_ms: result.duration_ms,
             evidence: result.evidence,
             automation_ref: result.ref,
@@ -191,6 +194,7 @@ export function ingestOperation(ingester: Ingester): Operation {
       } else if (events.length > 0) {
         next.push(`Nothing new: every event is already in ${path}`);
       }
+      if (input.release !== undefined) next.push(RELEASE_DEPRECATED);
       if (unmatched.length > 0) {
         next.push(
           `${unmatched.length} ${unmatched.length === 1 ? "result matches" : "results match"} no case's automation.ref: set that ref on the case it verifies (\`casefile spec cover\`), or leave it unmatched`,
@@ -332,7 +336,8 @@ function identity(value: unknown): string {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
     return JSON.stringify(value);
   }
-  const { at: _, ...rest } = value as Record<string, unknown>;
+  // An old line's `release` is the same milestone (ADR milestones-group-executions §8).
+  const { at: _, ...rest } = withMilestone(value as Record<string, unknown>);
   return JSON.stringify(sorted(rest));
 }
 

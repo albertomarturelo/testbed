@@ -88,6 +88,7 @@ apps/web/                       # a project = a directory with context/tests/
       .runs/<run-id>.jsonl      # append-only run events
       .inbox/<email-hash>/<id>.yaml  # human intents → agent work queue; hash = sha256(lower(email))[0:12]
     releases/policy.yaml        # release gates + sign-off
+    milestones/<slug>.yaml      # a milestone executions name with --milestone; <slug>/evidence.md once closed
 apps/mobile/
   context/…
 ```

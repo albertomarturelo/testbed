@@ -2,6 +2,7 @@ import { posix } from "node:path";
 import { isTicket, templateProblems, ticketRegexProblem } from "../git/subject.js";
 import {
   CONFIG_FILE,
+  MILESTONES_DIR,
   normalizeProjectPath,
   POLICY_FILE,
   pathContains,
@@ -10,7 +11,7 @@ import {
 import { CASEFILE_PACKAGE, TOOLCHAIN_DIR, type Toolchain } from "../operations/extensions.js";
 import { NPM_INSTALL, notInstalled, TOOLCHAIN_PACKAGE } from "../operations/toolchain.js";
 import { commonsChain, resolveCase, workspaceLayer } from "../resolve/resolve.js";
-import { type CommitConfig, ExactVersion } from "../schema/index.js";
+import { type CommitConfig, ExactVersion, eventMilestone } from "../schema/index.js";
 import { type Finding, finding, fromError } from "./finding.js";
 import type { Level } from "./validate.js";
 
@@ -122,8 +123,13 @@ export const schemaLevel: Level = {
     if (loaded === undefined) return [];
     const prefix = `${posix.join(loaded.path, TESTS_DIR)}/`;
     const policy = posix.join(loaded.path, POLICY_FILE);
+    const milestones = `${posix.join(loaded.path, MILESTONES_DIR)}/`;
     return errors
-      .filter((e) => e.path !== undefined && (e.path.startsWith(prefix) || e.path === policy))
+      .filter(
+        (e) =>
+          e.path !== undefined &&
+          (e.path.startsWith(prefix) || e.path === policy || e.path.startsWith(milestones)),
+      )
       .map(fromError);
   },
 };
@@ -203,6 +209,23 @@ export const crossFileLevel: Level = {
           line,
           field: "case_id",
           message: `run '${event.run_id}' records ${event.case_id}, which is not a case of project '${loaded.name}'`,
+        }),
+      );
+    }
+    // One warning per run file and milestone, at its first line: old free-text
+    // releases are expected, so this never blocks (ADR milestones-group-executions).
+    const warned = new Set<string>();
+    for (const { path, line, event } of loaded.runs) {
+      const milestone = eventMilestone(event);
+      const key = `${path}\u0000${milestone}`;
+      if (milestone === undefined || loaded.milestones.has(milestone) || warned.has(key)) continue;
+      warned.add(key);
+      found.push(
+        finding("run.undeclared_milestone", {
+          path,
+          line,
+          field: event.milestone === undefined ? "release" : "milestone",
+          message: `run '${event.run_id}' names milestone '${milestone}', which project '${loaded.name}' does not declare`,
         }),
       );
     }

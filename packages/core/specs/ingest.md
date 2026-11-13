@@ -7,7 +7,7 @@ after the tests; it never touches a case. It makes no commit: it returns the
 commit of the run file, and the caller runs it (ADR ci-commits-run-files).
 
 - **Actor:** CI, agent (`CASEFILE_ACTOR=ci` or `agent`)
-- **CLI:** `casefile ingest <format> <report> --run <id> --executor ci:<name> [--tested-commit <sha>] [--env <env>] [--build <build>] [--release <release>] [--project <name>] --json`
+- **CLI:** `casefile ingest <format> <report> --run <id> --executor ci:<name> [--tested-commit <sha>] [--env <env>] [--build <build>] [--milestone <slug>] [--project <name>] --json`
   (read `commit` from the `--json` output: the plain output does not keep the message byte for byte)
 - **Formats:** `junit` (built in); extensions add more (see the last section)
 - **Writes:** `**/context/tests/.runs/*.jsonl` (appends only)
@@ -24,7 +24,8 @@ format; built-in formats are described here.
 | `run` | file-safe id | The run: names the run file. Use the CI run id (`$GITHUB_RUN_ID`), the same for every shard of one run. |
 | `executor` | `ci:<name>` / `agent:<name>` | Who ran the tests. The prefix must be the actor: CI ingests as `ci:*`, an agent as `agent:*`. Humans record runs with the `run` operation. |
 | `testedCommit` | commit hash, optional | The commit the tests ran on (`--tested-commit "$GITHUB_SHA"`): the `Tested-Commit:` trailer of the returned commit. Never written to the run file. CI passes it because it ingests on the branch tip, which may be newer than the tested commit (`casefile spec ci`). |
-| `env`, `build`, `release` | text | Copied into every event. `build` and `release` are what release gates read (`casefile spec query-grammar`). |
+| `env`, `build` | text | Copied into every event. `build` is what gates read as `milestone.build` (`casefile spec query-grammar`). |
+| `milestone` | slug, optional | An open milestone of the project (`casefile spec milestone`): every event belongs to it. `--release`, its name before `0.2.0`, still works, with a deprecation notice. |
 | `project` | project name | Filled by the host from `--project` or the project containing `--cwd`. Required when the workspace has several projects and `--cwd` is in none. |
 | `ticket` | text, optional | The ticket key, only for a subject template that names `{ticket}` (`casefile spec cover`, *Commit subject*): `--ticket PROJ-123`. |
 | `branch` | text | Filled by the host: the checked-out branch, none on a detached HEAD. `commit.ticket_from_branch` reads the ticket from it. |
@@ -169,6 +170,7 @@ report points to.
 | `path.outside_workspace` | `report` leaves the workspace: copy the report inside it first |
 | `operation.actor_not_allowed` | the actor is `human` |
 | `project.required` / `project.unknown` | as in `casefile spec cover` |
+| `milestone.unknown` / `milestone.closed` | the milestone is not declared, or is closed (`casefile spec milestone`) |
 | `commit.ticket_*`, `config.commit_*` | the subject template, as in `casefile spec cover` |
 
 Nothing is written when any error occurs.

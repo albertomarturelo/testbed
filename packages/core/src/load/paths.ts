@@ -9,6 +9,9 @@ export const TESTS_DIR = "context/tests";
 /** A project's release policy, relative to the project directory (ADR release-gate-evaluation). */
 export const POLICY_FILE = "context/releases/policy.yaml";
 
+/** A project's milestones, `<slug>.yaml` each (ADR milestones-group-executions §1). */
+export const MILESTONES_DIR = "context/milestones";
+
 /**
  * Canonical form of a project path from `casefile.yaml`: POSIX-normalized, no
  * trailing `/`, `.` for the workspace root. `apps/web/` and `./apps//web` both

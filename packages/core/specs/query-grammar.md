@@ -22,7 +22,7 @@ value      = string | variable | word ;
 operator   = "=" | "!=" | "<" | "<=" | ">" | ">=" ;
 
 path       = segment , { "." , tail } ;          (* a word of this shape *)
-variable   = "release" , "." , tail , { "." , tail } ;
+variable   = ( "milestone" | "release" ) , "." , tail , { "." , tail } ;
 segment    = letter | "_" , { letter | digit | "_" | "-" } ;
 tail       = ( letter | digit | "_" | "-" ) , { letter | digit | "_" | "-" } ;
 
@@ -39,7 +39,7 @@ wordchar   = char - ( space | "(" | ")" | "," | '"' | "'" | "=" | "!" | "<" | ">
   (`priority<=P1`).
 - Inside a string, `\` escapes the next character.
 - A word is typed: `true` / `false` → boolean, `-?\d+(\.\d+)?` → number,
-  `release.<x>` → context variable, anything else → string
+  `milestone.<x>` or `release.<x>` → context variable, anything else → string
   (`TC-0001`, `checkout/payments`, `web-1.2.0+101`, `release:web-1.2.0`).
   A quoted string is always a string.
 - `NOT IN` is written `NOT path IN (...)`.
@@ -51,9 +51,11 @@ wordchar   = char - ( space | "(" | ")" | "," | '"' | "'" | "=" | "!" | "<" | ">
 - **Paths** walk object keys and array indexes of the resolved case
   (`labels.risk`, `automation.status`, `steps.0.do`, `project`). Only own
   properties are read; on an array only an index is (`surfaces.length` is missing).
-- **Context variables** read the `QueryContext`. A gate scope gets `release.name`
-  (the release without `release:`) and `release.build` (unset when no run of the
-  release names a build; ADR release-gate-evaluation). `queryCases` /
+- **Context variables** read the `QueryContext`. A gate scope gets
+  `milestone.name` (the milestone, without a `release:` prefix) and
+  `milestone.build` (unset when no run of the milestone names a build; ADR
+  release-gate-evaluation, ADR milestones-group-executions). `release.name` and
+  `release.build`, their names before `0.2.0`, hold the same values. `queryCases` /
   `checkQueryContext` fail with `query.unknown_variable` when one is not defined.
 - **Missing fields** (absent, `null`, or a path through a non-object) match no
   predicate: `=`, `<`…, `IN`, `CONTAINS` are false, and `!=` is true.

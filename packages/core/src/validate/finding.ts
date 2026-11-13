@@ -130,6 +130,12 @@ export const FINDING_CODES = {
     description: "A run event's `case_id` is not a case of its project",
     hint: "run files are append-only: restore the case, or record the correction as a new event",
   },
+  "run.undeclared_milestone": {
+    severity: "warning",
+    description:
+      "Run events name a milestone that no `context/milestones/<slug>.yaml` declares (before `0.2.0`, a free-text release)",
+    hint: "open it with the same slug (`casefile milestone open <slug> --title <title>`) to group those executions",
+  },
   "resolve.missing_field": {
     severity: "error",
     description: "A required field is set neither in the case nor in any commons it inherits",

@@ -4,6 +4,7 @@ import { type CasefileError, fail, ok, type Result } from "../errors.js";
 import type {
   CommonFile,
   Config,
+  Milestone,
   ProjectEntry,
   PropertiesFile,
   ReleasePolicy,
@@ -14,11 +15,18 @@ import {
   parseCaseFile,
   parseCommonFile,
   parseConfigFile,
+  parseMilestoneFile,
   parsePolicyFile,
   parsePropertiesFile,
   parseRunFile,
 } from "./parse.js";
-import { CONFIG_FILE, normalizeProjectPath, POLICY_FILE, TESTS_DIR } from "./paths.js";
+import {
+  CONFIG_FILE,
+  MILESTONES_DIR,
+  normalizeProjectPath,
+  POLICY_FILE,
+  TESTS_DIR,
+} from "./paths.js";
 
 // Paths in loaded data are workspace-relative and POSIX (ADR workspace-and-projects).
 
@@ -35,6 +43,8 @@ export type LoadedProject = {
   properties: PropertiesFile | null;
   /** `context/releases/policy.yaml`; `null` when absent or invalid. */
   policy: ReleasePolicy | null;
+  /** `context/milestones/<slug>.yaml` files that parse, keyed by slug (ADR milestones-group-executions). */
+  milestones: Map<string, { path: string; file: Milestone }>;
   /** Whether `<path>/context/tests/` is a directory; the validator requires it. */
   hasTestsDir: boolean;
 };
@@ -55,6 +65,7 @@ export type LoadedWorkspace = {
 
 const CASE_FILE = /(?:^|\/)TC-[0-9]{4,}\.md$/;
 const RUN_FILE = /^\.runs\/[^/]+\.jsonl$/;
+const MILESTONE_FILE = /^([A-Za-z0-9][A-Za-z0-9._-]*)\.yaml$/;
 /** Custom properties of a project; only at the root of its `context/tests/`. */
 const PROPERTIES_FILE = "_properties.yaml";
 
@@ -129,6 +140,7 @@ export async function loadProject(
     runs: [],
     properties: null,
     policy: null,
+    milestones: new Map(),
     hasTestsDir: false,
   };
   const errors: CasefileError[] = [];
@@ -161,6 +173,17 @@ export async function loadProject(
   const policyText = await readText(join(root, policyPath));
   if (policyText !== null)
     collect(parsePolicyFile(policyPath, policyText), (p) => (project.policy = p));
+
+  const milestonesDir = posix.join(projectPath, MILESTONES_DIR);
+  for (const rel of await listFiles(join(root, milestonesDir))) {
+    // Only `<slug>.yaml` at the top: a closed milestone's evidence lives in `<slug>/`.
+    const slug = MILESTONE_FILE.exec(rel)?.[1];
+    if (slug === undefined) continue;
+    const path = posix.join(milestonesDir, rel);
+    const text = await readText(join(root, path));
+    if (text === null) continue;
+    collect(parseMilestoneFile(path, text), (file) => project.milestones.set(slug, { path, file }));
+  }
   return { value: project, errors };
 }
 

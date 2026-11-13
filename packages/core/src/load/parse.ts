@@ -4,6 +4,7 @@ import { type CasefileError, fail, ok, type Result } from "../errors.js";
 import {
   CommonFile,
   Config,
+  Milestone,
   PropertiesFile,
   ReleasePolicy,
   RunEvent,
@@ -127,6 +128,10 @@ export function parsePropertiesFile(path: string, text: string): Result<Properti
 
 export function parsePolicyFile(path: string, text: string): Result<ReleasePolicy> {
   return parseYamlFile(ReleasePolicy, path, text);
+}
+
+export function parseMilestoneFile(path: string, text: string): Result<Milestone> {
+  return parseYamlFile(Milestone, path, text);
 }
 
 /** A run event and where it is stored, so findings can point at its line. */

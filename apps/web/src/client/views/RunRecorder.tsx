@@ -13,7 +13,7 @@ import { TicketField, ticketErrors, useTicket } from "@/views/TicketField";
 const STATUSES = ["passed", "failed", "blocked", "skipped"] as const;
 
 /** The inputs of `run` the form has; an error naming one shows under it. */
-const INPUTS = ["status", "note", "env", "build", "release"] as const;
+const INPUTS = ["status", "note", "env", "build", "milestone"] as const;
 type InputName = (typeof INPUTS)[number];
 
 /**
@@ -33,7 +33,7 @@ export function RunRecorder({
 }) {
   const id = useId();
   const [status, setStatus] = useState("");
-  const [text, setText] = useState({ note: "", env: "", build: "", release: "" });
+  const [text, setText] = useState({ note: "", env: "", build: "", milestone: "" });
   const [errors, setErrors] = useState<CasefileError[]>([]);
   const [saving, setSaving] = useState(false);
   const ticket = useTicket();
@@ -66,7 +66,7 @@ export function RunRecorder({
   const placed = ticketErrors(errors);
   const rest = placed.rest.filter((e) => !INPUTS.includes(e.field as InputName));
   const invalid = (name: InputName) => at(name).length > 0 || undefined;
-  const line = (name: "env" | "build" | "release", label: string, hint: string) => (
+  const line = (name: "env" | "build" | "milestone", label: string, hint: string) => (
     <Field data-invalid={invalid(name)}>
       <FieldLabel htmlFor={`${id}-${name}`}>{label}</FieldLabel>
       <Input
@@ -125,7 +125,7 @@ export function RunRecorder({
         <div className="grid gap-4 sm:grid-cols-3">
           {line("env", "Environment", "staging")}
           {line("build", "Build", "web-2.1.0+9")}
-          {line("release", "Release", "web-2.1.0")}
+          {line("milestone", "Milestone", "web-2.1.0")}
         </div>
         <TicketField ticket={ticket} errors={placed.ticket} />
       </FieldGroup>

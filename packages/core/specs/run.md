@@ -8,7 +8,7 @@ anything: it writes down what the executor says happened, and returns the
 commit to make.
 
 - **Actor:** human, agent
-- **CLI:** `casefile run <ref> --status <passed|failed|blocked|skipped> [--note <text>] [--env <env>] [--build <build>] [--release <release>] [--run <id>] [--agent <name>] [--project <name>] --json`
+- **CLI:** `casefile run <ref> --status <passed|failed|blocked|skipped> [--note <text>] [--env <env>] [--build <build>] [--milestone <slug>] [--run <id>] [--agent <name>] [--project <name>] --json`
   (an agent runs it with `CASEFILE_ACTOR=agent`; read `commit` from the `--json` output)
 - **Writes:** `**/context/tests/.runs/*.jsonl` (appends only)
 
@@ -30,7 +30,8 @@ report (`casefile spec ingest`), and only those events make a case
 | `ref` | `TC-NNNN` or `<project>/TC-NNNN` | The case, looked up like `casefile resolve`. |
 | `status` | `passed`, `failed`, `blocked`, `skipped` | The result. |
 | `note` | text, optional | What the executor saw: why it failed, what blocked it. Cut to 2000 characters, the last one `…` (ADR run-event-note). |
-| `env`, `build`, `release` | text, optional | Where it ran and what was tested. `build` and `release` are what release gates read (`casefile spec query-grammar`). |
+| `env`, `build` | text, optional | Where it ran and what was tested. `build` is what gates read as `milestone.build` (`casefile spec query-grammar`). |
+| `milestone` | slug, optional | An open milestone of the project (`casefile spec milestone`): the execution belongs to it. `--release`, its name before `0.2.0`, still works, with a deprecation notice. |
 | `run` | file-safe id, optional | The run: names the run file. Default `manual-<date>`, today's UTC date, so a day of manual results shares one file. Pass a test cycle's id (`rc-2.1`) to group them under it. |
 | `agent` | text | The agent recording it (`claude-code`): the executor is `agent:<agent>`. Required for an agent, refused for a human. |
 | `identity` | email | Filled by the host: `CASEFILE_USER_EMAIL` when set, else `git config user.email` in the workspace (ADR identity-override; `casefile whoami` shows it): a human's executor is `human:<identity>`. |
@@ -47,7 +48,7 @@ never make a case `automated`.
 1. Finds the case (`case.unknown`, `case.ambiguous`).
 2. Builds the event, checked against the run-event schema
    (`schema/run-event.schema.json`), keys in schema order:
-   `{ run_id, case_id, status, executor, at: <now, UTC>, env?, build?, release?, note? }`.
+   `{ run_id, case_id, status, executor, at: <now, UTC>, env?, build?, milestone?, note? }`.
 3. Reads `.runs/<run>.jsonl` in the case's project. If the last event of this
    case in that file equals the new one apart from `at`, writes nothing: the
    call is a retry of one already recorded. Otherwise appends the event as one
@@ -74,7 +75,7 @@ never make a case `automated`.
 first). `casefile validate` reports nothing new for the run file.
 
 **Idempotency:** a retry of the same call (same case, run, status, note,
-env, build, release and executor) writes nothing while that result is still
+env, build, milestone and executor) writes nothing while that result is still
 the case's last in the run file: commit the file of the first call instead.
 Executing the case again and recording a result always appends, even one
 equal to an earlier result: passed, then failed, then passed records three
@@ -135,4 +136,5 @@ Nothing is written when any of these is returned.
 | `commit.ticket_missing` | the subject template names `{ticket}`, and none was given, found in the branch or set as `commit.ticket_default` |
 | `commit.ticket_invalid` / `commit.ticket_unused` | the ticket is not one token (letters, digits, `._#/-`), or the template names no `{ticket}` |
 | `config.commit_subject` / `config.commit_ticket_regex` | `commit.subject` or `commit.ticket_from_branch` in `casefile.yaml` is broken; `casefile validate` reports it too |
+| `milestone.unknown` / `milestone.closed` | the milestone is not declared, or is closed (`casefile spec milestone`) |
 | loader codes | `casefile.yaml` cannot be read; run `casefile validate` |

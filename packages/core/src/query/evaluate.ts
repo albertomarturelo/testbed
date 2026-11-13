@@ -15,6 +15,8 @@ const INDEX = /^\d+$/;
 
 /** Values of the context variables, keyed by context root (`release.changed_features`, `release.build`). */
 export type QueryContext = {
+  milestone?: Record<string, unknown>;
+  /** The same values as `milestone`, under its old name. */
   release?: Record<string, unknown>;
 };
 

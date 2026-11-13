@@ -7,9 +7,10 @@ import { AGENT_AUTHOR, runCommitMessage } from "../git/trailers.js";
 import { boundNote } from "../ingest/note.js";
 import { TESTS_DIR } from "../load/paths.js";
 import { loadWorkspace } from "../load/workspace.js";
-import { FileSafeId, RunEvent, RunStatus } from "../schema/index.js";
+import { FileSafeId, RunEvent, RunStatus, withMilestone } from "../schema/index.js";
 import { WriteCommit, WriterInput } from "./case-file.js";
 import { CaseRef, findCase } from "./cases.js";
+import { MilestoneInput, namedMilestone, RELEASE_DEPRECATED } from "./milestones.js";
 import { defineOperation } from "./operation.js";
 
 const RunInput = z.strictObject({
@@ -21,7 +22,7 @@ const RunInput = z.strictObject({
   note: z.string().min(1).optional(),
   env: z.string().min(1).optional(),
   build: z.string().min(1).optional(),
-  release: z.string().min(1).optional(),
+  ...MilestoneInput,
   /** The run file `.runs/<run>.jsonl`; default `manual-<UTC date>`. */
   run: FileSafeId.optional(),
   identity: WriterInput.identity,
@@ -87,13 +88,15 @@ export const runOperation = defineOperation({
     const found = findCase(workspace, input.ref, input.project);
     if (!found.ok) return found;
     const { project, case: loaded } = found.value;
+    const milestone = namedMilestone(project, input);
+    if (!milestone.ok) return milestone;
 
     const at = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
     const run = input.run ?? `manual-${at.slice(0, 10)}`;
     const optional = {
       env: input.env,
       build: input.build,
-      release: input.release,
+      milestone: milestone.value,
       note: boundNote(input.note),
     };
     // Absent fields are left out, not `undefined`: the event equals its line in the file.
@@ -146,6 +149,7 @@ export const runOperation = defineOperation({
         agent
           ? "Commit the run file with commit.author and commit.message taken from --json output, staging only it (`git commit -F <message> -- <path>`)"
           : "Commit the run file with commit.message taken from --json output, as yourself, staging only it (`git commit -F <message> -- <path>`)",
+        ...(input.release === undefined ? [] : [RELEASE_DEPRECATED]),
       ],
     });
   },
@@ -168,7 +172,7 @@ function isRetry(existing: string, event: RunEvent): boolean {
     }
   }
   if (last === null || typeof last !== "object") return false;
-  const { at: _, ...previous } = last as Record<string, unknown>;
+  const { at: _, ...previous } = withMilestone(last as Record<string, unknown>);
   const { at: __, ...current } = event;
   return isDeepStrictEqual(previous, current);
 }

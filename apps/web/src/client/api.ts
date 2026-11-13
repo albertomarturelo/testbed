@@ -110,6 +110,9 @@ export type CaseRun = {
   at: string;
   env?: string;
   build?: string;
+  /** The milestone it belongs to (ADR milestones-group-executions). */
+  milestone?: string;
+  /** What run files from before `0.2.0` call the milestone. */
   release?: string;
   duration_ms?: number;
   evidence?: { kind: string; ref: string; sha256?: string }[];

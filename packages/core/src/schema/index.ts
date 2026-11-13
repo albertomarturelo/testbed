@@ -2,6 +2,7 @@ import { z } from "zod";
 import { CommonFile } from "./common.js";
 import { Config } from "./config.js";
 import { InboxItem } from "./inbox-item.js";
+import { Milestone } from "./milestone.js";
 import { PropertiesFile } from "./properties.js";
 import { ReleasePolicy } from "./release-policy.js";
 import { RunEvent } from "./run-event.js";
@@ -10,6 +11,7 @@ import { TestCaseFile } from "./test-case.js";
 export * from "./common.js";
 export * from "./config.js";
 export * from "./inbox-item.js";
+export * from "./milestone.js";
 export * from "./primitives.js";
 export * from "./properties.js";
 export * from "./release-policy.js";
@@ -24,6 +26,7 @@ export const fileSchemas = {
   "run-event": { title: "casefile run event (.runs/*.jsonl line)", schema: RunEvent },
   "inbox-item": { title: "casefile inbox item", schema: InboxItem },
   "release-policy": { title: "casefile releases/policy.yaml", schema: ReleasePolicy },
+  milestone: { title: "casefile context/milestones/<slug>.yaml", schema: Milestone },
   config: { title: "casefile.yaml (workspace root)", schema: Config },
 } as const;
 

@@ -592,10 +592,17 @@ function RunsCard({ caseRef, onRecorded }: { caseRef: string; onRecorded: () => 
                   {run.duration_ms === undefined ? null : (
                     <span className="text-muted-foreground">{seconds(run.duration_ms)}</span>
                   )}
-                  {(["env", "build", "release"] as const).map((field) =>
-                    run[field] === undefined ? null : (
+                  {(
+                    [
+                      ["env", run.env],
+                      ["build", run.build],
+                      // Older run files call the milestone `release`.
+                      ["milestone", run.milestone ?? run.release],
+                    ] as const
+                  ).map(([field, value]) =>
+                    value === undefined ? null : (
                       <Badge key={field} variant="outline" title={field}>
-                        {run[field]}
+                        {value}
                       </Badge>
                     ),
                   )}

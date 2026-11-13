@@ -2,7 +2,8 @@ import { fail, ok, type Result } from "../errors.js";
 import { type ComparisonOperator, queryError, type Token, tokenize } from "./tokenize.js";
 
 /** Roots of context variables; any other path reads the case (ADR single-query-dsl). */
-export const CONTEXT_ROOTS = ["release"] as const;
+/** `release` is the name `milestone` had before `0.2.0` (ADR milestones-group-executions §8). */
+export const CONTEXT_ROOTS = ["milestone", "release"] as const;
 
 /**
  * A dotted path: a field of the case, or a context variable (`release.build`)
