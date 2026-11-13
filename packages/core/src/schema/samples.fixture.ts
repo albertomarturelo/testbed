@@ -244,6 +244,38 @@ export const samples: Record<FileSchemaName, { valid: Sample[]; invalid: Sample[
       },
     ],
   },
+  milestone: {
+    valid: [
+      { name: "minimal open", value: { title: "Sprint 23 regression", state: "open" } },
+      {
+        name: "a closed release",
+        value: {
+          title: "Web 1.2.0",
+          state: "closed",
+          due: "2026-10-20",
+          release: "web-1.2.0",
+          scope: "priority IN (P0, P1) and state = active",
+          opened: {
+            at: "2026-10-10T09:00:00Z",
+            by: "qa@example.com",
+            change: "11111111-1111-4111-8111-111111111111",
+          },
+          closed: {
+            at: "2026-10-20T17:00:00Z",
+            by: "lead@example.com",
+            change: "22222222-2222-4222-8222-222222222222",
+          },
+        },
+      },
+    ],
+    invalid: [
+      { name: "no state", value: { title: "Web 1.2.0" } },
+      { name: "unknown state", value: { title: "Web 1.2.0", state: "done" } },
+      { name: "title on two lines", value: { title: "Web\n1.2.0", state: "open" } },
+      { name: "due not a date", value: { title: "Web 1.2.0", state: "open", due: "next week" } },
+      { name: "unknown field", value: { title: "Web 1.2.0", state: "open", owner: "qa" } },
+    ],
+  },
   "release-policy": {
     valid: [
       {

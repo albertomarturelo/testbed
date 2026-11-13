@@ -2,7 +2,7 @@ import { type CasefileError, fail, ok, type Result } from "../errors.js";
 import type { LoadedRun } from "../load/parse.js";
 import { queryCases } from "../query/evaluate.js";
 import type { ResolvedCase } from "../resolve/resolve.js";
-import type { Gate, ReleasePolicy, RunEvent } from "../schema/index.js";
+import { eventMilestone, type Gate, type ReleasePolicy, type RunEvent } from "../schema/index.js";
 
 // Pure gate evaluation (CONVENTIONS #3, #4); rules in ADR release-gate-evaluation.
 
@@ -56,9 +56,11 @@ export type GateReport = {
  */
 export function evaluateGates(input: GateInput): Result<GateReport> {
   const release = releaseName(input.release);
-  const runs = input.runs.filter((r) => r.event.release === release);
+  // A run's milestone, or the `release` older run files wrote (ADR milestones-group-executions §8).
+  const runs = input.runs.filter((r) => eventMilestone(r.event) === release);
   const build = input.build ?? latestBuild(runs);
-  const context = { release: build === null ? { name: release } : { name: release, build } };
+  const values = build === null ? { name: release } : { name: release, build };
+  const context = { milestone: values, release: values };
   const latest = latestResults(runs);
 
   const gates: GateResult[] = [];

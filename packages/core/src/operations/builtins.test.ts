@@ -17,6 +17,7 @@ describe("builtinOperations", () => {
       "id-next",
       "ingest-junit",
       "init",
+      "milestone-open",
       "overview",
       "project-add",
       "query",

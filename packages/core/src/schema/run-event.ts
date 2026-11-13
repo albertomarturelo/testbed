@@ -49,6 +49,9 @@ export const RunEvent = z.strictObject({
   surface: Surface.optional(),
   env: z.string().min(1).optional(),
   build: z.string().min(1).optional(),
+  /** The milestone the execution belongs to (ADR milestones-group-executions). */
+  milestone: z.string().min(1).optional(),
+  /** What files written before `0.2.0` call the milestone; read as `milestone`, never written. */
   release: z.string().min(1).optional(),
   duration_ms: z.number().int().min(0).optional(),
   step_results: z.array(StepResult).optional(),
@@ -60,3 +63,25 @@ export const RunEvent = z.strictObject({
 });
 
 export type RunEvent = z.infer<typeof RunEvent>;
+
+/**
+ * The milestone an event belongs to: `milestone`, else the `release` that run
+ * files from before `0.2.0` wrote (ADR milestones-group-executions §8).
+ */
+export function eventMilestone(event: {
+  milestone?: string;
+  release?: string;
+}): string | undefined {
+  return event.milestone ?? event.release;
+}
+
+/**
+ * An event as `0.2.0` writes it: an old `release` moved to `milestone`, so an
+ * old line and a new one compare equal. For comparing only: run files are
+ * append-only and never rewritten.
+ */
+export function withMilestone<T extends object>(event: T): T {
+  const { release, ...rest } = event as T & { release?: unknown; milestone?: unknown };
+  if (release === undefined || rest.milestone !== undefined) return event;
+  return { ...rest, milestone: release } as T;
+}

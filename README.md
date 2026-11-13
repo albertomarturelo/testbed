@@ -217,6 +217,7 @@ Every command has `--help`, `--json` for scripts and agents, and a SPEC:
 | `casefile cover` | Writes the cases the agent proposes for a feature, as drafts |
 | `casefile review` | Edits, approves or retires one case, for the agent or the QA |
 | `casefile run` | Records the result of a case someone executed by hand; casefile runs nothing |
+| `casefile milestone open` | Declares a milestone (a release to certify, a sprint regression, a UAT round) that executions name with `--milestone` |
 | `casefile ingest junit` | Turns a JUnit report into run events matched by `automation.ref` |
 | `casefile overview` | Every project with its cases, automation status and last run |
 | `casefile runs` | One case's run events, newest first, with why each one failed |

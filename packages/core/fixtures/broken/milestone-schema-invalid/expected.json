@@ -1,0 +1,7 @@
+[
+  {
+    "code": "schema.invalid",
+    "path": "context/milestones/web-1.0.0.yaml",
+    "field": "state"
+  }
+]

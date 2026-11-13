@@ -23,6 +23,7 @@ export * from "./operations/glob.js";
 export * from "./operations/host.js";
 export * from "./operations/id-next.js";
 export * from "./operations/init.js";
+export * from "./operations/milestone-open.js";
 export * from "./operations/operation.js";
 export * from "./operations/overview.js";
 export * from "./operations/project-add.js";

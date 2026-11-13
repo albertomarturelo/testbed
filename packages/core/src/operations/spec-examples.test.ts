@@ -2,7 +2,13 @@ import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { workflowProblems } from "../ci-workflow.fixture.js";
-import { parseCaseFile, parseCommonFile, parseConfigFile, parseRunFile } from "../load/parse.js";
+import {
+  parseCaseFile,
+  parseCommonFile,
+  parseConfigFile,
+  parseMilestoneFile,
+  parseRunFile,
+} from "../load/parse.js";
 import { CORE_SPECS_DIR } from "./spec.js";
 
 /**
@@ -13,6 +19,7 @@ const PARSERS: [RegExp, (path: string, text: string) => { ok: boolean; problems?
   [/^casefile\.yaml$/, parseConfigFile],
   [/_common\.yaml$/, parseCommonFile],
   [/^TC-\d{4,}\.md$/, parseCaseFile],
+  [/(?:^|\/)context\/milestones\/[^/]+\.yaml$/, parseMilestoneFile],
   [/\.jsonl$/, (path, text) => ({ ok: parseRunFile(path, text).errors.length === 0 })],
   // GitHub Actions workflows (`casefile spec ci`): the rules of ADR ci-commits-run-files.
   [/\.yml$/, (_, text) => ({ ok: true, problems: workflowProblems(text) })],
