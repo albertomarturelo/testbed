@@ -1,6 +1,11 @@
+import { posix } from "node:path";
 import { z } from "zod";
 import { fail, ok, type Result } from "../errors.js";
+import { MILESTONES_DIR, POLICY_FILE } from "../load/paths.js";
 import type { LoadedProject } from "../load/workspace.js";
+import { type MilestoneEvidence, milestoneEvidence } from "../milestones/evidence.js";
+import type { ResolvedCase } from "../resolve/resolve.js";
+import type { Milestone } from "../schema/index.js";
 
 /** The inputs an execution names its milestone with (ADR milestones-group-executions §3, §8). */
 export const MilestoneInput = {
@@ -56,4 +61,49 @@ export function namedMilestone(
     });
   }
   return ok(slug);
+}
+
+/** A declared milestone of the project, open or closed; `milestone.unknown` otherwise. */
+export function findMilestone(
+  project: LoadedProject,
+  slug: string,
+): Result<{ path: string; file: Milestone }> {
+  const declared = project.milestones.get(slug);
+  if (declared !== undefined) return ok(declared);
+  const known = [...project.milestones.keys()];
+  return fail({
+    code: "milestone.unknown",
+    field: "slug",
+    message: `${project.name} has no milestone '${slug}'${
+      known.length === 0 ? "" : ` (declared: ${known.join(", ")})`
+    }`,
+  });
+}
+
+/** `context/milestones/<slug>/evidence.md`: what `close` freezes (ADR milestones-group-executions §4). */
+export function evidencePath(project: LoadedProject, slug: string): string {
+  return posix.join(project.path, MILESTONES_DIR, slug, "evidence.md");
+}
+
+/** Evidence of one milestone from the project's loaded cases, runs and policy. */
+export function projectEvidence(
+  project: LoadedProject,
+  cases: readonly ResolvedCase[],
+  slug: string,
+  milestone: { path: string; file: Milestone },
+  close: { closed: { at: string; by: string } | null; note?: string; today: string },
+): Result<MilestoneEvidence> {
+  return milestoneEvidence({
+    project: project.name,
+    slug,
+    milestone: milestone.file,
+    milestonePath: milestone.path,
+    cases: cases.filter((c) => c.project === project.name),
+    runs: project.runs,
+    policy:
+      project.policy === null
+        ? null
+        : { policy: project.policy, path: posix.join(project.path, POLICY_FILE) },
+    ...close,
+  });
 }
