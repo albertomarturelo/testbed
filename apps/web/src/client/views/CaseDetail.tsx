@@ -10,6 +10,7 @@ import {
   type Reviewed,
 } from "@/api";
 import { ErrorList } from "@/components/ErrorList";
+import { Markdown } from "@/components/Markdown";
 import { AutomationBadge, RunBadge } from "@/components/StatusBadge";
 import {
   AlertDialog,
@@ -192,12 +193,8 @@ export function CaseDetail({
       ) : (
         <Card className="min-w-0">
           <CardContent className="flex flex-col gap-6">
-            {body === "" ? null : (
-              // The body is Markdown kept as text: casefile shows it as written, it does not render it.
-              <p className="max-w-prose whitespace-pre-wrap break-words text-sm leading-relaxed">
-                {body}
-              </p>
-            )}
+            {/* The body is Markdown (ADR case-body-markdown); the file keeps it as written. */}
+            {body === "" ? null : <Markdown text={body} />}
             {preconditions.length === 0 ? null : (
               <Section title="Preconditions">
                 <ul className="flex list-disc flex-col gap-1 pl-5 text-sm">

@@ -495,12 +495,11 @@ describe("CaseDetail", () => {
     render(<CaseDetail caseRef="web/TC-0007" />);
     await screen.findByRole("heading", { name: "Sign in with a registered account" });
 
-    // The body as written, its blank line kept.
+    // The body as Markdown (ADR case-body-markdown): its two paragraphs.
     const body = screen.getByText(/Needs real credentials/);
-    expect(body.textContent).toBe(
-      "Needs real credentials: manual.\n\nNo automated test may sign in.",
-    );
-    expect(body.className).toContain("whitespace-pre-wrap");
+    expect(body.tagName).toBe("P");
+    expect(body.textContent).toBe("Needs real credentials: manual.");
+    expect(body.nextElementSibling?.textContent).toBe("No automated test may sign in.");
 
     // The title comes before where the case stands.
     const title = screen.getByRole("heading", { name: "Sign in with a registered account" });

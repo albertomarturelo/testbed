@@ -36,6 +36,7 @@ Upgrades are deliberate PRs that update this table.
 | `@casefile/web` | `tailwind-merge` | dev (bundled) | 3.7.0 | `cn()` utility conflicts |
 | `@casefile/web` | `lucide-react` | dev (bundled) | 1.54.0 | Icons (shadcn default) |
 | `@casefile/web` | `tw-animate-css` | dev (bundled) | 1.4.0 | Animations the shadcn components use |
+| `@casefile/web` | `markdown-it` | dev (bundled) | 15.0.3 | Case bodies as Markdown on the case page, raw HTML escaped ([case-body-markdown](decisions/2026-11-13-case-body-markdown.md)); ships its own types |
 | `@casefile/web` | `happy-dom`, `@testing-library/react` | dev | 20.14.6, 16.3.3 | Client smoke tests |
 | `@casefile/web` | `@testing-library/user-event` | dev | 14.6.8 | Keyboard and pointer in client tests: happy-dom does not activate a button on Enter or Space (#114) |
 
