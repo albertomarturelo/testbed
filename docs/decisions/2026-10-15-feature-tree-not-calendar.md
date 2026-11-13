@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted — 2026-10-15 (from the founding brief)
+Accepted — 2026-10-15 (from the founding brief). Still holds with
+[milestones-group-executions](2026-11-12-milestones-group-executions.md):
+a milestone groups executions, never cases.
 
 ## Context
 
