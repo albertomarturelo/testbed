@@ -6,6 +6,7 @@ import { parse } from "yaml";
 import { DEMO_ROOT } from "../demo.fixture.js";
 import { AGENT_AUTHOR } from "../git/trailers.js";
 import { milestoneCloseOperation } from "./milestone-close.js";
+import { milestoneListOperation } from "./milestone-list.js";
 import { milestoneReportOperation } from "./milestone-report.js";
 import type { Actor } from "./operation.js";
 import { createRegistry } from "./registry.js";
@@ -15,6 +16,7 @@ const registry = createRegistry();
 registry.register(milestoneReportOperation);
 registry.register(milestoneCloseOperation);
 registry.register(runOperation);
+registry.register(milestoneListOperation);
 
 const MILESTONE = "context/milestones/web-1.2.0.yaml";
 const EVIDENCE = "context/milestones/web-1.2.0/evidence.md";
@@ -70,6 +72,22 @@ describe("milestone report", () => {
     expect(value.evidence).toContain("| Closed | not closed: a report, not frozen evidence |");
     expect(value.red_gates).toContain("smoke");
     expect(await read(EVIDENCE)).toBeNull();
+  });
+
+  it("returns the same evidence as data for a page (#166)", async () => {
+    const result = await report();
+    if (!result.ok) throw new Error(JSON.stringify(result.errors));
+    const { report: document } = result.value as { report: Record<string, unknown> };
+    expect(document).toMatchObject({
+      slug: "web-1.2.0",
+      title: "Web 1.2.0",
+      closed: null,
+      totals: { in_scope: 5, executed: 5, passed: 3, failed: 2 },
+    });
+    expect((document.gates as { name: string; verdict: string }[])[0]).toMatchObject({
+      name: "smoke",
+      verdict: "red",
+    });
   });
 
   it("refuses a milestone the project does not declare", async () => {
@@ -152,8 +170,31 @@ describe("milestone close (ADR milestones-group-executions §2, §4, §5)", () =
 
     const reported = await report();
     if (!reported.ok) throw new Error(JSON.stringify(reported.errors));
-    expect(reported.value).toMatchObject({ state: "closed", evidence: frozen });
+    expect(reported.value).toMatchObject({
+      state: "closed",
+      evidence: frozen,
+      report: { closed: { by: "lead@acme.example" }, note: NOTE },
+    });
     expect(await read(EVIDENCE)).toBe(frozen);
+  });
+
+  it("reads a closed milestone's report from the frozen file, not from the files now", async () => {
+    await close({ note: NOTE });
+    // A case retired after the close leaves the active scope; the evidence keeps it.
+    const tc = "context/tests/catalog/search/TC-0007.md";
+    const text = await read(tc);
+    if (text === null) throw new Error(`demo case missing: ${tc}`);
+    await writeFile(join(root, tc), text.replace("state: active", "state: retired"));
+    const reported = await report();
+    if (!reported.ok) throw new Error(JSON.stringify(reported.errors));
+    const value = reported.value as { report: { totals: { in_scope: number } } };
+    expect(value.report.totals.in_scope).toBe(5);
+
+    await writeFile(join(root, EVIDENCE), "edited by hand\n");
+    const edited = await report();
+    if (!edited.ok) throw new Error(JSON.stringify(edited.errors));
+    expect(edited.value).toMatchObject({ evidence: "edited by hand\n" });
+    expect(edited.value).not.toHaveProperty("report");
   });
 
   it("reports a closed milestone whose evidence file is gone", async () => {
@@ -175,5 +216,90 @@ describe("milestone close (ADR milestones-group-executions §2, §4, §5)", () =
         ),
       ),
     ).toEqual(["milestone.agent_required"]);
+  });
+});
+
+describe("milestone list (#166)", () => {
+  const list = (input: Record<string, unknown> = {}) =>
+    registry.invoke("milestone-list", input, { root, actor: "human" });
+  const opened = (slug: string, extra: string) =>
+    writeFile(
+      join(root, `context/milestones/${slug}.yaml`),
+      `title: ${slug}\nstate: open\n${extra}`,
+    );
+
+  it("lists open milestones first, by due date, with progress and red gates", async () => {
+    await opened("sprint-2", "due: 2026-12-01\n");
+    await opened("sprint-1", "due: 2026-11-20\nscope: priority = P0\n");
+    const result = await list();
+    if (!result.ok) throw new Error(JSON.stringify(result.errors));
+    const { milestones } = result.value as {
+      milestones: { slug: string; state: string; totals: unknown; red_gates: string[] }[];
+    };
+    expect(milestones.map((m) => m.slug)).toEqual(["sprint-1", "sprint-2", "web-1.2.0"]);
+    expect(milestones[0]?.totals).toEqual({
+      in_scope: 1,
+      executed: 0,
+      passed: 0,
+      failed: 0,
+      blocked: 0,
+      not_run: 1,
+    });
+    expect(milestones[2]).toMatchObject({
+      project: "web",
+      title: "Web 1.2.0",
+      state: "open",
+      release: "web-1.2.0",
+      due: null,
+      closed: null,
+      path: MILESTONE,
+      totals: { in_scope: 5, executed: 5, passed: 3 },
+    });
+    expect(milestones[2]?.red_gates).toContain("smoke");
+  });
+
+  it("puts closed ones last with the frozen totals, and lists only open ones on request", async () => {
+    await opened("sprint-1", "");
+    await close({ note: NOTE });
+    const all = await list();
+    if (!all.ok) throw new Error(JSON.stringify(all.errors));
+    const { milestones } = all.value as {
+      milestones: { slug: string; state: string; closed: unknown; totals: unknown }[];
+    };
+    expect(milestones.map((m) => [m.slug, m.state])).toEqual([
+      ["sprint-1", "open"],
+      ["web-1.2.0", "closed"],
+    ]);
+    // Two closed: the latest closed first, whatever their slugs or due dates.
+    await writeFile(
+      join(root, "context/milestones/a-old.yaml"),
+      "title: Old\nstate: closed\ndue: 2099-01-01\nclosed:\n  at: 2020-01-01T00:00:00Z\n  by: lead@acme.example\n  change: 3b0e8f4a-6c1d-4f7e-9a52-0d9e2c1b7a44\n",
+    );
+    const sorted = await list();
+    if (!sorted.ok) throw new Error(JSON.stringify(sorted.errors));
+    expect(
+      (sorted.value as { milestones: { slug: string }[] }).milestones.map((m) => m.slug),
+    ).toEqual(["sprint-1", "web-1.2.0", "a-old"]);
+    expect(milestones[1]).toMatchObject({
+      closed: { by: "lead@acme.example" },
+      totals: { in_scope: 5, executed: 5 },
+    });
+    const onlyOpen = await list({ open: true });
+    if (!onlyOpen.ok) throw new Error(JSON.stringify(onlyOpen.errors));
+    expect(
+      (onlyOpen.value as { milestones: { slug: string }[] }).milestones.map((m) => m.slug),
+    ).toEqual(["sprint-1"]);
+  });
+
+  it("keeps a milestone whose progress cannot be read, without totals", async () => {
+    await opened("broken", "scope: priority =\n");
+    const result = await list();
+    if (!result.ok) throw new Error(JSON.stringify(result.errors));
+    const { milestones } = result.value as { milestones: { slug: string; totals: unknown }[] };
+    expect(milestones.find((m) => m.slug === "broken")?.totals).toBeNull();
+  });
+
+  it("refuses an unknown project", async () => {
+    expect(errorCodes(await list({ project: "nope" }))).toEqual(["project.unknown"]);
   });
 });

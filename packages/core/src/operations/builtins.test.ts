@@ -18,6 +18,7 @@ describe("builtinOperations", () => {
       "ingest-junit",
       "init",
       "milestone-close",
+      "milestone-list",
       "milestone-open",
       "milestone-report",
       "overview",

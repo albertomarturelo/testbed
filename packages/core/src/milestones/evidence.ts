@@ -156,12 +156,83 @@ export function redGates(evidence: MilestoneEvidence): string[] {
   return (evidence.gates ?? []).filter((g) => g.verdict === "red").map((g) => g.name);
 }
 
+/**
+ * The evidence as its document reads: every value on one line as a row shows
+ * it, gate reasons joined. What the viewer shows and prints, the same shape for
+ * an open milestone (generated now) and a closed one (parsed from its frozen
+ * file, so the page is the file).
+ */
+export type EvidenceDocument = {
+  project: string;
+  slug: string;
+  title: string;
+  release: string | null;
+  due: string | null;
+  scope: string;
+  build: string | null;
+  opened: { at: string; by: string } | null;
+  closed: { at: string; by: string } | null;
+  totals: EvidenceTotals;
+  /** `null` when the project has no release policy. */
+  gates: { name: string; verdict: string; cases: number; reasons: string | null }[] | null;
+  cases: EvidenceRow[];
+  note: string | null;
+};
+
+/** The document `renderEvidence` writes for this evidence. */
+export function evidenceDocument(evidence: MilestoneEvidence): EvidenceDocument {
+  const e = evidence;
+  const line = (value: string | null) => (value === null ? null : oneLine(value) || null);
+  const stamp = (s: { at: string; by: string } | null) =>
+    s === null ? null : { at: oneLine(s.at), by: oneLine(s.by) };
+  return {
+    project: oneLine(e.project),
+    slug: oneLine(e.slug),
+    title: oneLine(e.title),
+    release: line(e.release),
+    due: line(e.due),
+    scope: oneLine(e.scope),
+    build: line(e.build),
+    opened: stamp(e.opened),
+    closed: stamp(e.closed),
+    totals: { ...e.totals },
+    gates:
+      e.gates === null
+        ? null
+        : e.gates.map((gate) => ({
+            name: oneLine(gate.name),
+            verdict: gate.verdict,
+            cases: gate.cases.length,
+            reasons: line(
+              gate.reasons
+                .map(
+                  (r) =>
+                    `${r.requirement}: ${r.message}${r.cases.length > 0 ? ` (${r.cases.join(", ")})` : ""}`,
+                )
+                .join("; "),
+            ),
+          })),
+    cases: e.cases.map((c) => ({
+      id: c.id,
+      title: oneLine(c.title),
+      priority: c.priority,
+      result: c.result,
+      executor: line(c.executor),
+      at: line(c.at),
+      build: line(c.build),
+      note: line(c.note),
+      evidence: c.evidence.map(oneLine),
+    })),
+    note: e.note === null ? null : e.note.trim() || null,
+  };
+}
+
 /** The evidence as Markdown, as `close` writes `context/milestones/<slug>/evidence.md`. */
 export function renderEvidence(evidence: MilestoneEvidence): string {
-  const e = evidence;
+  const e = evidenceDocument(evidence);
   const { totals } = e;
   const lines = [
-    `# Milestone evidence: ${oneLine(e.title)}`,
+    `# ${TITLE_PREFIX}${e.title}`,
     "",
     "| | |",
     "|---|---|",
@@ -170,8 +241,8 @@ export function renderEvidence(evidence: MilestoneEvidence): string {
     `| Due | ${cell(e.due)} |`,
     `| Scope | ${cell(e.scope)} |`,
     `| Build | ${cell(e.build)} |`,
-    `| Opened | ${e.opened === null ? "—" : `${cell(e.opened.at)} by ${cell(e.opened.by)}`} |`,
-    `| Closed | ${e.closed === null ? "not closed: a report, not frozen evidence" : `${cell(e.closed.at)} by ${cell(e.closed.by)}`} |`,
+    `| Opened | ${e.opened === null ? EMPTY : `${cell(e.opened.at)} by ${cell(e.opened.by)}`} |`,
+    `| Closed | ${e.closed === null ? NOT_CLOSED : `${cell(e.closed.at)} by ${cell(e.closed.by)}`} |`,
     "",
     "## Totals",
     "",
@@ -182,23 +253,19 @@ export function renderEvidence(evidence: MilestoneEvidence): string {
   ];
   if (e.gates !== null) {
     lines.push("## Gates", "");
-    if (e.gates.length === 0) lines.push("The release policy declares no gates.", "");
+    if (e.gates.length === 0) lines.push(NO_GATES, "");
     else {
       lines.push("| Gate | Verdict | Cases | Reasons |", "|---|---|---:|---|");
       for (const gate of e.gates) {
-        const reasons = gate.reasons.map(
-          (r) =>
-            `${r.requirement}: ${r.message}${r.cases.length > 0 ? ` (${r.cases.join(", ")})` : ""}`,
-        );
         lines.push(
-          `| ${cell(gate.name)} | ${gate.verdict} | ${gate.cases.length} | ${cell(reasons.join("; ") || null)} |`,
+          `| ${cell(gate.name)} | ${gate.verdict} | ${gate.cases} | ${cell(gate.reasons)} |`,
         );
       }
       lines.push("");
     }
   }
   lines.push("## Cases", "");
-  if (e.cases.length === 0) lines.push("The scope selects no cases.", "");
+  if (e.cases.length === 0) lines.push(NO_CASES, "");
   else {
     lines.push(
       "| Case | Title | Priority | Result | Executor | Date | Build | Note | Evidence |",
@@ -210,12 +277,12 @@ export function renderEvidence(evidence: MilestoneEvidence): string {
           c.id,
           c.title,
           c.priority,
-          c.result ?? "not run",
+          c.result ?? NOT_RUN,
           c.executor,
           c.at,
           c.build,
           c.note,
-          c.evidence.join(", ") || null,
+          c.evidence.join(EVIDENCE_SEPARATOR) || null,
         ]
           .map(cell)
           .join(" | ")} |`,
@@ -226,9 +293,133 @@ export function renderEvidence(evidence: MilestoneEvidence): string {
   const missing = e.cases.filter((c) => c.result === null);
   lines.push("## Not executed", "");
   if (missing.length === 0) lines.push("Every case in scope was executed.", "");
-  else lines.push(...missing.map((c) => `- ${c.id} ${oneLine(c.title)}`), "");
-  if (e.note !== null) lines.push("## Close note", "", e.note.trim(), "");
+  else lines.push(...missing.map((c) => `- ${c.id} ${c.title}`), "");
+  if (e.note !== null) lines.push(`## ${CLOSE_NOTE}`, "", e.note, "");
   return `${lines.join("\n").trimEnd()}\n`;
+}
+
+/**
+ * Reads back a file `renderEvidence` wrote: the frozen evidence of a closed
+ * milestone, as a document the viewer can show and print. `null` when the text
+ * does not have that shape (edited by hand, or written by another version):
+ * the caller shows the text as it is.
+ */
+export function parseEvidence(markdown: string): EvidenceDocument | null {
+  const text = markdown.replace(/\r\n/g, "\n");
+  const firstLine = text.split("\n", 1)[0] ?? "";
+  if (!firstLine.startsWith(`# ${TITLE_PREFIX}`)) return null;
+  const title = firstLine.slice(TITLE_PREFIX.length + 2).trim();
+  const sections = new Map<string, string[]>();
+  let current: string[] = [];
+  sections.set("", current);
+  for (const line of text.split("\n").slice(1)) {
+    if (line.startsWith("## ")) {
+      current = [];
+      sections.set(line.slice(3).trim(), current);
+    } else current.push(line);
+  }
+
+  const head = new Map(
+    tableRows(sections.get("") ?? []).flatMap((row) =>
+      row.length === 2 && row[0] !== null ? [[row[0], row[1] ?? null] as const] : [],
+    ),
+  );
+  const named = head.get("Milestone")?.match(/^(.*) \(project (.*)\)$/);
+  const scope = head.get("Scope");
+  if (named === null || named === undefined || scope === undefined || scope === null) return null;
+  const [, slug = "", project = ""] = named;
+
+  const totalsRow = tableRows(sections.get("Totals") ?? [])[0]?.map(Number);
+  if (totalsRow === undefined || totalsRow.length !== 6 || totalsRow.some(Number.isNaN)) {
+    return null;
+  }
+  const [in_scope = 0, executed = 0, passed = 0, failed = 0, blocked = 0, not_run = 0] = totalsRow;
+
+  const gateLines = sections.get("Gates");
+  const gates =
+    gateLines === undefined
+      ? null
+      : tableRows(gateLines).map(([name, verdict, cases, reasons]) => ({
+          name: name ?? "",
+          verdict: verdict ?? "",
+          cases: Number(cases ?? 0),
+          reasons: reasons ?? null,
+        }));
+
+  const caseRows = tableRows(sections.get("Cases") ?? []);
+  if (caseRows.some((row) => row.length !== 9)) return null;
+  const cases = caseRows.map(
+    ([id, caseTitle, priority, result, executor, at, build, note, evidence]): EvidenceRow => ({
+      id: id ?? "",
+      title: caseTitle ?? "",
+      priority: priority ?? "",
+      result: result === "passed" || result === "failed" || result === "blocked" ? result : null,
+      executor: executor ?? null,
+      at: at ?? null,
+      build: build ?? null,
+      note: note ?? null,
+      evidence: evidence == null ? [] : evidence.split(EVIDENCE_SEPARATOR),
+    }),
+  );
+  const noteLines = sections.get(CLOSE_NOTE);
+
+  return {
+    project,
+    slug,
+    title,
+    release: head.get("Release") ?? null,
+    due: head.get("Due") ?? null,
+    scope,
+    build: head.get("Build") ?? null,
+    opened: stampOf(head.get("Opened")),
+    closed: stampOf(head.get("Closed")),
+    totals: { in_scope, executed, passed, failed, blocked, not_run },
+    gates,
+    cases,
+    note: noteLines === undefined ? null : noteLines.join("\n").trim() || null,
+  };
+}
+
+const TITLE_PREFIX = "Milestone evidence: ";
+const EMPTY = "—";
+const NOT_CLOSED = "not closed: a report, not frozen evidence";
+const NOT_RUN = "not run";
+const NO_GATES = "The release policy declares no gates.";
+const NO_CASES = "The scope selects no cases.";
+const CLOSE_NOTE = "Close note";
+const EVIDENCE_SEPARATOR = ", ";
+
+/** `<at> by <who>`; `null` for `—` and for a report's "not closed". */
+function stampOf(value: string | null | undefined): { at: string; by: string } | null {
+  const match = value?.match(/^(\S+) by (.+)$/);
+  return match?.[1] === undefined || match[2] === undefined ? null : { at: match[1], by: match[2] };
+}
+
+/** The body rows of the first Markdown table in `lines`, cells unescaped, `—` as `null`. */
+function tableRows(lines: readonly string[]): (string | null)[][] {
+  const table = lines.filter((line) => line.startsWith("|"));
+  // The header row, then the `|---|` separator: the rest is the body.
+  return table.slice(2).map(splitRow);
+}
+
+/** One table row: split on unescaped `|`, the inverse of `cell`. */
+function splitRow(line: string): (string | null)[] {
+  const cells: string[] = [];
+  let value = "";
+  for (let i = 1; i < line.length; i++) {
+    const char = line[i];
+    if (char === "\\") {
+      value += line[i + 1] ?? "";
+      i++;
+    } else if (char === "|") {
+      cells.push(value);
+      value = "";
+    } else value += char;
+  }
+  return cells.map((c) => {
+    const trimmed = c.trim();
+    return trimmed === EMPTY ? null : trimmed;
+  });
 }
 
 /** The run's note, then its triage, on one line; long notes are cut (the run file keeps them). */
@@ -257,6 +448,6 @@ function cut(text: string): string {
 
 /** A table cell: one line, `|` escaped, `—` when empty. */
 function cell(value: string | null): string {
-  if (value === null || value === "") return "—";
+  if (value === null || value === "") return EMPTY;
   return oneLine(value).replaceAll("\\", "\\\\").replaceAll("|", "\\|");
 }

@@ -1,9 +1,13 @@
 import { z } from "zod";
 import { fail, ok } from "../errors.js";
-import { redGates, renderEvidence } from "../milestones/evidence.js";
 import { FileSafeId } from "../schema/index.js";
 import { loadWorkspaceCases, requireProject } from "./cases.js";
-import { evidencePath, findMilestone, projectEvidence } from "./milestones.js";
+import {
+  EvidenceDocumentOutput,
+  evidencePath,
+  findMilestone,
+  milestoneDocument,
+} from "./milestones.js";
 import { defineOperation } from "./operation.js";
 
 const MilestoneReportInput = z.strictObject({
@@ -20,6 +24,12 @@ const MilestoneReportOutput = z.strictObject({
   path: z.string(),
   /** The evidence as Markdown: generated now while open, the frozen file once closed. */
   evidence: z.string(),
+  /**
+   * The same evidence as data, for a page to show and print. Once closed it is
+   * read from the frozen file; absent when that file no longer has the shape
+   * core writes (edited by hand): show `evidence` as it is.
+   */
+  report: EvidenceDocumentOutput.optional(),
   /** Open only: the gates that are red now; `close` needs `--note` while any is. */
   red_gates: z.array(z.string()).optional(),
   next: z.array(z.string()),
@@ -48,10 +58,20 @@ export const milestoneReportOperation = defineOperation({
     const milestone = findMilestone(project, input.slug);
     if (!milestone.ok) return milestone;
     const path = evidencePath(project, input.slug);
+    const today = new Date().toISOString().slice(0, 10);
+    const shown = await milestoneDocument(
+      project,
+      resolved.cases,
+      input.slug,
+      milestone.value,
+      (file) => context.readText(file),
+      today,
+    );
+    if (!shown.ok) return shown;
+    const { document, red, markdown } = shown.value;
 
-    if (milestone.value.file.state === "closed") {
-      const frozen = await context.readText(path);
-      if (frozen === null) {
+    if (shown.value.state === "closed") {
+      if (markdown === null) {
         return fail({
           code: "milestone.evidence_missing",
           field: "slug",
@@ -64,24 +84,19 @@ export const milestoneReportOperation = defineOperation({
         slug: input.slug,
         state: "closed" as const,
         path,
-        evidence: frozen,
+        evidence: markdown,
+        ...(document === null ? {} : { report: document }),
         next: [],
       });
     }
 
-    const today = new Date().toISOString().slice(0, 10);
-    const evidence = projectEvidence(project, resolved.cases, input.slug, milestone.value, {
-      closed: null,
-      today,
-    });
-    if (!evidence.ok) return evidence;
-    const red = redGates(evidence.value);
     return ok({
       project: project.name,
       slug: input.slug,
       state: "open" as const,
       path,
-      evidence: renderEvidence(evidence.value),
+      evidence: markdown ?? "",
+      ...(document === null ? {} : { report: document }),
       red_gates: red,
       next: [
         red.length === 0

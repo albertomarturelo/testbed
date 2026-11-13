@@ -218,6 +218,7 @@ Every command has `--help`, `--json` for scripts and agents, and a SPEC:
 | `casefile review` | Edits, approves or retires one case, for the agent or the QA |
 | `casefile run` | Records the result of a case someone executed by hand; casefile runs nothing |
 | `casefile milestone open` | Declares a milestone (a release to certify, a sprint regression, a UAT round) that executions name with `--milestone` |
+| `casefile milestone list` | Every milestone with its progress (executed, passed) and red gates; `--open` for the ones an execution can name |
 | `casefile milestone report` | The evidence of a milestone: totals, gate verdicts, the latest result of each case and the cases not executed |
 | `casefile milestone close` | Freezes that evidence in `context/milestones/<slug>/evidence.md` and closes the milestone, in one commit |
 | `casefile ingest junit` | Turns a JUnit report into run events matched by `automation.ref` |

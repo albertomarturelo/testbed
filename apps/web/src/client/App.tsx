@@ -12,6 +12,8 @@ import { cn } from "@/lib/utils";
 import { DRAFT, formatRoute, parseRoute, type Route, type StateFilter } from "@/route";
 import { CaseList } from "@/views/CaseList";
 import { CaseSheet } from "@/views/CaseSheet";
+import { EvidencePrint, MilestonePage } from "@/views/MilestonePage";
+import { Milestones } from "@/views/Milestones";
 import { NewCase } from "@/views/NewCase";
 import { QueryView } from "@/views/QueryView";
 import { ValidateView } from "@/views/ValidateView";
@@ -68,11 +70,13 @@ export function App() {
     );
   }, [route]);
 
-  // The list a case was opened from stays behind its Sheet (#146); any other view forgets it.
-  const [listBehind, setListBehind] = useState<CasesRoute | null>(null);
+  // The page a case was opened from stays behind its Sheet: a case list (#146) or a
+  // milestone (#166). Any other view forgets it.
+  const [pageBehind, setPageBehind] = useState<BehindRoute | null>(null);
   useEffect(() => {
-    if (route.view === "cases") setListBehind(route);
-    else if (route.view !== "case") setListBehind(null);
+    if (route.view === "cases" || (route.view === "milestone" && !route.evidence)) {
+      setPageBehind(route);
+    } else if (route.view !== "case") setPageBehind(null);
   }, [route]);
 
   const load = useCallback(() => {
@@ -84,14 +88,19 @@ export function App() {
     load();
     setReload((n) => n + 1);
   };
+  // A write in a case over a milestone changes its progress: read both again.
+  const written = () => {
+    load();
+    setReload((n) => n + 1);
+  };
 
   const projects = overview?.ok ? overview.value.projects : [];
   // A case opened from a link or a reload: its own project and feature's list.
-  const list: CasesRoute | undefined =
-    route.view === "cases"
+  const behind: BehindRoute | undefined =
+    route.view === "cases" || (route.view === "milestone" && !route.evidence)
       ? route
       : route.view === "case"
-        ? (listBehind ?? {
+        ? (pageBehind ?? {
             view: "cases",
             project: route.ref.split("/")[0],
             feature: overview?.ok
@@ -99,14 +108,27 @@ export function App() {
               : undefined,
           })
         : undefined;
-  // Over a case, the header names the list behind it.
-  const project = route.view === "case" ? list?.project : route.project;
+  const list = behind?.view === "cases" ? behind : undefined;
+  const milestone = behind?.view === "milestone" ? behind : undefined;
+  // Over a case, the header names the page behind it.
+  const project = route.view === "case" ? behind?.project : route.project;
   const unresolved = projects
     .filter((p) => project === undefined || p.name === project)
     .reduce((sum, p) => sum + p.unresolved, 0);
-  const tab = (view: "cases" | "query" | "validate") => formatRoute({ view, project });
-  // A case page or the new-case form is part of the case list: switching project goes back to it.
-  const listView = route.view === "case" || route.view === "new" ? "cases" : route.view;
+  const tab = (view: "cases" | "milestones" | "query" | "validate") =>
+    formatRoute({ view, project });
+  // A case page or the new-case form is part of the case list, a milestone of the
+  // Milestones view: switching project goes back to the list.
+  const listView =
+    route.view === "case"
+      ? behind?.view === "milestone"
+        ? "milestones"
+        : "cases"
+      : route.view === "new"
+        ? "cases"
+        : route.view === "milestone"
+          ? "milestones"
+          : route.view;
   const onCreated = (covered: Covered) => {
     setCreated(covered);
     // The tree and the list read the workspace again, so the new case is in them.
@@ -117,7 +139,7 @@ export function App() {
 
   return (
     <div className="flex min-h-svh flex-col">
-      <header className="flex flex-wrap items-center gap-4 border-b px-6 py-3">
+      <header className="flex flex-wrap items-center gap-4 border-b px-6 py-3 print:hidden">
         <a href="#/cases" className="font-semibold tracking-tight">
           casefile
         </a>
@@ -154,6 +176,9 @@ export function App() {
           <ProjectLink href={tab("cases")} active={listView === "cases"}>
             Cases
           </ProjectLink>
+          <ProjectLink href={tab("milestones")} active={listView === "milestones"}>
+            Milestones
+          </ProjectLink>
           <ProjectLink href={tab("query")} active={route.view === "query"}>
             Query
           </ProjectLink>
@@ -167,7 +192,7 @@ export function App() {
         </Button>
       </header>
 
-      <main className="flex flex-1 flex-col gap-4 p-6">
+      <main className="flex flex-1 flex-col gap-4 p-6 print:p-0">
         {overview === null ? (
           <Skeleton className="h-64 w-full" />
         ) : !overview.ok ? (
@@ -193,6 +218,22 @@ export function App() {
                 feature={route.feature}
                 onCreated={onCreated}
               />
+            ) : route.view === "milestones" ? (
+              <Milestones
+                key={`${project ?? ""}:${reload}`}
+                project={project}
+                projects={projects.map((p) => p.name)}
+              />
+            ) : route.view === "milestone" && route.evidence ? (
+              <EvidencePrint project={route.project} slug={route.slug} version={reload} />
+            ) : milestone !== undefined ? (
+              <MilestonePage
+                key={`${milestone.project}/${milestone.slug}`}
+                project={milestone.project}
+                slug={milestone.slug}
+                version={reload}
+                onWritten={load}
+              />
             ) : route.view === "query" ? (
               <QueryView key={project ?? ""} project={project} />
             ) : route.view === "validate" ? (
@@ -211,9 +252,10 @@ export function App() {
               caseRef={route.view === "case" ? route.ref : undefined}
               reload={reload}
               created={created}
-              onWritten={load}
+              milestone={milestone?.slug}
+              onWritten={milestone === undefined ? load : written}
               onClose={() => {
-                if (list !== undefined) window.location.hash = formatRoute(list);
+                if (behind !== undefined) window.location.hash = formatRoute(behind);
               }}
             />
           </>
@@ -224,6 +266,8 @@ export function App() {
 }
 
 type CasesRoute = Extract<Route, { view: "cases" }>;
+/** What a case's Sheet can slide over. */
+type BehindRoute = CasesRoute | Extract<Route, { view: "milestone" }>;
 
 /** Remembers, per viewer, whether the case list shows Automation and Last run (#110). */
 export const RUN_COLUMNS_KEY = "casefile.caseList.runColumns";

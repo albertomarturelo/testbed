@@ -77,9 +77,12 @@ const MOVES: Record<string, { to: string; label: string; says: string }> = {
 export function CaseDetail({
   caseRef,
   written,
+  milestone,
   onWritten,
 }: {
   caseRef: string;
+  /** The milestone page behind the case (#166): "Record a result" starts with it. */
+  milestone?: string;
   /** The write that just created this case (#94): its page names the commit, as after an edit. */
   written?: Written;
   /** After an edit, a move or a recorded result: the list behind reads the workspace again (#146). */
@@ -315,6 +318,7 @@ export function CaseDetail({
 
       <RunsCard
         caseRef={caseRef}
+        milestone={milestone}
         // A run changes no case file, but automation is derived from runs: read
         // it again, so the badge is what core says (a human run proves nothing).
         onRecorded={async () => {
@@ -504,7 +508,15 @@ function MoveButton({
  * did; and "Record a result" (#93): what the QA saw executing the case by hand,
  * through one `run` call, after which the list is read again.
  */
-function RunsCard({ caseRef, onRecorded }: { caseRef: string; onRecorded: () => void }) {
+function RunsCard({
+  caseRef,
+  milestone,
+  onRecorded,
+}: {
+  caseRef: string;
+  milestone?: string;
+  onRecorded: () => void;
+}) {
   const [result, setResult] = useState<Result<CaseRuns> | null>(null);
   const [recording, setRecording] = useState(false);
   const [recorded, setRecorded] = useState<Recorded | null>(null);
@@ -548,7 +560,12 @@ function RunsCard({ caseRef, onRecorded }: { caseRef: string; onRecorded: () => 
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         {recording ? (
-          <RunRecorder caseRef={caseRef} onRecorded={done} onCancel={() => setRecording(false)} />
+          <RunRecorder
+            caseRef={caseRef}
+            milestone={milestone}
+            onRecorded={done}
+            onCancel={() => setRecording(false)}
+          />
         ) : null}
         {recorded === null ? null : (
           <p role="status" className="text-sm">

@@ -3,7 +3,15 @@ import { z } from "zod";
 import { fail, ok, type Result } from "../errors.js";
 import { MILESTONES_DIR, POLICY_FILE } from "../load/paths.js";
 import type { LoadedProject } from "../load/workspace.js";
-import { type MilestoneEvidence, milestoneEvidence } from "../milestones/evidence.js";
+import {
+  type EvidenceDocument,
+  evidenceDocument,
+  type MilestoneEvidence,
+  milestoneEvidence,
+  parseEvidence,
+  redGates,
+  renderEvidence,
+} from "../milestones/evidence.js";
 import type { ResolvedCase } from "../resolve/resolve.js";
 import type { Milestone } from "../schema/index.js";
 
@@ -105,5 +113,96 @@ export function projectEvidence(
         ? null
         : { policy: project.policy, path: posix.join(project.path, POLICY_FILE) },
     ...close,
+  });
+}
+
+const Stamp = z.strictObject({ at: z.string(), by: z.string() });
+
+/** Totals over a milestone's in-scope cases (`EvidenceTotals`). */
+export const EvidenceTotalsOutput = z.strictObject({
+  in_scope: z.number().int(),
+  executed: z.number().int(),
+  passed: z.number().int(),
+  failed: z.number().int(),
+  blocked: z.number().int(),
+  not_run: z.number().int(),
+});
+
+/** `EvidenceDocument` as operations return it: what the viewer shows and prints. */
+export const EvidenceDocumentOutput = z.strictObject({
+  project: z.string(),
+  slug: z.string(),
+  title: z.string(),
+  release: z.string().nullable(),
+  due: z.string().nullable(),
+  scope: z.string(),
+  build: z.string().nullable(),
+  opened: Stamp.nullable(),
+  closed: Stamp.nullable(),
+  totals: EvidenceTotalsOutput,
+  /** `null` when the project has no release policy. */
+  gates: z
+    .array(
+      z.strictObject({
+        name: z.string(),
+        verdict: z.string(),
+        cases: z.number().int(),
+        reasons: z.string().nullable(),
+      }),
+    )
+    .nullable(),
+  cases: z.array(
+    z.strictObject({
+      id: z.string(),
+      title: z.string(),
+      priority: z.string(),
+      result: z.enum(["passed", "failed", "blocked"]).nullable(),
+      executor: z.string().nullable(),
+      at: z.string().nullable(),
+      build: z.string().nullable(),
+      note: z.string().nullable(),
+      evidence: z.array(z.string()),
+    }),
+  ),
+  note: z.string().nullable(),
+});
+
+/** What a page shows of one milestone: the same numbers as its evidence file. */
+export type MilestoneDocument = {
+  state: "open" | "closed";
+  /** `null` only when closed and the frozen file is gone or no longer has core's shape. */
+  document: EvidenceDocument | null;
+  /** Gates red in `document`: now while open, at the close once closed. */
+  red: string[];
+  /** The Markdown: generated now while open, the frozen file once closed (`null`: gone). */
+  markdown: string | null;
+};
+
+/**
+ * One milestone as a document: generated from the files now while open, read
+ * back from the frozen file once closed, so a page never shows other numbers
+ * than the evidence `close` committed.
+ */
+export async function milestoneDocument(
+  project: LoadedProject,
+  cases: readonly ResolvedCase[],
+  slug: string,
+  milestone: { path: string; file: Milestone },
+  readText: (path: string) => Promise<string | null>,
+  today: string,
+): Promise<Result<MilestoneDocument>> {
+  if (milestone.file.state === "closed") {
+    const markdown = await readText(evidencePath(project, slug));
+    const document = markdown === null ? null : parseEvidence(markdown);
+    const red = (document?.gates ?? []).filter((g) => g.verdict === "red").map((g) => g.name);
+    return ok({ state: "closed", document, red, markdown });
+  }
+  const evidence = projectEvidence(project, cases, slug, milestone, { closed: null, today });
+  if (!evidence.ok) return evidence;
+  return ok({
+    state: "open",
+    document: evidenceDocument(evidence.value),
+    red: redGates(evidence.value),
+    markdown: renderEvidence(evidence.value),
   });
 }

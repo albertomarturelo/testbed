@@ -125,6 +125,99 @@ export type CaseRun = {
 /** A case's run events, newest first. */
 export type CaseRuns = { ref: string; runs: CaseRun[] };
 
+/** Totals over a milestone's in-scope cases (ADR milestones-group-executions §4). */
+export type EvidenceTotals = {
+  in_scope: number;
+  executed: number;
+  passed: number;
+  failed: number;
+  blocked: number;
+  not_run: number;
+};
+
+/** One row of `milestone-list` (`casefile spec milestone`). */
+export type MilestoneRow = {
+  project: string;
+  slug: string;
+  title: string;
+  state: "open" | "closed";
+  due: string | null;
+  release: string | null;
+  path: string;
+  closed: { at: string; by: string } | null;
+  /** `null` when it cannot be read: `milestone-report` says why. */
+  totals: EvidenceTotals | null;
+  red_gates: string[];
+};
+
+export type MilestoneList = { milestones: MilestoneRow[] };
+
+/** A milestone's evidence as data: generated now while open, the frozen file once closed. */
+export type EvidenceDocument = {
+  project: string;
+  slug: string;
+  title: string;
+  release: string | null;
+  due: string | null;
+  scope: string;
+  build: string | null;
+  opened: { at: string; by: string } | null;
+  closed: { at: string; by: string } | null;
+  totals: EvidenceTotals;
+  /** `null` when the project has no release policy. */
+  gates: { name: string; verdict: string; cases: number; reasons: string | null }[] | null;
+  cases: {
+    id: string;
+    title: string;
+    priority: string;
+    result: "passed" | "failed" | "blocked" | null;
+    executor: string | null;
+    at: string | null;
+    build: string | null;
+    note: string | null;
+    evidence: string[];
+  }[];
+  note: string | null;
+};
+
+/** What `milestone-report` answers. */
+export type MilestoneReport = {
+  project: string;
+  slug: string;
+  state: "open" | "closed";
+  path: string;
+  /** The evidence as Markdown. */
+  evidence: string;
+  /** Absent when a frozen file no longer has the shape core writes: show `evidence`. */
+  report?: EvidenceDocument;
+  /** Open only. */
+  red_gates?: string[];
+  next: string[];
+};
+
+/** What `milestone-open` answers, with the commit the viewer made. */
+export type MilestoneOpened = {
+  project: string;
+  slug: string;
+  path: string;
+  change: string;
+  commit: Commit;
+  next: string[];
+};
+
+/** What `milestone-close` answers, with the commit the viewer made. */
+export type MilestoneClosed = {
+  project: string;
+  slug: string;
+  /** The frozen evidence file. */
+  evidence: string;
+  path: string;
+  change: string;
+  red_gates: string[];
+  commit: Commit;
+  next: string[];
+};
+
 export type QueryAnswer = {
   count: number;
   cases: { ref: string; state: string; priority: string; title: string }[];

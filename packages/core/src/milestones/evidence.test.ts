@@ -7,7 +7,9 @@ import type { Milestone, RunEvent } from "../schema/index.js";
 import {
   EVIDENCE_NOTE_MAX,
   type EvidenceInput,
+  evidenceDocument,
   milestoneEvidence,
+  parseEvidence,
   redGates,
   renderEvidence,
 } from "./evidence.js";
@@ -145,5 +147,64 @@ describe("milestone evidence (ADR milestones-group-executions §4)", () => {
     expect(renderEvidence(evidence({ closed: null, note: undefined }))).toContain(
       "| Closed | not closed: a report, not frozen evidence |",
     );
+  });
+});
+
+describe("frozen evidence read back (#166: the viewer shows and prints the file)", () => {
+  it("reads the golden file as the document it was rendered from", async () => {
+    const { readFile } = await import("node:fs/promises");
+    const golden = await readFile(new URL("./demo-web-1.2.0.evidence.md", import.meta.url), "utf8");
+    const document = parseEvidence(golden);
+    expect(document).toEqual(evidenceDocument(evidence()));
+    expect(document?.gates?.[0]).toEqual({
+      name: "smoke",
+      verdict: "red",
+      cases: 2,
+      reasons: "failures: failures are not allowed (TC-0007)",
+    });
+    expect(document?.cases[2]?.evidence).toEqual(["ci/artifacts/search.log"]);
+  });
+
+  it("round-trips escaped pipes, cases not run, no policy and a report's open stamp", () => {
+    const value = evidence({
+      slug: "sprint-1",
+      milestone: { ...sprint, due: "2026-11-30" },
+      policy: null,
+      closed: null,
+      note: "two\nlines | kept",
+      runs: [
+        event({
+          status: "failed",
+          note: "a | b \\ c",
+          evidence: [
+            { kind: "log", ref: "a|b.log" },
+            { kind: "log", ref: "c.log" },
+          ],
+        }),
+      ],
+    });
+    const document = parseEvidence(renderEvidence(value));
+    expect(document).toEqual(evidenceDocument(value));
+    expect(document?.gates).toBeNull();
+    expect(document?.closed).toBeNull();
+    expect(document?.cases[0]).toMatchObject({
+      note: "a | b \\ c",
+      evidence: ["a|b.log", "c.log"],
+    });
+    expect(document?.cases[1]?.result).toBeNull();
+  });
+
+  it("reads an empty gate list and an empty scope", () => {
+    const value = evidence({
+      milestone: { ...sprint, scope: "priority = P9" },
+      slug: "sprint-1",
+      policy: { policy: { gates: [] }, path: "context/releases/policy.yaml" },
+    });
+    expect(parseEvidence(renderEvidence(value))).toEqual(evidenceDocument(value));
+  });
+
+  it("gives null for text of another shape", () => {
+    expect(parseEvidence("# Something else\n")).toBeNull();
+    expect(parseEvidence("# Milestone evidence: X\n\nno table\n")).toBeNull();
   });
 });

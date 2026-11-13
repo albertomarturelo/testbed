@@ -4,6 +4,7 @@ import { coverOperation } from "./cover.js";
 import { idNextOperation } from "./id-next.js";
 import { initOperation } from "./init.js";
 import { milestoneCloseOperation } from "./milestone-close.js";
+import { milestoneListOperation } from "./milestone-list.js";
 import { milestoneOpenOperation } from "./milestone-open.js";
 import { milestoneReportOperation } from "./milestone-report.js";
 import type { Operation } from "./operation.js";
@@ -30,6 +31,7 @@ export const builtinOperations: readonly Operation[] = [
   reviewOperation,
   runOperation,
   milestoneOpenOperation,
+  milestoneListOperation,
   milestoneReportOperation,
   milestoneCloseOperation,
   ingestOperation(junitIngester),

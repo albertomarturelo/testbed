@@ -1,5 +1,5 @@
-import { type FormEvent, useId, useState } from "react";
-import { type CasefileError, call, type Recorded } from "@/api";
+import { type FormEvent, useEffect, useId, useState } from "react";
+import { type CasefileError, call, type MilestoneList, type Recorded, type Result } from "@/api";
 import { ErrorList } from "@/components/ErrorList";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -19,21 +19,27 @@ type InputName = (typeof INPUTS)[number];
 /**
  * The form that records what happened when the QA executed the case by hand
  * (#93, ADR human-writes-through-operations): one `run` call with the result
- * and only the optional fields the QA filled. Nothing is preselected: a result
- * is something that happened, not a default. casefile runs nothing.
+ * and only the optional fields the QA filled. No result is preselected: a
+ * result is something that happened, not a default. The milestone is one of
+ * the project's open ones or none (#166): never typed, so a typo cannot split
+ * one. casefile runs nothing.
  */
 export function RunRecorder({
   caseRef,
+  milestone = "",
   onRecorded,
   onCancel,
 }: {
   caseRef: string;
+  /** The milestone the case was opened from (its page is behind): chosen to start with. */
+  milestone?: string;
   onRecorded: (recorded: Recorded) => void;
   onCancel: () => void;
 }) {
   const id = useId();
   const [status, setStatus] = useState("");
-  const [text, setText] = useState({ note: "", env: "", build: "", milestone: "" });
+  const [text, setText] = useState({ note: "", env: "", build: "", milestone });
+  const open = useOpenMilestones(caseRef);
   const [errors, setErrors] = useState<CasefileError[]>([]);
   const [saving, setSaving] = useState(false);
   const ticket = useTicket();
@@ -66,7 +72,7 @@ export function RunRecorder({
   const placed = ticketErrors(errors);
   const rest = placed.rest.filter((e) => !INPUTS.includes(e.field as InputName));
   const invalid = (name: InputName) => at(name).length > 0 || undefined;
-  const line = (name: "env" | "build" | "milestone", label: string, hint: string) => (
+  const line = (name: "env" | "build", label: string, hint: string) => (
     <Field data-invalid={invalid(name)}>
       <FieldLabel htmlFor={`${id}-${name}`}>{label}</FieldLabel>
       <Input
@@ -125,7 +131,38 @@ export function RunRecorder({
         <div className="grid gap-4 sm:grid-cols-3">
           {line("env", "Environment", "staging")}
           {line("build", "Build", "web-2.1.0+9")}
-          {line("milestone", "Milestone", "web-2.1.0")}
+          <Field data-invalid={invalid("milestone")}>
+            <FieldLabel htmlFor={`${id}-milestone`}>Milestone</FieldLabel>
+            <NativeSelect
+              id={`${id}-milestone`}
+              value={text.milestone}
+              aria-invalid={invalid("milestone")}
+              disabled={open === null}
+              onChange={(e) => setText((t) => ({ ...t, milestone: e.target.value }))}
+            >
+              <NativeSelectOption value="">None</NativeSelectOption>
+              {/* The one asked for stays listed while the list loads or if it closed meanwhile: core says why. */}
+              {text.milestone !== "" &&
+              !(open?.ok && open.value.some((m) => m.slug === text.milestone)) ? (
+                <NativeSelectOption value={text.milestone}>{text.milestone}</NativeSelectOption>
+              ) : null}
+              {open?.ok
+                ? open.value.map((m) => (
+                    <NativeSelectOption key={m.slug} value={m.slug}>
+                      {m.title === m.slug ? m.slug : `${m.title} (${m.slug})`}
+                    </NativeSelectOption>
+                  ))
+                : null}
+            </NativeSelect>
+            {open !== null && !open.ok ? (
+              <FieldDescription>
+                Could not list milestones: {open.errors.map((e) => e.message).join("; ")}
+              </FieldDescription>
+            ) : open?.ok && open.value.length === 0 ? (
+              <FieldDescription>No open milestone in this project.</FieldDescription>
+            ) : null}
+            <FieldErrors errors={at("milestone")} />
+          </Field>
         </div>
         <TicketField ticket={ticket} errors={placed.ticket} />
       </FieldGroup>
@@ -139,4 +176,33 @@ export function RunRecorder({
       </div>
     </form>
   );
+}
+
+/** The open milestones of the case's project; `null` while loading. */
+function useOpenMilestones(caseRef: string): Result<{ slug: string; title: string }[]> | null {
+  const project = caseRef.includes("/") ? caseRef.split("/")[0] : undefined;
+  const [result, setResult] = useState<Result<{ slug: string; title: string }[]> | null>(null);
+  useEffect(() => {
+    let current = true;
+    call<MilestoneList>("milestone-list", {
+      open: true,
+      ...(project === undefined ? {} : { project }),
+    }).then((r) => {
+      if (!current) return;
+      setResult(
+        r.ok
+          ? {
+              ok: true,
+              value: r.value.milestones
+                .filter((m) => project === undefined || m.project === project)
+                .map(({ slug, title }) => ({ slug, title })),
+            }
+          : r,
+      );
+    });
+    return () => {
+      current = false;
+    };
+  }, [project]);
+  return result;
 }

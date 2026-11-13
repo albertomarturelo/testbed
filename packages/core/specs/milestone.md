@@ -7,15 +7,16 @@ file, `context/milestones/<slug>.yaml` in its project; `casefile run` and
 number of milestones. Closing a milestone freezes the evidence of what was
 executed in it (ADR milestones-group-executions).
 
-- **Actor:** agent, human (`report`: also CI)
+- **Actor:** agent, human (`list`, `report`: also CI)
 - **CLI:**
   - `casefile milestone open <slug> --title <title> [--due <YYYY-MM-DD>] [--release <version>] [--scope '<query>'] [--agent <name>] [--ticket <key>] [--project <name>] --json`
+  - `casefile milestone list [--open] [--project <name>] [--json]`
   - `casefile milestone report <slug> [--project <name>] [--json]`
   - `casefile milestone close <slug> [--note <text>] [--agent <name>] [--ticket <key>] [--project <name>] --json`
 
   (an agent runs `open` and `close` with `CASEFILE_ACTOR=agent`; read `commit` from the `--json` output)
 - **Writes:** `open`: `**/context/milestones/*.yaml` (a new file only); `close`:
-  that file and `**/context/milestones/<slug>/evidence.md`; `report`: nothing
+  that file and `**/context/milestones/<slug>/evidence.md`; `list`, `report`: nothing
 
 ## The file
 
@@ -112,6 +113,17 @@ the same files and date give the same text. In order:
 It writes nothing. Without `--json` the evidence prints as a block under
 `evidence:`; to keep a copy, take `value.evidence` from the `--json` output.
 
+## list
+
+Every declared milestone, project by project (only `--project`'s when
+given): open ones first by `due` (none last), then closed ones latest
+first, each then by slug; `--open` lists
+only the open ones, what an execution may name. Each row has `project`,
+`slug`, `title`, `state`, `due`, `release`, `path`, `closed` (who and when),
+`totals` and `red_gates`: from the files now while open, from the frozen
+evidence once closed. `totals` is `null` when it cannot be read (a scope that
+does not parse, a frozen file gone); `report` says why. It writes nothing.
+
 ## close
 
 1. Finds the project and the milestone (`milestone.unknown`); refuses a
@@ -178,7 +190,15 @@ The job needs `permissions: contents: write`.
 ```
 
 `report`: `project`, `slug`, `state`, `path` (where the evidence is or will
-be), `evidence` (the Markdown), `red_gates` (open only) and `next`.
+be), `evidence` (the Markdown), `report` (the same evidence as data:
+the milestone fields, `totals`, `gates` with `name`, `verdict`, `cases` and
+`reasons`, one entry per case as its row reads, and `note`), `red_gates`
+(open only) and `next`. Once closed, `report` is read back from the frozen
+file, so it never differs from it; it is absent when that file no longer has
+the shape core writes (edited by hand), and `evidence` is the text as it is.
+
+`list`: `{ "milestones": [ { "project", "slug", "title", "state", "due",
+"release", "path", "closed", "totals", "red_gates" } ] }`.
 
 ## Errors
 
