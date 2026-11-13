@@ -44,3 +44,4 @@
 | [2026-11-12-commit-shape-follows-host-repo](2026-11-12-commit-shape-follows-host-repo.md) | casefile commits follow the host repository's conventions | Accepted | 2026-11-12 |
 | [2026-11-12-milestones-group-executions](2026-11-12-milestones-group-executions.md) | Milestones group executions and freeze their evidence | Accepted | 2026-11-12 |
 | [2026-11-13-case-body-markdown](2026-11-13-case-body-markdown.md) | The viewer renders case bodies as Markdown, with markdown-it | Accepted | 2026-11-13 |
+| [2026-11-13-dashboards-as-files](2026-11-13-dashboards-as-files.md) | Dashboards are files the agent writes and the viewer renders | Accepted | 2026-11-13 |

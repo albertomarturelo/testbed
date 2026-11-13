@@ -7,6 +7,8 @@ Accepted — 2026-10-17 (#53). Amends [build-and-test-tooling](2026-10-15-build-
 [casefile-ui-command](2026-11-09-casefile-ui-command.md): `@casefile/web` is published and the CLI runs it.
 §5's first bundled renderer, markdown-it for case bodies, is decided in
 [case-body-markdown](2026-11-13-case-body-markdown.md).
+Recharts, through shadcn's `chart` component, is decided in
+[dashboards-as-files](2026-11-13-dashboards-as-files.md).
 
 ## Context
 
