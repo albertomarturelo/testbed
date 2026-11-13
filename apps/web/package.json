@@ -1,6 +1,6 @@
 {
   "name": "@casefile/web",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "casefile viewer: the local UI where a QA reads, edits and approves the test cases kept in the repository.",
   "license": "MIT",
   "keywords": [
