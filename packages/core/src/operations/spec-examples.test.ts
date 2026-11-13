@@ -6,6 +6,7 @@ import {
   parseCaseFile,
   parseCommonFile,
   parseConfigFile,
+  parseDashboardFile,
   parseMilestoneFile,
   parsePolicyFile,
   parseRunFile,
@@ -21,6 +22,8 @@ const PARSERS: [RegExp, (path: string, text: string) => { ok: boolean; problems?
   [/_common\.yaml$/, parseCommonFile],
   [/^TC-\d{4,}\.md$/, parseCaseFile],
   [/(?:^|\/)context\/milestones\/[^/]+\.yaml$/, parseMilestoneFile],
+  [/(?:^|\/)context\/dashboards\/[^/]+\.yaml$/, parseDashboardFile],
+  [/^dashboard\.json$/, parseDashboardFile],
   [/(?:^|\/)context\/releases\/policy\.yaml$/, parsePolicyFile],
   [/\.jsonl$/, (path, text) => ({ ok: parseRunFile(path, text).errors.length === 0 })],
   // GitHub Actions workflows (`casefile spec ci`): the rules of ADR ci-commits-run-files.
@@ -49,6 +52,8 @@ describe("SPEC examples", () => {
     expect(named).toContain("cover.md:TC-0003.md");
     expect(named).toContain("review.md:TC-0003.md");
     expect(named).toContain("ingest.md:9137.jsonl");
+    expect(named).toContain("dashboard.md:context/dashboards/overview.yaml");
+    expect(named).toContain("dashboard.md:dashboard.json");
     expect(named).toContain("ci.md:tests.yml");
     expect(named).toContain("ci.md:casefile-validate.yml");
   });

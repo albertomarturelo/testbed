@@ -21,6 +21,8 @@ context/                       CFD context of the (fictional) product
     .runs/                     one CI run and one manual run on web-1.2.0+101
     .inbox/                    one pending intent
   releases/policy.yaml         three gates
+  milestones/web-1.2.0.yaml    the open milestone the runs name
+  dashboards/                  overview (4 widgets) and web-1-2-0 (3 widgets, in the milestone)
 ```
 
 ## What it is designed to show

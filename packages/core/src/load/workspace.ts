@@ -4,6 +4,7 @@ import { type CasefileError, fail, ok, type Result } from "../errors.js";
 import type {
   CommonFile,
   Config,
+  Dashboard,
   Milestone,
   ProjectEntry,
   PropertiesFile,
@@ -15,6 +16,7 @@ import {
   parseCaseFile,
   parseCommonFile,
   parseConfigFile,
+  parseDashboardFile,
   parseMilestoneFile,
   parsePolicyFile,
   parsePropertiesFile,
@@ -22,6 +24,7 @@ import {
 } from "./parse.js";
 import {
   CONFIG_FILE,
+  DASHBOARDS_DIR,
   MILESTONES_DIR,
   normalizeProjectPath,
   POLICY_FILE,
@@ -45,6 +48,8 @@ export type LoadedProject = {
   policy: ReleasePolicy | null;
   /** `context/milestones/<slug>.yaml` files that parse, keyed by slug (ADR milestones-group-executions). */
   milestones: Map<string, { path: string; file: Milestone }>;
+  /** `context/dashboards/<slug>.yaml` files that parse, keyed by slug (ADR dashboards-as-files). */
+  dashboards: Map<string, { path: string; file: Dashboard }>;
   /** Whether `<path>/context/tests/` is a directory; the validator requires it. */
   hasTestsDir: boolean;
 };
@@ -65,7 +70,8 @@ export type LoadedWorkspace = {
 
 const CASE_FILE = /(?:^|\/)TC-[0-9]{4,}\.md$/;
 const RUN_FILE = /^\.runs\/[^/]+\.jsonl$/;
-const MILESTONE_FILE = /^([A-Za-z0-9][A-Za-z0-9._-]*)\.yaml$/;
+/** `<slug>.yaml` at the top of a milestones or dashboards directory. */
+const SLUG_FILE = /^([A-Za-z0-9][A-Za-z0-9._-]*)\.yaml$/;
 /** Custom properties of a project; only at the root of its `context/tests/`. */
 const PROPERTIES_FILE = "_properties.yaml";
 
@@ -141,6 +147,7 @@ export async function loadProject(
     properties: null,
     policy: null,
     milestones: new Map(),
+    dashboards: new Map(),
     hasTestsDir: false,
   };
   const errors: CasefileError[] = [];
@@ -177,12 +184,22 @@ export async function loadProject(
   const milestonesDir = posix.join(projectPath, MILESTONES_DIR);
   for (const rel of await listFiles(join(root, milestonesDir))) {
     // Only `<slug>.yaml` at the top: a closed milestone's evidence lives in `<slug>/`.
-    const slug = MILESTONE_FILE.exec(rel)?.[1];
+    const slug = SLUG_FILE.exec(rel)?.[1];
     if (slug === undefined) continue;
     const path = posix.join(milestonesDir, rel);
     const text = await readText(join(root, path));
     if (text === null) continue;
     collect(parseMilestoneFile(path, text), (file) => project.milestones.set(slug, { path, file }));
+  }
+
+  const dashboardsDir = posix.join(projectPath, DASHBOARDS_DIR);
+  for (const rel of await listFiles(join(root, dashboardsDir))) {
+    const slug = SLUG_FILE.exec(rel)?.[1];
+    if (slug === undefined) continue;
+    const path = posix.join(dashboardsDir, rel);
+    const text = await readText(join(root, path));
+    if (text === null) continue;
+    collect(parseDashboardFile(path, text), (file) => project.dashboards.set(slug, { path, file }));
   }
   return { value: project, errors };
 }

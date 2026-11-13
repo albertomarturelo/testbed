@@ -1,7 +1,9 @@
 import { posix } from "node:path";
+import { dashboardProblems } from "../dashboards/check.js";
 import { isTicket, templateProblems, ticketRegexProblem } from "../git/subject.js";
 import {
   CONFIG_FILE,
+  DASHBOARDS_DIR,
   MILESTONES_DIR,
   normalizeProjectPath,
   POLICY_FILE,
@@ -125,11 +127,15 @@ export const schemaLevel: Level = {
     const prefix = `${posix.join(loaded.path, TESTS_DIR)}/`;
     const policy = posix.join(loaded.path, POLICY_FILE);
     const milestones = `${posix.join(loaded.path, MILESTONES_DIR)}/`;
+    const dashboards = `${posix.join(loaded.path, DASHBOARDS_DIR)}/`;
     return errors
       .filter(
         (e) =>
           e.path !== undefined &&
-          (e.path.startsWith(prefix) || e.path === policy || e.path.startsWith(milestones)),
+          (e.path.startsWith(prefix) ||
+            e.path === policy ||
+            e.path.startsWith(milestones) ||
+            e.path.startsWith(dashboards)),
       )
       .map(fromError);
   },
@@ -138,7 +144,8 @@ export const schemaLevel: Level = {
 /**
  * Rules across the files of one project: each case's `feature` mirrors its
  * folder, ids are unique, label keys are declared in `_properties.yaml`, and
- * each run event names a case of the project.
+ * each run event names a case of the project, gate scopes parse and each
+ * dashboard's widgets are ones `dashboard save` would accept.
  */
 export const crossFileLevel: Level = {
   name: "cross-file",
@@ -243,6 +250,20 @@ export const crossFileLevel: Level = {
             field: `gates.${index}.scope`,
             // The column is in the scope text, not the file: said in words.
             message: `gate '${gate.name}': ${error.message}${error.column === undefined ? "" : ` (scope column ${error.column})`}`,
+          }),
+        );
+      }
+    }
+    // What `dashboard save` refuses, found in a file edited by hand or left
+    // behind by a change elsewhere (ADR dashboards-as-files §7).
+    const dashboards = [...loaded.dashboards.values()].sort((a, b) => (a.path < b.path ? -1 : 1));
+    for (const { path, file } of dashboards) {
+      for (const problem of dashboardProblems(file, loaded.milestones)) {
+        found.push(
+          finding(problem.code as "dashboard.invalid_query", {
+            path,
+            field: problem.field,
+            message: problem.message,
           }),
         );
       }

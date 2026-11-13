@@ -1,0 +1,5 @@
+title: Broken
+widgets:
+  - id: by-state
+    title: By state
+    type: bar

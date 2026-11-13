@@ -251,6 +251,9 @@ Every command has `--help`, `--json` for scripts and agents, and a SPEC:
 | `casefile milestone report` | The evidence of a milestone: totals, gate verdicts, the latest result of each case and the cases not executed |
 | `casefile milestone close` | Freezes that evidence in `context/milestones/<slug>/evidence.md` and closes the milestone, in one commit |
 | `casefile gates` | Each release gate of the project, green or red with its reasons, for the executions in one milestone (`--date` for triages, `--build`) |
+| `casefile dashboard save` | Writes a dashboard (`context/dashboards/<slug>.yaml`) from a JSON description of its widgets: counts, bars, donuts, tables and executions over time, each with a query (after `0.2.1`) |
+| `casefile dashboard list` | Every dashboard of the workspace, with its title and number of widgets (after `0.2.1`) |
+| `casefile dashboard remove` | Deletes a dashboard and returns the commit of that deletion (after `0.2.1`) |
 | `casefile ingest junit` | Turns a JUnit report into run events matched by `automation.ref` |
 | `casefile overview` | Every project with its cases, automation status and last run |
 | `casefile runs` | One case's run events, newest first, with why each one failed |
@@ -295,6 +298,7 @@ The reasons behind each one are in [docs/decisions](docs/decisions/_index.md).
 | Local UI (`casefile ui`, installed with the CLI): projects, feature tree with coverage, cases that read as documents, each case's runs and why they failed; the QA creates a case, edits, approves and retires it, and records a manual result into a milestone, with the case open in a sheet over the list; a Milestones view with progress, open and close, and evidence to print or save as PDF; case bodies rendered as Markdown ([decided](docs/decisions/2026-10-19-human-writes-through-operations.md), [Markdown](docs/decisions/2026-11-13-case-body-markdown.md)) | Live reload (#26) |
 | `@casefile/cli`, `@casefile/web` (the viewer, [decided](docs/decisions/2026-11-09-casefile-ui-command.md)) and `@casefile/core` on npm, published by CI with provenance ([release process](docs/decisions/2026-10-20-release-process.md)); a toolchain tarball on each GitHub release for networks without the npm registry ([decided](docs/decisions/2026-11-09-release-toolchain-tarball.md)) | |
 | `ingest junit` (Playwright, Surefire), keeping failure messages and attachments; `ingest` returns the commit, and `casefile spec ci` has a GitHub Actions template that records shared-branch runs as `casefile-ci` ([decided](docs/decisions/2026-10-17-ci-commits-run-files.md)) | |
+| | Dashboards the agent builds from a JSON description and the repository keeps ([decided](docs/decisions/2026-11-13-dashboards-as-files.md)): `dashboard save`, `list` and `remove` are on `main`; their numbers (#186), the viewer page (#187) and the skill `qa-dashboard` (#188) follow |
 | Release gates per milestone: `casefile gates`, and their verdicts in the evidence | Complements, when the real case needs them: CTRF and Allure, environment-blocked results, MCP, Zephyr and Xray bridges |
 
 Planned work is tracked in [issues](https://github.com/albertomarturelo/testbed/issues).

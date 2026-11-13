@@ -34,6 +34,11 @@ export const DEMO_EXPECTED = {
   gates: { smoke: "red", "payments-regression": "green", auth: "green" },
   runFiles: 2,
   inboxItems: 1,
+  /** `context/dashboards/`: slug → widget ids in reading order (ADR dashboards-as-files). */
+  dashboards: {
+    overview: ["total", "by-state", "by-feature", "no-test"],
+    "web-1-2-0": ["results", "failed", "executions"],
+  },
 } as const;
 
 /** Absolute path of `examples/demo-monorepo`, the two-project workspace fixture. */

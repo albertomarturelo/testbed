@@ -1,6 +1,9 @@
 import { junitIngester } from "../ingest/junit.js";
 import { ingestOperation } from "../ingest/operation.js";
 import { coverOperation } from "./cover.js";
+import { dashboardListOperation } from "./dashboard-list.js";
+import { dashboardRemoveOperation } from "./dashboard-remove.js";
+import { dashboardSaveOperation } from "./dashboard-save.js";
 import { gatesOperation } from "./gates.js";
 import { idNextOperation } from "./id-next.js";
 import { initOperation } from "./init.js";
@@ -36,5 +39,8 @@ export const builtinOperations: readonly Operation[] = [
   milestoneReportOperation,
   milestoneCloseOperation,
   gatesOperation,
+  dashboardSaveOperation,
+  dashboardListOperation,
+  dashboardRemoveOperation,
   ingestOperation(junitIngester),
 ];

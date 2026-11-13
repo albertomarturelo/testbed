@@ -244,6 +244,81 @@ export const samples: Record<FileSchemaName, { valid: Sample[]; invalid: Sample[
       },
     ],
   },
+  dashboard: {
+    valid: [
+      {
+        name: "one stat",
+        value: { title: "Overview", widgets: [{ id: "total", title: "Cases", type: "stat" }] },
+      },
+      {
+        name: "every widget type",
+        value: {
+          title: "Web 1.2.0",
+          description: "What the release looks like.",
+          widgets: [
+            { id: "active", title: "Active", type: "stat", query: "state = active", width: 3 },
+            { id: "by-priority", title: "By priority", type: "bar", group_by: "priority" },
+            {
+              id: "results",
+              title: "Results",
+              type: "donut",
+              milestone: "web-1.2.0",
+              group_by: "last_result",
+              width: 4,
+            },
+            {
+              id: "failed",
+              title: "Failed",
+              type: "table",
+              query: "labels.risk = payments",
+              columns: ["title", "priority", "last_result"],
+              limit: 20,
+            },
+            { id: "trend", title: "Executions", type: "timeseries", days: 14, width: 12 },
+          ],
+        },
+      },
+    ],
+    invalid: [
+      { name: "no widgets", value: { title: "Overview", widgets: [] } },
+      { name: "no title", value: { widgets: [{ id: "a", title: "A", type: "stat" }] } },
+      {
+        name: "unknown widget type",
+        value: { title: "O", widgets: [{ id: "a", title: "A", type: "gauge" }] },
+      },
+      {
+        name: "bar without group_by",
+        value: { title: "O", widgets: [{ id: "a", title: "A", type: "bar" }] },
+      },
+      {
+        name: "stat with group_by",
+        value: { title: "O", widgets: [{ id: "a", title: "A", type: "stat", group_by: "state" }] },
+      },
+      {
+        name: "table without columns",
+        value: { title: "O", widgets: [{ id: "a", title: "A", type: "table", columns: [] }] },
+      },
+      {
+        name: "width over the grid",
+        value: { title: "O", widgets: [{ id: "a", title: "A", type: "stat", width: 13 }] },
+      },
+      {
+        name: "coordinates",
+        value: { title: "O", widgets: [{ id: "a", title: "A", type: "stat", x: 0, y: 0 }] },
+      },
+      {
+        name: "id not a slug",
+        value: { title: "O", widgets: [{ id: "By Priority", title: "A", type: "stat" }] },
+      },
+      {
+        name: "group_by an expression",
+        value: {
+          title: "O",
+          widgets: [{ id: "a", title: "A", type: "bar", group_by: "count(state)" }],
+        },
+      },
+    ],
+  },
   milestone: {
     valid: [
       { name: "minimal open", value: { title: "Sprint 23 regression", state: "open" } },

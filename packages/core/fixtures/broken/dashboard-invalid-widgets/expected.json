@@ -1,0 +1,22 @@
+[
+  {
+    "code": "dashboard.invalid_query",
+    "path": "context/dashboards/overview.yaml",
+    "field": "widgets.0.query"
+  },
+  {
+    "code": "dashboard.duplicate_widget",
+    "path": "context/dashboards/overview.yaml",
+    "field": "widgets.1.id"
+  },
+  {
+    "code": "dashboard.unknown_milestone",
+    "path": "context/dashboards/overview.yaml",
+    "field": "widgets.1.milestone"
+  },
+  {
+    "code": "dashboard.invalid_query",
+    "path": "context/dashboards/overview.yaml",
+    "field": "widgets.2.query"
+  }
+]

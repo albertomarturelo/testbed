@@ -1,4 +1,4 @@
-import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, join, posix } from "node:path";
 import { matchesGlob } from "./glob.js";
 import type { Actor, OperationContext } from "./operation.js";
@@ -92,6 +92,9 @@ export function createContext(
       const target = join(root, guard(path, false));
       await mkdir(dirname(target), { recursive: true });
       await writeFile(target, text);
+    },
+    async removeFile(path) {
+      await rm(join(root, guard(path, false)), { force: true });
     },
     async mkdir(path) {
       await mkdir(join(root, guard(path, true)), { recursive: true });

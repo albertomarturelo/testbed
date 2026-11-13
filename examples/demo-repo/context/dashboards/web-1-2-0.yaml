@@ -1,0 +1,23 @@
+title: Web 1.2.0
+widgets:
+  - id: results
+    title: Latest result per case
+    type: donut
+    query: state = active
+    milestone: web-1.2.0
+    group_by: last_result
+    width: 4
+  - id: failed
+    title: P0 and P1 in the milestone
+    type: table
+    query: priority IN (P0, P1) AND state = active
+    milestone: web-1.2.0
+    columns:
+      - title
+      - priority
+      - last_result
+    width: 8
+  - id: executions
+    title: Executions per day
+    type: timeseries
+    milestone: web-1.2.0

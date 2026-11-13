@@ -1,4 +1,5 @@
 // Public API of @casefile/core. See docs/ARCHITECTURE.md.
+export * from "./dashboards/check.js";
 export * from "./errors.js";
 export * from "./gates/evaluate.js";
 export * from "./git/identity.js";
@@ -18,6 +19,10 @@ export * from "./operations/builtins.js";
 export * from "./operations/cases.js";
 export * from "./operations/context.js";
 export * from "./operations/cover.js";
+export * from "./operations/dashboard-list.js";
+export * from "./operations/dashboard-remove.js";
+export * from "./operations/dashboard-save.js";
+export * from "./operations/dashboards.js";
 export * from "./operations/extensions.js";
 export * from "./operations/fields.js";
 export * from "./operations/gates.js";

@@ -21,12 +21,14 @@ export type CommitTrailers = {
   change: string;
   /** The milestone a close freezes (ADR milestones-group-executions §5). */
   milestone?: string;
+  /** The dashboard a save or remove is about (ADR dashboards-as-files §4). */
+  dashboard?: string;
 };
 
 /**
  * A casefile commit message: subject, blank line, then the trailers in a fixed
  * order (ADR git-is-identity, agent-runs-the-commit), `Casefile-Milestone:` last
- * when a milestone closes. A human's commit has no `Agent:` line (ADR
+ * when a milestone closes, `Casefile-Dashboard:` when a dashboard is saved or removed. A human's commit has no `Agent:` line (ADR
  * human-writes-through-operations). Ends with a newline.
  * Line breaks in values are flattened so a value cannot forge another trailer.
  */
@@ -39,6 +41,9 @@ export function commitMessage(subject: string, trailers: CommitTrailers): string
     ...(trailers.milestone === undefined
       ? []
       : [`Casefile-Milestone: ${line(trailers.milestone)}`]),
+    ...(trailers.dashboard === undefined
+      ? []
+      : [`Casefile-Dashboard: ${line(trailers.dashboard)}`]),
   ]);
 }
 
