@@ -34,14 +34,24 @@ before `/casefile-setup`; running it again is safe.
    `<target>/<path>`, with the same never-overwrite rule. With `skillsInto`
    empty, nothing is copied: the skill names come back in `skillsOffered` so the
    host can offer them (the CLI prints the `--skills-into` command in `next`). Skills are never installed silently.
-3. Never writes under `context/` (the agent owns it) and never creates or edits
+   When `skillsInto` is empty but `.claude/skills` or `.agents/skills` already
+   holds casefile's skills (an upgraded workspace), `skillsOffered` lists only
+   the skills this version adds there.
+3. Compares each kept skill with the shipped one, in the chosen targets or the
+   ones that already hold casefile's skills: a skill with a shipped file whose
+   text differs is `stale` (`<target>/<name>`), from an older version or edited
+   by hand. Files only the workspace has do not count. A stale skill is still
+   never overwritten; `next` gives the command that replaces it on purpose
+   (`rm -rf <target>/<name> && casefile init --skills-into <target>`), to run
+   only for skills nobody edited.
+4. Never writes under `context/` (the agent owns it) and never creates or edits
    the product's own `package.json`.
-4. Installs nothing. The setup skill runs
+5. Installs nothing. The setup skill runs
    `npm install --prefix .casefile --ignore-scripts` afterwards. Without the
    npm registry, the release's toolchain tarball is unpacked into `.casefile/`
    first and `init` runs from it (`casefile spec setup`); `init` keeps what is
    already there.
-5. Runs where the workspace is: inside an existing workspace (a `casefile.yaml`
+6. Runs where the workspace is: inside an existing workspace (a `casefile.yaml`
    at or above `--cwd`) it acts at that workspace's root, so running it again
    from a subdirectory never nests a second workspace; elsewhere it creates one
    in `--cwd`.
@@ -52,6 +62,7 @@ before `/casefile-setup`; running it again is safe.
 { "created": ["casefile.yaml", ".casefile/package.json", ".casefile/.gitignore"],
   "kept": [],
   "skillsOffered": ["casefile-setup", "qa-bootstrap"],
+  "stale": [],
   "next": ["Copy the shipped skills (…): casefile init --skills-into .claude/skills …",
            "Run /casefile-setup in your agent: …",
            "Sign your commits with SSH …: git config gpg.format ssh && …"] }
@@ -59,8 +70,15 @@ before `/casefile-setup`; running it again is safe.
 
 `created` lists the files this run wrote and `kept` the ones it left alone, in
 that order. A second run returns `created: []`. `next` is advice for the human,
-printed last by the CLI: copying the offered skills (only when some are
-offered), `/casefile-setup`, and SSH commit signing.
+printed last by the CLI, in this order:
+
+1. Copying the offered skills, when some are offered.
+2. Replacing the stale skills, when some are stale.
+3. The skill to run next, from the workspace as it is: `/casefile-setup` while
+   `casefile.yaml` lists no projects; `/qa-bootstrap <project>` for each
+   project without cases; otherwise `/qa-review` and `/qa-cover`. When
+   `casefile.yaml` does not load, `casefile validate` instead.
+4. SSH commit signing.
 
 ## Errors
 

@@ -4,6 +4,7 @@ import { join, relative, sep } from "node:path";
 import { z } from "zod";
 import { ok } from "../errors.js";
 import { CONFIG_FILE } from "../load/paths.js";
+import { loadWorkspace } from "../load/workspace.js";
 import { ExactVersion } from "../schema/index.js";
 import { CASEFILE_PACKAGE, WEB_PACKAGE } from "./extensions.js";
 import { defineOperation } from "./operation.js";
@@ -34,9 +35,19 @@ const InitOutput = z.strictObject({
   created: z.array(z.string()),
   /** Files that already existed and were left untouched. */
   kept: z.array(z.string()),
-  /** Skill names in the bundle, for the host to offer when `skillsInto` was empty. */
+  /**
+   * Skill names in the bundle the host offers to copy, when `skillsInto` was
+   * empty: every one, or, where an agent already reads casefile's skills, the
+   * ones the new version adds there.
+   */
   skillsOffered: z.array(z.string()),
-  /** What the human does next (ADR cli-generic-host): copy skills, `/casefile-setup`, signing. */
+  /**
+   * Skills kept with a text that differs from the shipped one, as
+   * `<target>/<name>`: an older version, or edited by hand. Never overwritten;
+   * `next` says how to replace them on purpose.
+   */
+  stale: z.array(z.string()),
+  /** What the human does next (ADR cli-generic-host): copy or refresh skills, the next skill to run, signing. */
   next: z.array(z.string()),
 });
 
@@ -48,11 +59,12 @@ projects: []
 
 const TOOLCHAIN_GITIGNORE = "node_modules/\n";
 
-/** Always advised after `init` (ADR agent-driven-setup, git-is-identity). */
-const NEXT = [
-  "Run /casefile-setup in your agent: it reads `casefile spec setup`, registers each project and loops on `casefile validate --json` until it passes.",
-  "Sign your commits with SSH so every change to a case has a verifiable author: git config gpg.format ssh && git config user.signingkey ~/.ssh/id_ed25519.pub && git config commit.gpgsign true",
-];
+const SETUP =
+  "Run /casefile-setup in your agent: it reads `casefile spec setup`, registers each project and loops on `casefile validate --json` until it passes.";
+
+/** Always advised after `init` (ADR git-is-identity). */
+const SIGN =
+  "Sign your commits with SSH so every change to a case has a verifiable author: git config gpg.format ssh && git config user.signingkey ~/.ssh/id_ed25519.pub && git config commit.gpgsign true";
 
 function toolchainPackage(version: string): string {
   const pkg = {
@@ -98,19 +110,95 @@ export const initOperation = defineOperation({
     }
 
     // A skill is a top-level directory of the bundle; loose files are not offered.
-    const names = [
-      ...new Set(input.skills.flatMap((file) => /^([^/]+)\//.exec(file.path)?.slice(1) ?? [])),
-    ];
-    const skillsOffered = input.skillsInto.length === 0 ? names.sort() : [];
-    const copy =
-      skillsOffered.length === 0
-        ? []
-        : [
-            `Copy the shipped skills (${skillsOffered.join(", ")}) where your agent reads them: casefile init --skills-into .claude/skills (or .agents/skills).`,
-          ];
-    return ok({ created, kept, skillsOffered, next: [...copy, ...NEXT] });
+    const bundle = new Map<string, { path: string; text: string }[]>();
+    for (const file of input.skills) {
+      const name = /^([^/]+)\//.exec(file.path)?.[1];
+      if (name !== undefined) bundle.set(name, [...(bundle.get(name) ?? []), file]);
+    }
+    const names = [...bundle.keys()].sort();
+
+    // Where an agent reads casefile's skills: the chosen targets, else any that has one already.
+    const targets: string[] = [];
+    for (const target of SkillTarget.options) {
+      const chosen = input.skillsInto.includes(target);
+      const has = async () => {
+        for (const name of names) if (await context.exists(`${target}/${name}`)) return true;
+        return false;
+      };
+      if (chosen || (input.skillsInto.length === 0 && (await has()))) targets.push(target);
+    }
+
+    // A kept skill whose shipped files read differently: older, or edited by hand.
+    const stale: string[] = [];
+    for (const target of targets) {
+      for (const name of names) {
+        for (const file of bundle.get(name) ?? []) {
+          const there = await context.readText(`${target}/${file.path}`);
+          if (there !== null && there !== file.text) {
+            stale.push(`${target}/${name}`);
+            break;
+          }
+        }
+      }
+    }
+
+    let skillsOffered: string[] = [];
+    let offerInto = ".claude/skills (or .agents/skills)";
+    if (input.skillsInto.length === 0) {
+      if (targets.length === 0) skillsOffered = names;
+      else {
+        const missing = new Set<string>();
+        for (const target of targets) {
+          for (const name of names) {
+            if (!(await context.exists(`${target}/${name}`))) missing.add(name);
+          }
+        }
+        skillsOffered = [...missing].sort();
+        offerInto = targets.join(" --skills-into ");
+      }
+    }
+
+    const next: string[] = [];
+    if (skillsOffered.length > 0) {
+      next.push(
+        targets.length === 0
+          ? `Copy the shipped skills (${skillsOffered.join(", ")}) where your agent reads them: casefile init --skills-into ${offerInto}.`
+          : `This version adds skills (${skillsOffered.join(", ")}): casefile init --skills-into ${offerInto}.`,
+      );
+    }
+    if (stale.length > 0) {
+      const into = [...new Set(stale.map((s) => s.slice(0, s.lastIndexOf("/"))))];
+      next.push(
+        `Kept skills differ from this version's (${stale.join(", ")}): init never overwrites them. If you did not edit them, replace them: rm -rf ${stale.join(" ")} && casefile init${into.map((t) => ` --skills-into ${t}`).join("")}`,
+      );
+    }
+    next.push(...(await nextSkill(context.root)), SIGN);
+    return ok({ created, kept, skillsOffered, stale, next });
   },
 });
+
+/**
+ * The skill to run next for the workspace as it is: `/casefile-setup` while it
+ * has no projects, `/qa-bootstrap <project>` for each project without cases,
+ * else the skills that keep cases current.
+ */
+async function nextSkill(root: string): Promise<string[]> {
+  const workspace = await loadWorkspace(root);
+  const broken = ["Run casefile validate: casefile cannot load this workspace as it is."];
+  if (workspace.config === null) return workspace.errors.length > 0 ? broken : [SETUP];
+  if (workspace.config.projects.length === 0) return [SETUP];
+  if (workspace.projects.length === 0) return broken;
+  const empty = workspace.projects.filter((p) => p.cases.length === 0).map((p) => p.name);
+  if (empty.length > 0) {
+    return empty.map(
+      (name) =>
+        `Run /qa-bootstrap ${name} in your agent: it proposes the project's feature tree and first draft cases from its code.`,
+    );
+  }
+  return [
+    "Your projects have cases: run /qa-review in your agent to change, approve or retire them, and /qa-cover for a feature that has none.",
+  ];
+}
 
 /**
  * Filesystem adapter for hosts: every file under the bundled skills directory,
