@@ -353,6 +353,13 @@ function NoCases() {
   return <p className="py-6 text-center text-muted-foreground text-sm">No matching cases.</p>;
 }
 
+/** Characters a bar's axis label keeps; the chart's name has the whole value. */
+const AXIS_LABEL = 26;
+
+/** `checkout/payments/saved-cards/…` → its last characters, the most specific part. */
+export const shortLabel = (value: string) =>
+  value.length <= AXIS_LABEL ? value : `…${value.slice(-(AXIS_LABEL - 1))}`;
+
 /** Horizontal bars, largest first, each with its count written at its end. */
 function GroupBars({
   groups,
@@ -365,7 +372,7 @@ function GroupBars({
 }) {
   if (groups.length === 0) return <NoCases />;
   const { rows, config } = groupSeries(groups);
-  const longest = Math.max(...rows.map((r) => r.label.length));
+  const longest = Math.max(...rows.map((r) => shortLabel(r.label).length));
   return (
     <div className="flex flex-col gap-2">
       <ChartContainer
@@ -386,6 +393,7 @@ function GroupBars({
             tickLine={false}
             axisLine={false}
             width={Math.min(200, Math.max(48, longest * 7 + 8))}
+            tickFormatter={shortLabel}
           />
           <Bar dataKey="count" radius={4} isAnimationActive={false}>
             {rows.map((r) => (

@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { DRAFT, formatRoute, parseRoute, type Route, type StateFilter } from "@/route";
 import { CaseList } from "@/views/CaseList";
 import { CaseSheet } from "@/views/CaseSheet";
+import type * as DashboardViews from "@/views/Dashboards";
 import { EvidencePrint, MilestonePage } from "@/views/MilestonePage";
 import { Milestones } from "@/views/Milestones";
 import { NewCase } from "@/views/NewCase";
@@ -19,12 +20,25 @@ import { QueryView } from "@/views/QueryView";
 import { ValidateView } from "@/views/ValidateView";
 
 // Dashboards bring Recharts (#187): a chunk of its own, loaded when one is opened.
-const Dashboards = lazy(() =>
-  import("@/views/Dashboards").then((m) => ({ default: m.Dashboards })),
-);
-const DashboardPage = lazy(() =>
-  import("@/views/Dashboards").then((m) => ({ default: m.DashboardPage })),
-);
+// A chunk that does not load (a tab left open across an upgrade) says so in place
+// instead of unmounting the whole viewer.
+const dashboardsChunk = (): Promise<Pick<typeof DashboardViews, "Dashboards" | "DashboardPage">> =>
+  import("@/views/Dashboards").catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    const NotLoaded = () => (
+      <ErrorList
+        errors={[
+          {
+            code: "ui.unreachable",
+            message: `the dashboards view did not load (${message}): reload the page`,
+          },
+        ]}
+      />
+    );
+    return { Dashboards: NotLoaded, DashboardPage: NotLoaded };
+  });
+const Dashboards = lazy(() => dashboardsChunk().then((m) => ({ default: m.Dashboards })));
+const DashboardPage = lazy(() => dashboardsChunk().then((m) => ({ default: m.DashboardPage })));
 
 function useRoute(): Route {
   const [route, setRoute] = useState(() => parseRoute(window.location.hash));

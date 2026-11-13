@@ -3,7 +3,7 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type DashboardRow, type DashboardShown, forgetSession, type Result } from "@/api";
 import { formatRoute, parseRoute } from "@/route";
-import { ASK_THE_AGENT, DashboardPage, Dashboards } from "@/views/Dashboards";
+import { ASK_THE_AGENT, DashboardPage, Dashboards, shortLabel } from "@/views/Dashboards";
 
 /** What the fake API answers, per operation; inputs are recorded in `calls`. */
 let answers: Record<string, (input: Record<string, unknown>) => Result<unknown>> = {};
@@ -74,6 +74,15 @@ describe("routes", () => {
     );
     // A dashboard has no sub-page: anything after the slug is not one.
     expect(parseRoute("#/dashboard/web/overview/extra").view).toBe("cases");
+  });
+});
+
+describe("shortLabel", () => {
+  it("keeps a short value and the specific end of a long one", () => {
+    expect(shortLabel("auth/login")).toBe("auth/login");
+    const long = "checkout/payments/saved-cards/three-d-secure";
+    expect(shortLabel(long)).toBe(`…${long.slice(-25)}`);
+    expect(shortLabel(long)).toHaveLength(26);
   });
 });
 
