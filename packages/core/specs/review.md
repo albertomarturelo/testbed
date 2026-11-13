@@ -33,7 +33,7 @@ edits a case file by hand.
 | `note` | text, optional | Why: written as the `note` of the `history` entries. |
 | `identity` | email | Filled by the host: `CASEFILE_USER_EMAIL` when set, else `git config user.email` in the workspace (ADR identity-override; `casefile whoami` shows it): the person at the keyboard, who asked the agent or edited in the viewer. |
 | `requestedBy` | email, optional | Agent only: the human who asked, when it is not `identity` (an inbox item's author). Refused for a human, so the entry and the commit always name the same person. |
-| `agent` | text | The agent applying it (`claude-code`): the `Agent:` trailer. Required for an agent, refused for a human. |
+| `agent` | text | The agent applying it (`claude-code`): the `Agent:` trailer. Required for an agent unless `commit.agent_trailer` is `false` (then optional and not written), refused for a human. |
 | `inbox` | inbox item id, optional | When the request came through `.inbox/`. |
 | `base` | change id, optional | The `change` of the last `history` entry the caller read. |
 | `via` | text | Filled by the host: `cli:review` from the CLI, `ui:review` from the viewer. Written as `history[].via`. |

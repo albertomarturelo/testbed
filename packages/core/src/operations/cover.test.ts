@@ -71,6 +71,15 @@ describe("cover with the workspace's commit template (ADR commit-shape-follows-h
     expect(value.commit.message.split("\n")[0]).toBe("[PROJ-42] test(login): propose 1 case");
   });
 
+  it("with agent_trailer: false, writes an agent's drafts with no Agent: line", async () => {
+    await withTemplate("commit:\n  agent_trailer: false\n");
+    const value = await covered({ ...one, agent: undefined });
+    expect(value.commit.author).toBe("casefile-agent <casefile-agent@casefile.invalid>");
+    expect(value.commit.message).not.toContain("Agent:");
+    const [path] = value.created.map((c) => c.path);
+    expect(await readFile(join(root, path ?? ""), "utf8")).toContain("origin: agent\n");
+  });
+
   it("writes nothing when the template needs a ticket and none is found", async () => {
     await withTemplate('commit:\n  subject: "[{ticket}] {type}({scope}): {summary}"\n');
     const before = await loginFiles();

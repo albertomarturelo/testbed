@@ -177,6 +177,9 @@
         "ticket_default": {
           "type": "string",
           "minLength": 1
+        },
+        "agent_trailer": {
+          "type": "boolean"
         }
       },
       "additionalProperties": false

@@ -25,6 +25,8 @@ export const CommitConfig = z.strictObject({
   ticket_from_branch: z.string().min(1).optional(),
   /** The ticket when none is typed and the branch has none. */
   ticket_default: z.string().min(1).optional(),
+  /** `false`: an agent's commit carries no `Agent:` line, and `--agent` is optional (default `true`). */
+  agent_trailer: z.boolean().optional(),
 });
 
 /**

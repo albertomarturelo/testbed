@@ -86,6 +86,25 @@ async function specExample() {
   };
 }
 
+describe("review with commit.agent_trailer: false (ADR commit-shape-follows-host-repo §5)", () => {
+  beforeEach(async () => {
+    const path = join(root, "casefile.yaml");
+    await writeFile(path, `${await readFile(path, "utf8")}commit:\n  agent_trailer: false\n`);
+  });
+
+  it("lets an agent leave --agent out: casefile-agent author, no Agent: line", async () => {
+    const value = await reviewed({ agent: undefined, to: "retired" });
+    expect(value.commit.author).toBe("casefile-agent <casefile-agent@casefile.invalid>");
+    expect(value.commit.message).not.toContain("Agent:");
+    expect(value.commit.message).toContain("Casefile-Change: ");
+  });
+
+  it("does not write a name the agent gives", async () => {
+    const value = await reviewed({ to: "retired" });
+    expect(value.commit.message).not.toContain("claude-code");
+  });
+});
+
 describe("review", () => {
   it("writes the file `casefile spec review` shows and returns the commit", async () => {
     const example = await specExample();

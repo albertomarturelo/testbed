@@ -14,7 +14,10 @@ export const WriterInput = {
   identity: Email.optional().meta({ host: "identity" }),
   /** Agent only: the human who asked, when it is not `identity` (an inbox item's author). */
   requestedBy: Email.optional(),
-  /** The agent applying it: the `Agent:` trailer. Required for an agent, refused for a human. */
+  /**
+   * The agent applying it: the `Agent:` trailer. Required for an agent unless
+   * `commit.agent_trailer` is `false` (then optional and not written); refused for a human.
+   */
   agent: z.string().min(1).optional(),
   /** The inbox item the request came from; `history[].inbox` and `Inbox-Id:`. */
   inbox: z.string().min(1).optional(),
@@ -28,15 +31,19 @@ export const WriterInput = {
 type Writer = { identity?: string; requestedBy?: string; agent?: string };
 
 /**
- * Who a write is by: `requestedBy`, else `identity`. An agent names itself; a
- * human does neither, so the entry and the commit always name the same person.
+ * Who a write is by: `requestedBy`, else `identity`. An agent names itself,
+ * unless the workspace turned the `Agent:` trailer off (ADR
+ * commit-shape-follows-host-repo §5): then a name is optional and never
+ * written. A human does neither, so the entry and the commit always name the
+ * same person. `asAgent` is the actor, whatever the trailer says.
  */
 export function writtenBy(
   operation: string,
   actor: Actor,
   input: Writer,
-): Result<{ by: string; agent?: string }> {
-  if (actor === "agent" && input.agent === undefined) {
+  agentTrailer = true,
+): Result<{ by: string; agent?: string; asAgent: boolean }> {
+  if (actor === "agent" && agentTrailer && input.agent === undefined) {
     return fail({
       code: `${operation}.agent_required`,
       field: "agent",
@@ -66,23 +73,27 @@ export function writtenBy(
         "no `git config user.email` in the workspace: set it, so the change names who made it",
     });
   }
-  return ok(input.agent === undefined ? { by } : { by, agent: input.agent });
+  const asAgent = actor === "agent";
+  const agent = agentTrailer ? input.agent : undefined;
+  return ok(agent === undefined ? { by, asAgent } : { by, agent, asAgent });
 }
 
 /**
  * The commit a writing operation returns (ADR agent-runs-the-commit): an agent's
- * is authored by `casefile-agent`; a human commits as themself, so no author.
- * `files` are the workspace-relative paths to stage, and nothing else.
+ * is authored by `casefile-agent`, with or without an `Agent:` line; a human
+ * commits as themself, so no author. `files` are the workspace-relative paths
+ * to stage, and nothing else.
  */
 export function writeCommit(
   subject: string,
   trailers: { requestedBy: string; inbox?: string; agent?: string; change: string },
   files: readonly string[],
+  asAgent: boolean,
 ): { author?: string; message: string; files: string[] } {
   const message = commitMessage(subject, trailers);
-  return trailers.agent === undefined
-    ? { message, files: [...files] }
-    : { author: AGENT_AUTHOR, message, files: [...files] };
+  return asAgent
+    ? { author: AGENT_AUTHOR, message, files: [...files] }
+    : { message, files: [...files] };
 }
 
 export const WriteCommit = z.strictObject({

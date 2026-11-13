@@ -41,7 +41,7 @@ from the viewer (ADR human-writes-through-operations).
 | `cases` | `ProposedCase[]`, 1 or more | The cases to write, in the order their ids are assigned. |
 | `identity` | email | Filled by the host: `CASEFILE_USER_EMAIL` when set, else `git config user.email` in the workspace (ADR identity-override; `casefile whoami` shows it): the person at the keyboard. |
 | `requestedBy` | email, optional | Agent only: the human who asked, when it is not `identity` (an inbox item's author). Refused for a human. |
-| `agent` | text | The agent that proposes them (`claude-code`, `codex`): the `Agent:` trailer. Required for an agent, refused for a human. |
+| `agent` | text | The agent that proposes them (`claude-code`, `codex`): the `Agent:` trailer. Required for an agent unless `commit.agent_trailer` is `false` (then optional and not written), refused for a human. |
 | `inbox` | inbox item id | When the request came through `.inbox/`: written as `history[].inbox` and the `Inbox-Id:` trailer. |
 | `via` | text | Filled by the host: `cli:cover` from the CLI, `ui:cover` from the viewer. Written as `history[].via`. |
 | `project` | project name | Filled by the host from `--project` or the project containing `--cwd`. Required when the workspace has several projects and `--cwd` is in none. |
@@ -130,6 +130,7 @@ commit:
   subject: "[{ticket}] {type}({scope}): {summary}"   # default {type}({scope}): {summary}
   ticket_from_branch: "([A-Z][A-Z0-9]+-[0-9]+)"     # first group, else the match
   ticket_default: NO-TICKET                          # when none is typed or found
+  agent_trailer: false                               # no Agent: line (default true)
 ```
 
 - `{type}`: `test` for case and run files, `chore` for the setup commit.
@@ -142,6 +143,10 @@ commit:
   `commit.ticket_missing`, and nothing is written.
 
 The trailers, the author and the pathspec never change with the template.
+`agent_trailer: false` is for repositories that forbid naming an AI tool in
+commits: an agent's commit keeps the `casefile-agent` author and
+`Casefile-Change:` but has no `Agent:` line, and `agent` becomes optional (a
+name given is not written).
 
 **Postconditions:** `casefile validate` reports nothing new for the created
 files. `casefile resolve <ref>` shows each case as `draft`. `casefile overview`
