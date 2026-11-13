@@ -6,7 +6,10 @@ Accepted — 2026-10-17 (#55). Fixes the `casefile-agent` identity left open by
 [git-is-identity](2026-10-15-git-is-identity.md). Amends a consequence of
 [history-commit-reference](2026-10-15-history-commit-reference.md): the writing
 operation, not the Git utilities, generates the change id and formats the
-trailers. Narrows #51 (no commits).
+trailers. Narrows #51 (no commits). Amended by
+[commit-shape-follows-host-repo](2026-11-12-commit-shape-follows-host-repo.md):
+the subject comes from a template in `casefile.yaml`, and `Agent:` can be
+turned off.
 
 ## Context
 

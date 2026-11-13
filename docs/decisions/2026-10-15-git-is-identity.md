@@ -6,7 +6,9 @@ Accepted — 2026-10-15 (from the founding brief). The `casefile-agent` identity
 the commit: [agent-runs-the-commit](2026-10-17-agent-runs-the-commit.md). The CI identity
 `casefile-ci`: [ci-commits-run-files](2026-10-17-ci-commits-run-files.md). Amended by
 [identity-override](2026-10-23-identity-override.md): the person's email is resolved
-flag → `CASEFILE_USER_EMAIL` → `git config user.email`.
+flag → `CASEFILE_USER_EMAIL` → `git config user.email`. Amended by
+[commit-shape-follows-host-repo](2026-11-12-commit-shape-follows-host-repo.md):
+`Agent:` can be turned off per workspace.
 
 ## Context
 
