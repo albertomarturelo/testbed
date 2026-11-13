@@ -5,10 +5,13 @@ import { extname, join, normalize, sep } from "node:path";
 import {
   type CasefileError,
   fail,
+  gitBranch,
   type Identity,
   inputFields,
+  needsTicket,
   openRegistry,
   type Result,
+  ticketFromBranch,
 } from "@casefile/core";
 import { commitAsHuman, type ReturnedCommit } from "./git.js";
 
@@ -79,7 +82,7 @@ async function handle(
       response.writeHead(405, { allow: "GET" }).end();
       return;
     }
-    send(response, 200, { ok: true, value: sessionView(session) });
+    send(response, 200, { ok: true, value: await sessionView(session) });
     return;
   }
   if (url.pathname.startsWith("/api/")) {
@@ -94,11 +97,25 @@ async function handle(
   await serveStatic(response, url.pathname, session.clientDir);
 }
 
-/** What the page learns at start: its token and who it acts as. */
-function sessionView(session: Session) {
+/**
+ * What the page learns at start: its token, who it acts as, and whether the
+ * commit subject needs a ticket, with the one the branch names (ADR
+ * commit-shape-follows-host-repo §3). Read per request: the branch and
+ * `casefile.yaml` may change while the viewer runs.
+ */
+async function sessionView(session: Session) {
   const { identity } = session;
+  const config = (await openRegistry(session.root)).config?.commit;
+  const ticket = needsTicket(config);
+  const branchTicket = ticket
+    ? ticketFromBranch(
+        config?.ticket_from_branch,
+        (await gitBranch(session.root, session.env)) ?? undefined,
+      )
+    : undefined;
   return {
     token: session.token,
+    commit: { ticket, ...(branchTicket === undefined ? {} : { branchTicket }) },
     identity:
       identity === null
         ? null
@@ -146,8 +163,11 @@ async function api(
     fields.filter((f) => f.host !== undefined && f.host !== "project").map((f) => f.name),
   );
   const input = Object.fromEntries(Object.entries(body.value).filter(([k]) => !hostOnly.has(k)));
+  const branch = fields.some((f) => f.host === "branch")
+    ? ((await gitBranch(root, session.env)) ?? undefined)
+    : undefined;
   for (const field of fields) {
-    const value = hostValue(field.host, name, session.identity);
+    const value = hostValue(field.host, name, session.identity, branch);
     if (value !== undefined) input[field.name] = value;
   }
   const outcome = await host.registry.invoke(name, input, { root, actor: "human" });
@@ -156,8 +176,15 @@ async function api(
 }
 
 /** The values the viewer fills in for the human (ADR identity-override §3–4). */
-function hostValue(host: string | undefined, operation: string, identity: Identity | null) {
+function hostValue(
+  host: string | undefined,
+  operation: string,
+  identity: Identity | null,
+  branch: string | undefined,
+) {
   switch (host) {
+    case "branch":
+      return branch;
     case "identity":
       return identity?.email;
     case "via":

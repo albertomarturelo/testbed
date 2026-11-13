@@ -21,7 +21,18 @@ export type Result<T> = { ok: true; value: T } | { ok: false; errors: CasefileEr
 /** Who the QA acts as, and which source said so (ADR identity-override). */
 export type SessionIdentity = { email: string; name?: string; source: "explicit" | "env" | "git" };
 
-export type Session = { token: string; identity: SessionIdentity | null };
+/**
+ * Whether the repository's commit subject needs a ticket, and the one the
+ * checked-out branch names (ADR commit-shape-follows-host-repo §3).
+ */
+export type SessionCommit = { ticket: boolean; branchTicket?: string };
+
+export type Session = {
+  token: string;
+  identity: SessionIdentity | null;
+  /** Absent from a server older than 0.2.0. */
+  commit?: SessionCommit;
+};
 
 /** The commit a writing operation returned, with the sha the server made. */
 export type Commit = { author?: string; message: string; files: string[]; sha: string };

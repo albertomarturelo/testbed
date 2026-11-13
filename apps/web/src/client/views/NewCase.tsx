@@ -16,6 +16,7 @@ import {
   labelsOf,
   placeErrors,
 } from "@/views/CaseFields";
+import { TicketField, ticketErrors, useTicket } from "@/views/TicketField";
 
 /** Where `cover` names the one case the form sends. */
 const PREFIX = "cases.0";
@@ -57,6 +58,7 @@ export function NewCase({
   }));
   const [errors, setErrors] = useState<CasefileError[]>([]);
   const [saving, setSaving] = useState(false);
+  const ticket = useTicket();
 
   const update = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }));
   const back = formatRoute({
@@ -83,13 +85,15 @@ export function NewCase({
       project,
       feature: feature.trim(),
       cases: [proposed(draft)],
+      ...ticket.input(),
     });
     setSaving(false);
     if (result.ok) onCreated(result.value);
     else setErrors(result.errors);
   };
 
-  const placed = placeErrors(errors, PREFIX);
+  const ticketed = ticketErrors(errors);
+  const placed = placeErrors(ticketed.rest, PREFIX);
   const at = (name: "project" | "feature") => placed.rest.filter((e) => e.field === name);
   const rest = placed.rest.filter((e) => e.field !== "project" && e.field !== "feature");
   const choose = initialProject === undefined && projects.length > 1;
@@ -163,6 +167,7 @@ export function NewCase({
               prefix={PREFIX}
               eligibleHint="Left unticked, the feature's commons decide: a _common.yaml may make it eligible."
             />
+            <TicketField ticket={ticket} errors={ticketed.ticket} />
           </CardContent>
         </Card>
         <div className="flex flex-wrap items-center gap-2">

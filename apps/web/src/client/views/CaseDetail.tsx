@@ -43,6 +43,7 @@ import {
 } from "@/components/ui/table";
 import { CaseEditor } from "@/views/CaseEditor";
 import { RunRecorder } from "@/views/RunRecorder";
+import { TicketField, ticketErrors, useTicket } from "@/views/TicketField";
 
 /** A write whose commit the page names: an edit, approve or retire, or the one that created the case. */
 type Written = Pick<Reviewed, "change" | "commit">;
@@ -431,19 +432,40 @@ function MoveButton({
   onFailed: (errors: CasefileError[]) => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [ticketProblems, setTicketProblems] = useState<CasefileError[]>([]);
+  const ticket = useTicket();
   const confirm = async () => {
     setBusy(true);
     const result = await call<Reviewed>("review", {
       ref: caseRef,
       to: move.to,
       ...(base === undefined ? {} : { base }),
+      ...ticket.input(),
     });
     setBusy(false);
-    if (result.ok) onDone(result.value);
-    else onFailed(result.errors);
+    if (result.ok) {
+      setOpen(false);
+      onDone(result.value);
+      return;
+    }
+    // A ticket problem is fixed in the dialog; anything else shows on the page.
+    const placed = ticketErrors(result.errors);
+    if (placed.ticket.length > 0 && placed.rest.length === 0) {
+      setTicketProblems(placed.ticket);
+      return;
+    }
+    setOpen(false);
+    onFailed(result.errors);
   };
   return (
-    <AlertDialog>
+    <AlertDialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) setTicketProblems([]);
+      }}
+    >
       <AlertDialogTrigger asChild>
         <Button variant={move.to === "retired" ? "outline" : "default"} size="sm" disabled={busy}>
           {move.to === "retired" ? <Archive /> : <Check />} {move.label}
@@ -458,9 +480,19 @@ function MoveButton({
             {title}. {move.says} The change is committed as you.
           </AlertDialogDescription>
         </AlertDialogHeader>
+        <TicketField ticket={ticket} errors={ticketProblems} />
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={() => void confirm()}>{move.label}</AlertDialogAction>
+          <AlertDialogAction
+            disabled={busy}
+            onClick={(event) => {
+              // Stays open until the call answers: a ticket problem is fixed here.
+              event.preventDefault();
+              void confirm();
+            }}
+          >
+            {move.label}
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

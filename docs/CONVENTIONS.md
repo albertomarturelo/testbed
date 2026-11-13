@@ -69,7 +69,9 @@ Corrections are appended here in the same change that fixes the code.
     `useStoredFlag` (`apps/web/src/client/lib/stored.ts`, #110).** They are
     conveniences: every access is guarded, the page renders the same without
     them, and the key is `casefile.<view>.<what>`. State that matters to the
-    workspace never goes there; it goes through core operations.
+    workspace never goes there; it goes through core operations. A value that
+    belongs to the task at hand rather than the viewer (the commit ticket,
+    #158) lives in `sessionStorage` for the tab, guarded the same way.
 16. **Viewer forms are controlled React state over shadcn `Field`,
     `Input`, `Textarea`, `NativeSelect` (#92).** No form library: shadcn's
     `form` brings `react-hook-form`, a state framework ADR local-ui-stack §5

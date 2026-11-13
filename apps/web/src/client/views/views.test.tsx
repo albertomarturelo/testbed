@@ -35,6 +35,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   window.localStorage.clear();
+  window.sessionStorage.clear();
   cleanup();
   vi.unstubAllGlobals();
 });
@@ -1047,6 +1048,69 @@ describe("CaseDetail: record a result (#93)", () => {
     expect((await screen.findByRole("status")).textContent).toBe(
       "Already recorded: skipped is still this case's last result in run manual-2026-11-09. Nothing was written.",
     );
+  });
+
+  describe("with a ticket in the commit subject (#158)", () => {
+    const withTicket = (branchTicket?: string) => {
+      answers.session = () => ({
+        ok: true,
+        value: {
+          token: "t",
+          identity: null,
+          commit: { ticket: true, ...(branchTicket === undefined ? {} : { branchTicket }) },
+        },
+      });
+    };
+    const openForm = async (user: ReturnType<typeof userEvent.setup>) => {
+      render(<CaseDetail caseRef="web/TC-0001" />);
+      await user.click(await screen.findByRole("button", { name: "Record a result" }));
+      const form = screen.getByRole("form", { name: "Record a result" });
+      await user.selectOptions(within(form).getByLabelText("Result"), "passed");
+      return form;
+    };
+
+    it("shows no ticket field when the subject needs none", async () => {
+      const user = userEvent.setup();
+      answers.session = () => ({ ok: true, value: { token: "t", identity: null } });
+      const form = await openForm(user);
+      expect(within(form).queryByLabelText("Ticket")).toBeNull();
+    });
+
+    it("prefills the branch's ticket and sends it", async () => {
+      const user = userEvent.setup();
+      withTicket("PROJ-42");
+      answers.run = (input) => recorded(String(input.status));
+      const form = await openForm(user);
+      const field = (await within(form).findByLabelText("Ticket")) as HTMLInputElement;
+      expect(field.value).toBe("PROJ-42");
+      await user.click(within(form).getByRole("button", { name: "Record" }));
+      await screen.findByRole("status");
+      expect(runCalls()).toEqual([{ ref: "web/TC-0001", status: "passed", ticket: "PROJ-42" }]);
+    });
+
+    it("shows commit.ticket_missing under the field, and keeps what the QA types for the tab", async () => {
+      const user = userEvent.setup();
+      withTicket();
+      answers.run = (input) =>
+        input.ticket === undefined
+          ? {
+              ok: false,
+              errors: [
+                { code: "commit.ticket_missing", field: "ticket", message: "needs a ticket" },
+              ],
+            }
+          : recorded(String(input.status));
+      const form = await openForm(user);
+      const field = await within(form).findByLabelText("Ticket");
+      await user.click(within(form).getByRole("button", { name: "Record" }));
+      expect(await within(form).findByText(/needs a ticket/)).toBeTruthy();
+      expect(field.getAttribute("aria-invalid")).toBe("true");
+      await user.type(field, "QA-7");
+      await user.click(within(form).getByRole("button", { name: "Record" }));
+      await screen.findByRole("status");
+      expect(runCalls().at(-1)).toMatchObject({ ticket: "QA-7" });
+      expect(window.sessionStorage.getItem("casefile.commit.ticket")).toBe("QA-7");
+    });
   });
 });
 
