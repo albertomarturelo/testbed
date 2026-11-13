@@ -28,6 +28,7 @@ results into `context/tests/.runs/` and "the system" flips
 | `context/tests/.inbox/<hash>/*.yaml` — create | human | web UI / CLI, committed as the human |
 | `context/tests/.inbox/…` — `status`, `result` | agent | `inbox` operation |
 | `context/tests/.runs/<run-id>.jsonl` — append only | CI (`executor: ci:*`), agent (`executor: agent:*`); human via a `run` intent (`executor: human:*`) | ingesters / `run` operation |
+| `context/dashboards/<slug>.yaml` | agent or human | `dashboard save` / `dashboard remove` (ADR dashboards-as-files) |
 | `context/releases/policy.yaml` | agent, on a human intent | `release` operation |
 | `automation.status` ∈ {`automated`, `flaky`} | **nobody — derived** | resolver, from `.runs` events matching `automation.ref` |
 | `automation.status` ∈ {`manual`, `candidate`, `in_progress`, `retired`} | agent | stored in the case file |

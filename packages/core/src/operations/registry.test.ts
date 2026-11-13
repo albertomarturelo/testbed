@@ -306,6 +306,36 @@ describe("invoke", () => {
     expect(await exists("context/releases/policy.yaml")).toBe(false);
   });
 
+  it("deletes only files inside the operation's writes", async () => {
+    const remover = defineOperation({
+      ...writeFiles,
+      name: "remover",
+      async run({ paths }, context) {
+        await context.writeText("context/tests/a.md", "a\n");
+        for (const path of paths) await context.removeFile(path);
+        return ok({ written: 0 });
+      },
+    });
+    const registry = registryWith(remover);
+    const inside = await registry.invoke(
+      "remover",
+      // A file that is not there is not an error.
+      { paths: ["context/tests/a.md", "context/tests/missing.md"] },
+      { root, actor: "agent" },
+    );
+    expect(inside.ok).toBe(true);
+    expect(await exists("context/tests/a.md")).toBe(false);
+
+    const outside = await registry.invoke(
+      "remover",
+      { paths: ["README.md"] },
+      { root, actor: "agent" },
+    );
+    expect(outside.ok || outside.errors.map((e) => [e.code, e.path])).toEqual([
+      ["write.not_allowed", "README.md"],
+    ]);
+  });
+
   it("fails when the operation throws a PathRefused of its own", async () => {
     const { PathRefused } = await import("./context.js");
     const own = defineOperation({
