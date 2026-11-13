@@ -34,3 +34,5 @@ context/                       CFD context of the (fictional) product
 | `labels.smoke = true AND state = active` (the `smoke` gate scope) | `TC-0001`, `TC-0007` |
 | `work_items CONTAINS release:web-1.2.0` | `TC-0001`, `TC-0003`, `TC-0004` |
 | Gates for `release:web-1.2.0` | `smoke` red (TC-0007 failed in CI, untriaged) · `payments-regression` green · `auth` green (TC-0002 failure is triaged) |
+| `casefile dashboard show overview` | 7 cases not retired · by state: 5 active, 1 draft, 1 in review, 1 retired · active per feature: `auth/login` 2, `checkout/payments` 2, `catalog/search` 1 · no test yet: `TC-0003`, `TC-0005` |
+| `casefile dashboard show web-1-2-0` | Latest results in the milestone: 3 passed, 2 failed (`TC-0002`, `TC-0007`) · 5 executions on 2026-10-14 |

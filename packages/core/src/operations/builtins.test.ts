@@ -17,6 +17,7 @@ describe("builtinOperations", () => {
       "dashboard-list",
       "dashboard-remove",
       "dashboard-save",
+      "dashboard-show",
       "gates",
       "id-next",
       "ingest-junit",

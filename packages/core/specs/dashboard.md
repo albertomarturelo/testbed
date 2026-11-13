@@ -6,15 +6,16 @@ results look like. Each one is a file, `context/dashboards/<slug>.yaml` in its
 project, written whole from a JSON description, so it is built once and stays
 (ADR dashboards-as-files). The viewer shows it; nobody arranges it by hand.
 
-- **Actor:** agent, human (`list`: also CI)
+- **Actor:** agent, human (`list`, `show`: also CI)
 - **CLI:**
   - `casefile dashboard save <slug> --spec '<json>' [--agent <name>] [--ticket <key>] [--project <name>] --json`
   - `casefile dashboard list [--project <name>] [--json]`
+  - `casefile dashboard show <slug> [--project <name>] [--json]`
   - `casefile dashboard remove <slug> [--agent <name>] [--ticket <key>] [--project <name>] --json`
 
   (an agent runs `save` and `remove` with `CASEFILE_ACTOR=agent`; read `commit` from the `--json` output)
 - **Writes:** `save`: `**/context/dashboards/*.yaml` (one file, new or replaced);
-  `remove`: deletes that file; `list`: nothing
+  `remove`: deletes that file; `list`, `show`: nothing
 
 ## The file
 
@@ -150,6 +151,35 @@ Every dashboard that loads, project by project (only `--project`'s when
 given), by slug: `project`, `slug`, `title`, `description`, `widgets` (how
 many) and `path`. A file that does not load is not listed; `casefile validate`
 says why.
+
+## show
+
+1. Finds the project and the dashboard (`dashboard.unknown`, naming the ones
+   the project has).
+2. Computes every widget from the files as they are now and returns the
+   dashboard (`title`, `description`, `path`), the `date` it was computed on
+   (UTC) and `widgets`, in order: `id`, `title`, `type`, `width` (the widget's,
+   or the default of its type: `stat` 3, `donut` 4, `bar` 6, `table` and
+   `timeseries` 12) and `data`.
+
+`data` by type:
+
+| Type | `data` |
+|---|---|
+| `stat` | `value`: the number of matching cases. |
+| `bar`, `donut` | `groups`: `{ value, count }`, the largest first, ties by value, `(none)` last; `total`: the matching cases. A case with a list at `group_by` (`surfaces`) counts once per item, so the groups can add up to more than `total`. |
+| `table` | `columns`: `id`, then the widget's; `rows`: `{ id, cells }` by case id, at most `limit` (default 50), a list joined with `, `, a missing value as `(none)`; `total`: the matching cases, shown or not. |
+| `timeseries` | `days`: one entry per day, `{ date, passed, failed, blocked, skipped, not_run }`, every execution of the matching cases counted on the UTC day of its `at`; `total`: the executions counted. The days are the last `days` up to `date`; without `days`, the last 30, or with a `milestone` the days from its first execution to its last (none: `days` is empty). |
+
+`last_result` follows the rule of release gates: the case's latest `passed`,
+`failed` or `blocked` event, a later `skipped` or `not_run` never hiding it;
+with `milestone`, only that milestone's events count.
+
+A widget that cannot be computed (its milestone was removed, a query edited by
+hand no longer parses) carries `error: { code, message }` instead of `data`,
+and the other widgets are still computed. It writes nothing. To tell the QA
+what a dashboard says, read `show --json`: those are the numbers the viewer
+draws.
 
 ## remove
 
