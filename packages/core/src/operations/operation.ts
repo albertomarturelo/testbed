@@ -18,6 +18,8 @@ export type OperationContext = {
   exists(path: string): Promise<boolean>;
   /** Writes a file, creating parent directories. */
   writeText(path: string, text: string): Promise<void>;
+  /** Deletes a file; guarded like a write. Nothing happens when it does not exist. */
+  removeFile(path: string): Promise<void>;
   /** Creates a directory (and parents); allowed when a file inside it could be written. */
   mkdir(path: string): Promise<void>;
 };

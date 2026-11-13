@@ -142,6 +142,22 @@ export const FINDING_CODES = {
       "Run events name a milestone that no `context/milestones/<slug>.yaml` declares (before `0.2.0`, a free-text release)",
     hint: "open it with the same slug (`casefile milestone open <slug> --title <title>`) to group those executions",
   },
+  "dashboard.duplicate_widget": {
+    severity: "error",
+    description: "Two widgets of one dashboard share an `id`",
+    hint: "save the dashboard again with unique widget ids (`casefile spec dashboard`)",
+  },
+  "dashboard.unknown_milestone": {
+    severity: "error",
+    description: "A dashboard widget names a milestone its project does not declare",
+    hint: "open the milestone, or save the dashboard again without it (`casefile spec dashboard`)",
+  },
+  "dashboard.invalid_query": {
+    severity: "error",
+    description:
+      "A dashboard widget's `query` does not parse, or reads `milestone.*` without naming a milestone",
+    hint: "save the dashboard again with the query fixed (`casefile spec query-grammar`, `casefile spec dashboard`)",
+  },
   "resolve.missing_field": {
     severity: "error",
     description: "A required field is set neither in the case nor in any commons it inherits",

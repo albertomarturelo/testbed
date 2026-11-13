@@ -42,6 +42,9 @@ describe("openRegistry", () => {
     const host = await openRegistry(null);
     expect(host.registry.list().map((o) => o.name)).toEqual([
       "cover",
+      "dashboard-list",
+      "dashboard-remove",
+      "dashboard-save",
       "gates",
       "id-next",
       "ingest-junit",
@@ -79,6 +82,9 @@ describe("openRegistry", () => {
     const host = await openRegistry(root);
     expect(host.registry.list().map((o) => o.name)).toEqual([
       "cover",
+      "dashboard-list",
+      "dashboard-remove",
+      "dashboard-save",
       "escape",
       "gates",
       "hello",

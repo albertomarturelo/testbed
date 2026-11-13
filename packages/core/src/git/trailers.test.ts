@@ -37,6 +37,14 @@ describe("commitMessage", () => {
     );
   });
 
+  it("ends with Casefile-Dashboard when a dashboard is saved or removed", () => {
+    expect(
+      commitMessage("s", { requestedBy: "qa@acme.example", change, dashboard: "over\nview" }),
+    ).toBe(
+      `s\n\nRequested-by: qa@acme.example\nCasefile-Change: ${change}\nCasefile-Dashboard: over view\n`,
+    );
+  });
+
   it("ends with Casefile-Milestone when a milestone closes, flattened to one line", () => {
     const message = commitMessage("s", {
       requestedBy: "lead@acme.example",

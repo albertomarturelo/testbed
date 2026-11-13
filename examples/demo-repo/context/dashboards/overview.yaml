@@ -1,0 +1,28 @@
+title: Overview
+description: Where the cases are and which ones still have no test.
+widgets:
+  - id: total
+    title: Cases
+    type: stat
+    query: NOT state = retired
+    width: 3
+  - id: by-state
+    title: By state
+    type: donut
+    group_by: state
+    width: 4
+  - id: by-feature
+    title: Active cases per feature
+    type: bar
+    query: state = active
+    group_by: feature
+    width: 5
+  - id: no-test
+    title: Can be automated, no test yet
+    type: table
+    query: automation.eligible = true AND automation.status = manual
+    columns:
+      - title
+      - feature
+      - priority
+    limit: 20

@@ -14,6 +14,9 @@ describe("builtinOperations", () => {
     }
     expect(registry.list().map((o) => o.name)).toEqual([
       "cover",
+      "dashboard-list",
+      "dashboard-remove",
+      "dashboard-save",
       "gates",
       "id-next",
       "ingest-junit",

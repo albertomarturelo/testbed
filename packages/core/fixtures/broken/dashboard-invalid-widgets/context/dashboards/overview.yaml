@@ -1,0 +1,14 @@
+title: Broken
+widgets:
+  - id: total
+    title: Cases
+    type: stat
+    query: state = = active
+  - id: total
+    title: In the release
+    type: stat
+    milestone: web-9.9.9
+  - id: build
+    title: On the build
+    type: stat
+    query: milestone.build = web-1.0.0+1

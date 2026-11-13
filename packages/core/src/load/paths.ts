@@ -12,6 +12,9 @@ export const POLICY_FILE = "context/releases/policy.yaml";
 /** A project's milestones, `<slug>.yaml` each (ADR milestones-group-executions §1). */
 export const MILESTONES_DIR = "context/milestones";
 
+/** A project's dashboards, `<slug>.yaml` each (ADR dashboards-as-files §1). */
+export const DASHBOARDS_DIR = "context/dashboards";
+
 /**
  * Canonical form of a project path from `casefile.yaml`: POSIX-normalized, no
  * trailing `/`, `.` for the workspace root. `apps/web/` and `./apps//web` both

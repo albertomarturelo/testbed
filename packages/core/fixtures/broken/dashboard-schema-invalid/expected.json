@@ -1,0 +1,7 @@
+[
+  {
+    "code": "schema.invalid",
+    "path": "context/dashboards/overview.yaml",
+    "field": "widgets.0.group_by"
+  }
+]

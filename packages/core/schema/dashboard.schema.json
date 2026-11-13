@@ -1,0 +1,245 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "casefile context/dashboards/<slug>.yaml",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\r\\n]*$"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "widgets": {
+      "minItems": 1,
+      "maxItems": 24,
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*$"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[^\\r\\n]*$"
+              },
+              "type": {
+                "type": "string",
+                "const": "stat"
+              },
+              "query": {
+                "type": "string",
+                "minLength": 1
+              },
+              "milestone": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+              },
+              "width": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 12
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "type"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*$"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[^\\r\\n]*$"
+              },
+              "type": {
+                "type": "string",
+                "const": "bar"
+              },
+              "query": {
+                "type": "string",
+                "minLength": 1
+              },
+              "milestone": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+              },
+              "group_by": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_-]*(?:\\.[A-Za-z0-9_-]+)*$"
+              },
+              "width": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 12
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "type",
+              "group_by"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*$"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[^\\r\\n]*$"
+              },
+              "type": {
+                "type": "string",
+                "const": "donut"
+              },
+              "query": {
+                "type": "string",
+                "minLength": 1
+              },
+              "milestone": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+              },
+              "group_by": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_-]*(?:\\.[A-Za-z0-9_-]+)*$"
+              },
+              "width": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 12
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "type",
+              "group_by"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*$"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[^\\r\\n]*$"
+              },
+              "type": {
+                "type": "string",
+                "const": "table"
+              },
+              "query": {
+                "type": "string",
+                "minLength": 1
+              },
+              "milestone": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+              },
+              "columns": {
+                "minItems": 1,
+                "maxItems": 8,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z_][A-Za-z0-9_-]*(?:\\.[A-Za-z0-9_-]+)*$"
+                }
+              },
+              "limit": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 200
+              },
+              "width": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 12
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "type",
+              "columns"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*$"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[^\\r\\n]*$"
+              },
+              "type": {
+                "type": "string",
+                "const": "timeseries"
+              },
+              "query": {
+                "type": "string",
+                "minLength": 1
+              },
+              "milestone": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+              },
+              "days": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 365
+              },
+              "width": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 12
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "type"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    }
+  },
+  "required": [
+    "title",
+    "widgets"
+  ],
+  "additionalProperties": false
+}
