@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted — 2026-10-15 (#2)
+Accepted — 2026-10-15 (#2). The subject in §1 is an example: subjects follow
+[commit-shape-follows-host-repo](2026-11-12-commit-shape-follows-host-repo.md);
+`Casefile-Change:` is unchanged.
 
 ## Context
 

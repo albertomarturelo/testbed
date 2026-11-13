@@ -41,3 +41,4 @@
 | [2026-11-09-release-toolchain-tarball](2026-11-09-release-toolchain-tarball.md) | Each release ships a toolchain tarball, so casefile installs without npm | Accepted | 2026-11-09 |
 | [2026-11-09-agent-runs-init-on-request](2026-11-09-agent-runs-init-on-request.md) | An agent may run `init` when the human asks; a quickstart tells it how | Accepted | 2026-11-09 |
 | [2026-11-09-casefile-ui-command](2026-11-09-casefile-ui-command.md) | `casefile ui` runs the viewer installed next to the CLI | Accepted | 2026-11-09 |
+| [2026-11-12-commit-shape-follows-host-repo](2026-11-12-commit-shape-follows-host-repo.md) | casefile commits follow the host repository's conventions | Accepted | 2026-11-12 |
