@@ -237,6 +237,34 @@ describe("casefile init → project add", () => {
     expect(bad.code).toBe(1);
     expect(bad.stderr).toContain("operation.invalid_input");
   });
+  it("tells an upgraded workspace which skills are stale and new, and what to run (#152)", async () => {
+    await cli(["init", "--cwd", tmp, "--skills-into", ".claude/skills"]);
+    // As a workspace from an older version: one skill with old text, one not there yet.
+    await writeFile(join(tmp, ".claude/skills/qa-cover/SKILL.md"), "# old qa-cover\n");
+    await rm(join(tmp, ".claude/skills/qa-review"), { recursive: true });
+    const again = await cli(["init", "--cwd", tmp]);
+    expect(again.code).toBe(0);
+    expect(again.stdout).toContain("stale:\n  - .claude/skills/qa-cover");
+    expect(again.stdout).toContain("skillsOffered:\n  - qa-review");
+    expect(again.stdout).toContain(
+      "This version adds skills (qa-review): casefile init --skills-into .claude/skills.",
+    );
+    expect(again.stdout).toContain(
+      "rm -rf .claude/skills/qa-cover && casefile init --skills-into .claude/skills",
+    );
+    expect(await readFile(join(tmp, ".claude/skills/qa-cover/SKILL.md"), "utf8")).toBe(
+      "# old qa-cover\n",
+    );
+
+    // A project without cases: the next skill is bootstrap, not setup.
+    await mkdir(join(tmp, "apps/web"), { recursive: true });
+    await cli(["project", "add", "web", "--path", "apps/web", "--cwd", tmp], {
+      CASEFILE_ACTOR: "agent",
+    });
+    const later = await cli(["init", "--cwd", tmp]);
+    expect(later.stdout).toContain("Run /qa-bootstrap web in your agent");
+    expect(later.stdout).not.toContain("/casefile-setup");
+  });
 });
 
 describe("casefile usage errors", () => {
