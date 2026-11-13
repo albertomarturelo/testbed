@@ -1,0 +1,10 @@
+gates:
+  - name: ok
+    scope: state = active
+    require: { executed: 100 }
+  - name: typo
+    scope: priority =
+    require: { executed: 100 }
+  - name: old-variable
+    scope: release.version = x
+    require: { executed: 100 }

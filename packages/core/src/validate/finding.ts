@@ -130,6 +130,12 @@ export const FINDING_CODES = {
     description: "A run event's `case_id` is not a case of its project",
     hint: "run files are append-only: restore the case, or record the correction as a new event",
   },
+  "policy.invalid_scope": {
+    severity: "error",
+    description:
+      "A gate's `scope` in `releases/policy.yaml` does not parse, or names a variable gates do not define",
+    hint: "fix the query (`casefile spec query-grammar`); gate scopes may read `milestone.name` and `milestone.build` (or `release.*`)",
+  },
   "run.undeclared_milestone": {
     severity: "warning",
     description:

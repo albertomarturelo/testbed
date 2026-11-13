@@ -59,7 +59,7 @@ renders the registry: CLI commands, MCP tools, inbox `kind`s, web screens. See
 | Path | Responsibility | Phase |
 |---|---|---|
 | `packages/core` | Schemas (JSON Schema 2020-12 + Zod), file loader (`yaml` + frontmatter splitter in core), inheritance resolver, query DSL (parser + evaluator), in-memory index with watcher, validator, id generator, Git utilities, gate evaluation, operation/extension registry, built-in operations and ingesters | F0 |
-| `apps/cli` | Generic host ([cli-generic-host](decisions/2026-10-17-cli-generic-host.md)): renders the registry as commands; `init`, `project add`, `validate --json`, `resolve`, `query`, `id next`, `overview`, `runs`, `cover`, `review`, `run`, `milestone open`, `milestone list`, `milestone report`, `milestone close`, `ingest junit`, `spec` working in F0 (`gates` next, #47); published to npm as `@casefile/cli` with the bin `casefile` ([npm-scope-casefile](decisions/2026-10-17-npm-scope-casefile.md)); `casefile mcp` still open | F0 |
+| `apps/cli` | Generic host ([cli-generic-host](decisions/2026-10-17-cli-generic-host.md)): renders the registry as commands; `init`, `project add`, `validate --json`, `resolve`, `query`, `id next`, `overview`, `runs`, `cover`, `review`, `run`, `milestone open`, `milestone list`, `milestone report`, `milestone close`, `gates`, `ingest junit`, `spec` working in F0; published to npm as `@casefile/cli` with the bin `casefile` ([npm-scope-casefile](decisions/2026-10-17-npm-scope-casefile.md)); `casefile mcp` still open | F0 |
 | `apps/mcp` | Generic host: MCP server (stdio + Streamable HTTP), token scopes; `cases.search`, `coverage.query` real, the rest typed stubs | F0 skeleton / F2 full |
 | `apps/web` | Local UI: Vite + React SPA on shadcn/ui, served with a JSON API over the registry (reads open; writes need same origin + the session token and are committed as the human) by a `node:http` host on `127.0.0.1` ([local-ui-stack](decisions/2026-10-17-local-ui-stack.md)); a Milestones view with printable evidence (#166); later an Inbox screen + `.inbox` contract | F1 |
 | `packages/bridge-*` | README only: field mapping + `Bridge { push, pull, import(dryRun) }` | F2 |
@@ -133,9 +133,9 @@ Setup is done by the user's agent; the library scaffolds and validates
    is what makes the resolver report `automated`. It returns the commit of the
    run file, and the record job commits it as `casefile-ci` and pushes it to the
    shared branch it tested ([ci-commits-run-files](decisions/2026-10-17-ci-commits-run-files.md), `casefile spec ci`).
-5. **Gates**: `casefile gates <release>` evaluates `policy.yaml` scopes (DSL) against
-   resolved cases + each case's latest run of that release; per gate `green`/`red`
-   with reasons ([release-gate-evaluation](decisions/2026-10-17-release-gate-evaluation.md)).
+5. **Gates**: `casefile gates <milestone>` evaluates `policy.yaml` scopes (DSL) against
+   resolved cases + each case's latest run in that milestone; per gate `green`/`red`
+   with reasons; `casefile validate` reports a scope that does not parse ([release-gate-evaluation](decisions/2026-10-17-release-gate-evaluation.md)).
 6. **Mirrors**: bridges push/pull to Zephyr/Xray; `mirror.hash` detects drift.
 
 No database: every view (UI, MCP, index) is rebuilt from files. The in-memory index

@@ -20,6 +20,7 @@ export * from "./operations/context.js";
 export * from "./operations/cover.js";
 export * from "./operations/extensions.js";
 export * from "./operations/fields.js";
+export * from "./operations/gates.js";
 export * from "./operations/glob.js";
 export * from "./operations/host.js";
 export * from "./operations/id-next.js";
