@@ -66,6 +66,7 @@ shadcn/ui itself is not a dependency: its CLI (`shadcn@4.21.4`, run with
 |---|---|---|
 | File watching | chokidar | #9 |
 | MCP | Official MCP TypeScript SDK (stdio + Streamable HTTP) | #15 |
+| Dashboard charts | Recharts through shadcn's `chart` component, bundled dev dependency of `@casefile/web` ([dashboards-as-files](decisions/2026-11-13-dashboards-as-files.md)) | #187 |
 
 Not used, by decision: any LLM SDK, database, Docker, auth provider, a bundler
 outside the `apps/web` client, an HTTP server framework (`node:http` serves the UI),

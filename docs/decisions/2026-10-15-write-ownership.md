@@ -9,6 +9,8 @@ files reach the repository, and CI's identity `casefile-ci`:
 [ci-commits-run-files](2026-10-17-ci-commits-run-files.md). Amended by
 [human-writes-through-operations](2026-10-19-human-writes-through-operations.md):
 humans write case files through `review`/`cover` and run files through `run`.
+`context/dashboards/*.yaml` (agent or human, via `dashboard save`/`remove`):
+[dashboards-as-files](2026-11-13-dashboards-as-files.md).
 
 ## Context
 
