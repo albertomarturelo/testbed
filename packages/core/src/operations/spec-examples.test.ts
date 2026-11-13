@@ -7,6 +7,7 @@ import {
   parseCommonFile,
   parseConfigFile,
   parseMilestoneFile,
+  parsePolicyFile,
   parseRunFile,
 } from "../load/parse.js";
 import { CORE_SPECS_DIR } from "./spec.js";
@@ -20,6 +21,7 @@ const PARSERS: [RegExp, (path: string, text: string) => { ok: boolean; problems?
   [/_common\.yaml$/, parseCommonFile],
   [/^TC-\d{4,}\.md$/, parseCaseFile],
   [/(?:^|\/)context\/milestones\/[^/]+\.yaml$/, parseMilestoneFile],
+  [/(?:^|\/)context\/releases\/policy\.yaml$/, parsePolicyFile],
   [/\.jsonl$/, (path, text) => ({ ok: parseRunFile(path, text).errors.length === 0 })],
   // GitHub Actions workflows (`casefile spec ci`): the rules of ADR ci-commits-run-files.
   [/\.yml$/, (_, text) => ({ ok: true, problems: workflowProblems(text) })],

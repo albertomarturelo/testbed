@@ -10,6 +10,7 @@ import {
 } from "../load/paths.js";
 import { CASEFILE_PACKAGE, TOOLCHAIN_DIR, type Toolchain } from "../operations/extensions.js";
 import { NPM_INSTALL, notInstalled, TOOLCHAIN_PACKAGE } from "../operations/toolchain.js";
+import { queryCases } from "../query/evaluate.js";
 import { commonsChain, resolveCase, workspaceLayer } from "../resolve/resolve.js";
 import { type CommitConfig, ExactVersion, eventMilestone } from "../schema/index.js";
 import { type Finding, finding, fromError } from "./finding.js";
@@ -228,6 +229,23 @@ export const crossFileLevel: Level = {
           message: `run '${event.run_id}' names milestone '${milestone}', which project '${loaded.name}' does not declare`,
         }),
       );
+    }
+    // Gate scopes fail only when gates run (ADR release-gate-evaluation §6): say it now.
+    const policyPath = posix.join(loaded.path, POLICY_FILE);
+    const gateContext = { name: "milestone", build: "build" };
+    for (const [index, gate] of (loaded.policy?.gates ?? []).entries()) {
+      const checked = queryCases(gate.scope, [], { milestone: gateContext, release: gateContext });
+      if (checked.ok) continue;
+      for (const error of checked.errors) {
+        found.push(
+          finding("policy.invalid_scope", {
+            path: policyPath,
+            field: `gates.${index}.scope`,
+            // The column is in the scope text, not the file: said in words.
+            message: `gate '${gate.name}': ${error.message}${error.column === undefined ? "" : ` (scope column ${error.column})`}`,
+          }),
+        );
+      }
     }
     return found;
   },

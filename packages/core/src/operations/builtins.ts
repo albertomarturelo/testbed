@@ -1,6 +1,7 @@
 import { junitIngester } from "../ingest/junit.js";
 import { ingestOperation } from "../ingest/operation.js";
 import { coverOperation } from "./cover.js";
+import { gatesOperation } from "./gates.js";
 import { idNextOperation } from "./id-next.js";
 import { initOperation } from "./init.js";
 import { milestoneCloseOperation } from "./milestone-close.js";
@@ -34,5 +35,6 @@ export const builtinOperations: readonly Operation[] = [
   milestoneListOperation,
   milestoneReportOperation,
   milestoneCloseOperation,
+  gatesOperation,
   ingestOperation(junitIngester),
 ];

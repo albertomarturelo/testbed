@@ -1,0 +1,12 @@
+[
+  {
+    "code": "policy.invalid_scope",
+    "path": "context/releases/policy.yaml",
+    "field": "gates.1.scope"
+  },
+  {
+    "code": "policy.invalid_scope",
+    "path": "context/releases/policy.yaml",
+    "field": "gates.2.scope"
+  }
+]

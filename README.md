@@ -221,6 +221,7 @@ Every command has `--help`, `--json` for scripts and agents, and a SPEC:
 | `casefile milestone list` | Every milestone with its progress (executed, passed) and red gates; `--open` for the ones an execution can name |
 | `casefile milestone report` | The evidence of a milestone: totals, gate verdicts, the latest result of each case and the cases not executed |
 | `casefile milestone close` | Freezes that evidence in `context/milestones/<slug>/evidence.md` and closes the milestone, in one commit |
+| `casefile gates` | Each release gate of the project, green or red with its reasons, for the executions in one milestone (`--date` for triages, `--build`) |
 | `casefile ingest junit` | Turns a JUnit report into run events matched by `automation.ref` |
 | `casefile overview` | Every project with its cases, automation status and last run |
 | `casefile runs` | One case's run events, newest first, with why each one failed |
