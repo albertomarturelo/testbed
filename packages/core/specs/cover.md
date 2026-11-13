@@ -45,6 +45,8 @@ from the viewer (ADR human-writes-through-operations).
 | `inbox` | inbox item id | When the request came through `.inbox/`: written as `history[].inbox` and the `Inbox-Id:` trailer. |
 | `via` | text | Filled by the host: `cli:cover` from the CLI, `ui:cover` from the viewer. Written as `history[].via`. |
 | `project` | project name | Filled by the host from `--project` or the project containing `--cwd`. Required when the workspace has several projects and `--cwd` is in none. |
+| `ticket` | text, optional | The ticket key, only for a subject template that names `{ticket}` (`casefile spec cover`, *Commit subject*): `--ticket PROJ-123`. |
+| `branch` | text | Filled by the host: the checked-out branch, none on a detached HEAD. `commit.ticket_from_branch` reads the ticket from it. |
 
 `identity` and `via` are host inputs, never flags (ADR cli-generic-host). The
 case is by `requestedBy` when given, else `identity`: that email is
@@ -116,6 +118,31 @@ creates it. Changing, approving or retiring it is a review
    human-writes-through-operations). `commit.files` lists the created paths,
    workspace-relative: the pathspec to stage and commit, and nothing else.
 
+## Commit subject
+
+Every commit casefile hands back (`cover`, `review`, `run`, `ingest`, and the
+setup commit) takes its subject from `commit.subject` in `casefile.yaml`
+(ADR commit-shape-follows-host-repo). The default is Conventional Commits,
+`{type}({scope}): {summary}`: `test(login): propose 2 cases`.
+
+```yaml
+commit:
+  subject: "[{ticket}] {type}({scope}): {summary}"   # default {type}({scope}): {summary}
+  ticket_from_branch: "([A-Z][A-Z0-9]+-[0-9]+)"     # first group, else the match
+  ticket_default: NO-TICKET                          # when none is typed or found
+```
+
+- `{type}`: `test` for case and run files, `chore` for the setup commit.
+- `{scope}`: the feature (`cover`, `review`, `run`), the project (`ingest`),
+  `casefile` (setup).
+- `{summary}`: `propose 2 cases`, `edit and approve TC-0003`,
+  `record TC-0002 as passed`, `record run 9137`, `register web`.
+- `{ticket}`: the `ticket` input, else the branch matched by
+  `ticket_from_branch`, else `ticket_default`; none of them is
+  `commit.ticket_missing`, and nothing is written.
+
+The trailers, the author and the pathspec never change with the template.
+
 **Postconditions:** `casefile validate` reports nothing new for the created
 files. `casefile resolve <ref>` shows each case as `draft`. `casefile overview`
 lists them under the feature.
@@ -136,7 +163,7 @@ first call instead.
     { "ref": "web/TC-0004", "path": "apps/web/context/tests/login/TC-0004.md" } ],
   "commit": {
     "author": "casefile-agent <casefile-agent@casefile.invalid>",
-    "message": "cover(login): propose 2 cases\n\nRequested-by: qa@acme.example\nAgent: claude-code\nCasefile-Change: 9d2f6a1e-3b4c-4d5e-8f90-1a2b3c4d5e6f\n",
+    "message": "test(login): propose 2 cases\n\nRequested-by: qa@acme.example\nAgent: claude-code\nCasefile-Change: 9d2f6a1e-3b4c-4d5e-8f90-1a2b3c4d5e6f\n",
     "files": ["apps/web/context/tests/login/TC-0003.md", "apps/web/context/tests/login/TC-0004.md"] },
   "next": ["Commit the created files with commit.author and commit.message taken from --json output, staging only them (`git commit -F <message> -- <paths>`)",
            "Ask the human to review the drafts: web/TC-0003, web/TC-0004"] }
@@ -204,4 +231,7 @@ Nothing is written when any of these is returned.
 | `cover.file_exists` | the file for a new id exists but does not parse as a case; fix or remove it |
 | `project.required` / `project.unknown` | no project could be chosen, or the name is unknown |
 | `operation.actor_not_allowed` | invoked by CI |
+| `commit.ticket_missing` | the subject template names `{ticket}`, and none was given, found in the branch or set as `commit.ticket_default` |
+| `commit.ticket_invalid` / `commit.ticket_unused` | the ticket is not one token (letters, digits, `._#/-`), or the template names no `{ticket}` |
+| `config.commit_subject` / `config.commit_ticket_regex` | `commit.subject` or `commit.ticket_from_branch` in `casefile.yaml` is broken; `casefile validate` reports it too |
 | loader codes | `casefile.yaml` cannot be read; run `casefile validate` |

@@ -56,6 +56,32 @@ async function specExample() {
   return { cases: JSON.parse(cases) as unknown[], file };
 }
 
+describe("cover with the workspace's commit template (ADR commit-shape-follows-host-repo)", () => {
+  const withTemplate = async (commit: string) => {
+    const path = join(root, "casefile.yaml");
+    await writeFile(path, `${await readFile(path, "utf8")}${commit}`);
+  };
+  const one = { cases: [{ title: "Template subject", steps: [step] }] };
+
+  it("puts the ticket the branch names in the subject", async () => {
+    await withTemplate(
+      'commit:\n  subject: "[{ticket}] {type}({scope}): {summary}"\n  ticket_from_branch: "(PROJ-[0-9]+)"\n',
+    );
+    const value = await covered({ ...one, branch: "feature/PROJ-42-login" });
+    expect(value.commit.message.split("\n")[0]).toBe("[PROJ-42] test(login): propose 1 case");
+  });
+
+  it("writes nothing when the template needs a ticket and none is found", async () => {
+    await withTemplate('commit:\n  subject: "[{ticket}] {type}({scope}): {summary}"\n');
+    const before = await loginFiles();
+    expect(await cover({ ...one, branch: "main" })).toMatchObject({
+      ok: false,
+      errors: [{ code: "commit.ticket_missing", field: "ticket" }],
+    });
+    expect(await loginFiles()).toEqual(before);
+  });
+});
+
 describe("cover", () => {
   it("writes the file `casefile spec cover` shows and returns the commit", async () => {
     const example = await specExample();
@@ -74,7 +100,7 @@ describe("cover", () => {
 
     expect(value.commit).toEqual({
       author: "casefile-agent <casefile-agent@casefile.invalid>",
-      message: commitMessage("cover(login): propose 1 case", { ...base, change: value.change }),
+      message: commitMessage("test(login): propose 1 case", { ...base, change: value.change }),
       files: [`${LOGIN}/TC-0003.md`],
     });
     expect(value.next[0]).toContain("-- <paths>");
@@ -92,7 +118,7 @@ describe("cover", () => {
     });
     expect(value.created.map((c) => c.ref)).toEqual(["web/TC-0003", "web/TC-0004"]);
     expect(value.commit.message).toContain("Inbox-Id: 7f3c\n");
-    expect(value.commit.message.startsWith("cover(login): propose 2 cases\n")).toBe(true);
+    expect(value.commit.message.startsWith("test(login): propose 2 cases\n")).toBe(true);
     for (const { path } of value.created) {
       const parsed = parseCaseFile(path, await readFile(join(root, path), "utf8"));
       if (!parsed.ok) throw new Error(JSON.stringify(parsed.errors));
@@ -123,7 +149,7 @@ describe("cover", () => {
     if (!result.ok) throw new Error(JSON.stringify(result.errors));
     const value = result.value as Covered;
     expect(value.commit).toEqual({
-      message: commitMessage("cover(login): propose 1 case", {
+      message: commitMessage("test(login): propose 1 case", {
         requestedBy: "lead@acme.example",
         change: value.change,
       }),

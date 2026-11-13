@@ -37,6 +37,21 @@ export const FINDING_CODES = {
     description: "`casefile.yaml` is missing at the workspace root",
     hint: "the human runs `casefile init`",
   },
+  "config.commit_subject": {
+    severity: "error",
+    description:
+      "`commit.subject` in `casefile.yaml` does not name `{summary}`, or names an unknown placeholder",
+    hint: "use `{type}`, `{scope}`, `{summary}` and `{ticket}` only, e.g. `[{ticket}] {type}({scope}): {summary}`",
+  },
+  "config.commit_ticket_regex": {
+    severity: "error",
+    description: "`commit.ticket_from_branch` in `casefile.yaml` is not a valid regular expression",
+  },
+  "config.commit_ticket_default": {
+    severity: "error",
+    description: "`commit.ticket_default` in `casefile.yaml` is not one token a subject can carry",
+    hint: "letters, digits and ._#/- only, e.g. `NO-TICKET`",
+  },
   "yaml.invalid": {
     severity: "error",
     description: "A YAML file or case frontmatter does not parse",

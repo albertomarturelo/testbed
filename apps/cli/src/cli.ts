@@ -8,6 +8,7 @@ import {
   type CasefileError,
   fail,
   findWorkspaceRoot,
+  gitBranch,
   gitUserEmail,
   type HostInput,
   type HostRegistry,
@@ -210,6 +211,9 @@ async function hostValue(
     }
     case "via":
       return ok(`cli:${at.operation}`);
+    case "branch":
+      // None on a detached HEAD: the ticket then comes from --ticket or the default.
+      return ok((await gitBranch(at.root ?? at.cwd, at.env)) ?? undefined);
   }
 }
 

@@ -2,6 +2,7 @@ import { posix } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { z } from "zod";
 import { fail, ok } from "../errors.js";
+import { CommitInput, commitSubject } from "../git/subject.js";
 import { AGENT_AUTHOR, runCommitMessage } from "../git/trailers.js";
 import { boundNote } from "../ingest/note.js";
 import { TESTS_DIR } from "../load/paths.js";
@@ -25,6 +26,7 @@ const RunInput = z.strictObject({
   run: FileSafeId.optional(),
   identity: WriterInput.identity,
   agent: WriterInput.agent,
+  ...CommitInput,
   project: z.string().min(1).optional().meta({ host: "project" }),
 });
 
@@ -119,13 +121,20 @@ export const runOperation = defineOperation({
         ],
       });
     }
+    const subject = commitSubject(
+      workspace.config.commit,
+      {
+        type: "test",
+        scope: loaded.file.feature,
+        summary: `record ${loaded.file.id} as ${input.status}`,
+      },
+      input,
+    );
+    if (!subject.ok) return subject;
     const separator = existing === "" || existing.endsWith("\n") ? "" : "\n";
     await context.writeText(path, `${existing}${separator}${JSON.stringify(event)}\n`);
 
-    const message = runCommitMessage(
-      `run(${loaded.file.feature}): record ${loaded.file.id} as ${input.status}`,
-      { run, executor },
-    );
+    const message = runCommitMessage(subject.value, { run, executor });
     return ok({
       ref,
       run,

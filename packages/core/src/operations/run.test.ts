@@ -81,7 +81,7 @@ describe("run", () => {
       example.line.replaceAll(example.run, run).replace(/"at":"[^"]+"/, `"at":"${at}"`),
     );
     expect(value.commit).toEqual({
-      message: runCommitMessage("run(login): record TC-0002 as failed", {
+      message: runCommitMessage("test(login): record TC-0002 as failed", {
         run,
         executor: "human:qa@acme.example",
       }),
@@ -113,7 +113,7 @@ describe("run", () => {
     expect(value.event).toMatchObject({ executor: "agent:claude-code", run_id: "rc-2.1" });
     expect(value.commit).toEqual({
       author: AGENT_AUTHOR,
-      message: runCommitMessage("run(login): record TC-0002 as passed", {
+      message: runCommitMessage("test(login): record TC-0002 as passed", {
         run: "rc-2.1",
         executor: "agent:claude-code",
       }),

@@ -110,7 +110,7 @@ describe("review", () => {
     );
     expect(value.commit).toEqual({
       author: AGENT_AUTHOR,
-      message: commitMessage("review(login): edit and approve TC-0003", {
+      message: commitMessage("test(login): edit and approve TC-0003", {
         requestedBy: "qa@acme.example",
         agent: "claude-code",
         change: value.change,
@@ -129,7 +129,7 @@ describe("review", () => {
       "human",
     );
     expect(value.commit).toEqual({
-      message: `review(login): retire TC-0001\n\nRequested-by: lead@acme.example\nCasefile-Change: ${value.change}\n`,
+      message: `test(login): retire TC-0001\n\nRequested-by: lead@acme.example\nCasefile-Change: ${value.change}\n`,
       files: [value.path],
     });
     expect(value.next[0]).toContain("as yourself");
@@ -149,7 +149,7 @@ describe("review", () => {
       set: { title: "Sign in with a valid email and password" },
     });
     expect(value.commit.message).toBe(
-      commitMessage("review(login): edit TC-0001", {
+      commitMessage("test(login): edit TC-0001", {
         requestedBy: "lead@acme.example",
         inbox: "7f3c",
         agent: "claude-code",
@@ -215,7 +215,7 @@ describe("review", () => {
     for (const [to, event, verb] of walk) {
       const value = await reviewed({ to });
       expect(value).toMatchObject({ state: to, events: [event], changed: [] });
-      expect(value.commit.message.split("\n")[0]).toBe(`review(login): ${verb} TC-0001`);
+      expect(value.commit.message.split("\n")[0]).toBe(`test(login): ${verb} TC-0001`);
     }
     await writeFile(
       join(root, LOGIN, "TC-0001.md"),

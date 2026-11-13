@@ -3,6 +3,7 @@ import { posix } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { z } from "zod";
 import { type CasefileError, fail, ok } from "../errors.js";
+import { CommitInput, commitSubject } from "../git/subject.js";
 import { TESTS_DIR } from "../load/paths.js";
 import { loadWorkspace } from "../load/workspace.js";
 import { commonsChain, resolveCase, workspaceLayer } from "../resolve/resolve.js";
@@ -93,6 +94,7 @@ const ReviewInput = z.strictObject({
   /** The `change` of the last `history` entry the caller read. */
   base: ChangeId.optional(),
   ...WriterInput,
+  ...CommitInput,
   project: z.string().min(1).optional().meta({ host: "project" }),
 });
 
@@ -290,12 +292,18 @@ export const reviewOperation = defineOperation({
       );
     }
     if (errors.length > 0) return fail(...errors);
-
-    await context.writeText(loaded.path, caseFrontmatter(file) + body);
     const verbs = [
       ...(changed.length > 0 ? ["edit"] : []),
       ...(transition ? [transition.verb] : []),
     ];
+    const subject = commitSubject(
+      workspace.config.commit,
+      { type: "test", scope: stored.feature, summary: `${verbs.join(" and ")} ${stored.id}` },
+      input,
+    );
+    if (!subject.ok) return subject;
+
+    await context.writeText(loaded.path, caseFrontmatter(file) + body);
     return ok({
       ref: `${project.name}/${stored.id}`,
       path: loaded.path,
@@ -303,11 +311,9 @@ export const reviewOperation = defineOperation({
       state: file.state,
       changed,
       events,
-      commit: writeCommit(
-        `review(${stored.feature}): ${verbs.join(" and ")} ${stored.id}`,
-        { requestedBy: by, inbox: input.inbox, agent, change },
-        [loaded.path],
-      ),
+      commit: writeCommit(subject.value, { requestedBy: by, inbox: input.inbox, agent, change }, [
+        loaded.path,
+      ]),
       next: [
         agent === undefined
           ? "Commit the file with commit.message taken from --json output, as yourself, staging only it (`git commit -F <message> -- <path>`)"

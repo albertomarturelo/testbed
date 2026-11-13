@@ -644,7 +644,7 @@ describe("CaseDetail: edit, approve and retire (#92)", () => {
       );
     answers.review = () => {
       done = true;
-      return reviewed("review(login): edit TC-0001", "active");
+      return reviewed("test(login): edit TC-0001", "active");
     };
     render(<CaseDetail caseRef="web/TC-0001" />);
     await user.click(await screen.findByRole("button", { name: "Edit" }));
@@ -662,7 +662,7 @@ describe("CaseDetail: edit, approve and retire (#92)", () => {
     await user.click(screen.getByLabelText("Can be automated"));
     await user.click(screen.getByRole("button", { name: "Save" }));
 
-    expect(await screen.findByText(/review\(login\): edit TC-0001/)).toBeTruthy();
+    expect(await screen.findByText(/test\(login\): edit TC-0001/)).toBeTruthy();
     expect(reviews()).toEqual([
       {
         ref: "web/TC-0001",
@@ -713,7 +713,7 @@ describe("CaseDetail: edit, approve and retire (#92)", () => {
       ] as never[];
       return answer;
     };
-    answers.review = () => reviewed("review(login): edit TC-0001", "active");
+    answers.review = () => reviewed("test(login): edit TC-0001", "active");
     render(<CaseDetail caseRef="web/TC-0001" />);
     await user.click(await screen.findByRole("button", { name: "Edit" }));
 
@@ -795,7 +795,7 @@ describe("CaseDetail: edit, approve and retire (#92)", () => {
     answers.resolve = () => resolvedCase(state);
     answers.review = () => {
       state = "active";
-      return reviewed("review(login): approve TC-0001", "active");
+      return reviewed("test(login): approve TC-0001", "active");
     };
     render(<CaseDetail caseRef="web/TC-0001" />);
     await user.click(await screen.findByRole("button", { name: "Approve" }));
@@ -815,7 +815,7 @@ describe("CaseDetail: edit, approve and retire (#92)", () => {
   it("retires an active case after a confirmation; Cancel calls nothing", async () => {
     const user = userEvent.setup();
     answers.resolve = () => resolvedCase("active");
-    answers.review = () => reviewed("review(login): retire TC-0001", "retired");
+    answers.review = () => reviewed("test(login): retire TC-0001", "retired");
     render(<CaseDetail caseRef="web/TC-0001" />);
     await user.click(await screen.findByRole("button", { name: "Retire" }));
     expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
@@ -891,7 +891,7 @@ describe("CaseDetail: record a result (#93)", () => {
         appended: true,
         event,
         commit: {
-          message: `run(login): record TC-0001 as ${status}\n\nCasefile-Run: manual-2026-11-09`,
+          message: `test(login): record TC-0001 as ${status}\n\nCasefile-Run: manual-2026-11-09`,
           files: [path],
           sha: "3333333ccccccc",
         },
@@ -1059,7 +1059,7 @@ describe("NewCase: create a case (#94)", () => {
       change: "c-9",
       created: [{ ref: "web/TC-0003", path: "apps/web/context/tests/login/TC-0003.md" }],
       commit: {
-        message: "cover(login): TC-0003 Lock after five tries\n\nCasefile-Change: c-9",
+        message: "test(login): TC-0003 Lock after five tries\n\nCasefile-Change: c-9",
         files: ["apps/web/context/tests/login/TC-0003.md"],
         sha: "3333333ccccccc",
       },
@@ -1215,7 +1215,7 @@ describe("App: a new case from the list (#94)", () => {
           feature: "login",
           change: "c-9",
           created: [{ ref: "web/TC-0003", path: "apps/web/context/tests/login/TC-0003.md" }],
-          commit: { message: "cover(login): TC-0003", files: [], sha: "3333333ccccccc" },
+          commit: { message: "test(login): TC-0003", files: [], sha: "3333333ccccccc" },
           next: [],
         },
       };
@@ -1397,7 +1397,7 @@ describe("App: a case opens in a Sheet over the list (#146)", () => {
           state: "active",
           changed: [],
           events: [],
-          commit: { message: "review(login): approve TC-0001", files: [], sha: "2222222bbbbbbb" },
+          commit: { message: "test(login): approve TC-0001", files: [], sha: "2222222bbbbbbb" },
           next: [],
         },
       };

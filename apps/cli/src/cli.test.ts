@@ -526,6 +526,41 @@ describe("casefile review: the host fills identity and via", () => {
   });
 });
 
+describe("commit subject: the CLI fills the branch (ADR commit-shape-follows-host-repo)", () => {
+  const git = {
+    PATH: process.env.PATH ?? "",
+    GIT_CONFIG_GLOBAL: "/dev/null",
+    GIT_CONFIG_NOSYSTEM: "1",
+  };
+  beforeEach(async () => {
+    await cp(MONOREPO, tmp, { recursive: true });
+    execFileSync("git", ["init", "-q", "-b", "feature/PROJ-123-login"], { cwd: tmp, env: git });
+    execFileSync("git", ["config", "user.email", "qa@acme.example"], { cwd: tmp, env: git });
+    const config = join(tmp, "casefile.yaml");
+    await writeFile(
+      config,
+      `${await readFile(config, "utf8")}commit:\n  subject: "[{ticket}] {type}({scope}): {summary}"\n  ticket_from_branch: "(PROJ-[0-9]+)"\n`,
+    );
+  });
+  const review = (...extra: string[]) =>
+    cli(
+      ["review", "TC-0001", "--to", "retired", "--cwd", join(tmp, "apps/web"), "--json", ...extra],
+      git,
+    );
+
+  it("takes the ticket from the branch", async () => {
+    const result = JSON.parse((await review()).stdout);
+    expect(result.value.commit.message.split("\n")[0]).toBe(
+      "[PROJ-123] test(login): retire TC-0001",
+    );
+  });
+
+  it("uses --ticket over the branch", async () => {
+    const result = JSON.parse((await review("--ticket", "QA-9")).stdout);
+    expect(result.value.commit.message.split("\n")[0]).toBe("[QA-9] test(login): retire TC-0001");
+  });
+});
+
 describe("identity: CASEFILE_USER_EMAIL before git config (ADR identity-override)", () => {
   const git = {
     PATH: process.env.PATH ?? "",

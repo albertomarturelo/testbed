@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { posix } from "node:path";
 import { z } from "zod";
 import { type CasefileError, fail, ok } from "../errors.js";
+import { CommitInput, commitSubject } from "../git/subject.js";
 import { nextCaseId } from "../ids.js";
 import { TESTS_DIR } from "../load/paths.js";
 import { loadWorkspace } from "../load/workspace.js";
@@ -55,6 +56,7 @@ const CoverInput = z.strictObject({
   feature: FeatureSlug,
   cases: z.array(ProposedCase).min(1),
   ...WriterInput,
+  ...CommitInput,
   project: z.string().min(1).optional().meta({ host: "project" }),
 });
 
@@ -191,9 +193,19 @@ export const coverOperation = defineOperation({
       files.push({ ref: `${project.name}/${id}`, path, text: caseText(file, notes) });
     }
     if (errors.length > 0) return fail(...errors);
+    const count = files.length;
+    const subject = commitSubject(
+      workspace.config.commit,
+      {
+        type: "test",
+        scope: input.feature,
+        summary: `propose ${count} ${count === 1 ? "case" : "cases"}`,
+      },
+      input,
+    );
+    if (!subject.ok) return subject;
 
     for (const { path, text } of files) await context.writeText(path, text);
-    const count = files.length;
     const refs = files.map((f) => f.ref).join(", ");
     return ok({
       project: project.name,
@@ -201,7 +213,7 @@ export const coverOperation = defineOperation({
       change,
       created: files.map(({ ref, path }) => ({ ref, path })),
       commit: writeCommit(
-        `cover(${input.feature}): propose ${count} ${count === 1 ? "case" : "cases"}`,
+        subject.value,
         { requestedBy: by, inbox: input.inbox, agent, change },
         files.map((f) => f.path),
       ),

@@ -26,6 +26,8 @@ format; built-in formats are described here.
 | `testedCommit` | commit hash, optional | The commit the tests ran on (`--tested-commit "$GITHUB_SHA"`): the `Tested-Commit:` trailer of the returned commit. Never written to the run file. CI passes it because it ingests on the branch tip, which may be newer than the tested commit (`casefile spec ci`). |
 | `env`, `build`, `release` | text | Copied into every event. `build` and `release` are what release gates read (`casefile spec query-grammar`). |
 | `project` | project name | Filled by the host from `--project` or the project containing `--cwd`. Required when the workspace has several projects and `--cwd` is in none. |
+| `ticket` | text, optional | The ticket key, only for a subject template that names `{ticket}` (`casefile spec cover`, *Commit subject*): `--ticket PROJ-123`. |
+| `branch` | text | Filled by the host: the checked-out branch, none on a detached HEAD. `commit.ticket_from_branch` reads the ticket from it. |
 
 ## What it does
 
@@ -73,7 +75,9 @@ format; built-in formats are described here.
 
    Use the name and email of `commit.author` in `-c user.name=… -c user.email=…`,
    and keep the `-- <run file>`: anything else staged stays out of the commit.
-   The subject is `ingest(<project>): record run <run>`; the trailers are
+   The subject follows the workspace's template (`casefile spec cover`, *Commit
+   subject*), by default `test(<project>): record run <run>`; with `{ticket}` in
+   it, CI passes `--ticket` or relies on `commit.ticket_default`. The trailers are
    `Casefile-Run: <run>`, `Executor: <executor>` and, when `testedCommit` was
    given, `Tested-Commit: <sha>`. A run writes no `history` entry and answers
    no one's request, so there is no `Requested-by:` or `Casefile-Change:`.
@@ -95,7 +99,7 @@ format; built-in formats are described here.
   "unmatched": [{ "ref": "login.spec.ts::rejects an empty password", "status": "failed" }],
   "commit": {
     "author": "casefile-ci <casefile-ci@casefile.invalid>",
-    "message": "ingest(web): record run 9137\n\nCasefile-Run: 9137\nExecutor: ci:github-actions\nTested-Commit: 4f1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c\n",
+    "message": "test(web): record run 9137\n\nCasefile-Run: 9137\nExecutor: ci:github-actions\nTested-Commit: 4f1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c\n",
     "files": ["apps/web/context/tests/.runs/9137.jsonl"] },
   "next": ["Commit the run file with commit.author and commit.message taken from --json output, staging only it (`git commit -F <message> -- <path>`)",
            "Push it; if the push is rejected, reset to the new tip and ingest again, never resolve a conflict (`casefile spec ci`)",
@@ -165,6 +169,7 @@ report points to.
 | `path.outside_workspace` | `report` leaves the workspace: copy the report inside it first |
 | `operation.actor_not_allowed` | the actor is `human` |
 | `project.required` / `project.unknown` | as in `casefile spec cover` |
+| `commit.ticket_*`, `config.commit_*` | the subject template, as in `casefile spec cover` |
 
 Nothing is written when any error occurs.
 
