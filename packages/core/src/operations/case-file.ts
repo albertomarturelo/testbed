@@ -1,7 +1,7 @@
 import { Document, isScalar, isSeq, Scalar, visit } from "yaml";
 import { z } from "zod";
 import { fail, ok, type Result } from "../errors.js";
-import { AGENT_AUTHOR, commitMessage } from "../git/trailers.js";
+import { AGENT_AUTHOR, type CommitTrailers, commitMessage } from "../git/trailers.js";
 import { Email, TestCaseFile } from "../schema/index.js";
 import type { Actor } from "./operation.js";
 
@@ -86,7 +86,7 @@ export function writtenBy(
  */
 export function writeCommit(
   subject: string,
-  trailers: { requestedBy: string; inbox?: string; agent?: string; change: string },
+  trailers: CommitTrailers,
   files: readonly string[],
   asAgent: boolean,
 ): { author?: string; message: string; files: string[] } {

@@ -90,7 +90,7 @@ export function releaseName(ref: string): string {
 }
 
 /** Later by `at`, then by load order: runs are already in load order. */
-function latestBuild(runs: readonly LoadedRun[]): string | null {
+export function latestBuild(runs: readonly LoadedRun[]): string | null {
   let found: RunEvent | null = null;
   for (const { event } of runs) {
     if (event.build !== undefined && (found === null || notBefore(event, found))) found = event;
@@ -98,8 +98,11 @@ function latestBuild(runs: readonly LoadedRun[]): string | null {
   return found?.build ?? null;
 }
 
-/** Per case, its latest execution: a later `skipped`/`not_run` never hides one. */
-function latestResults(runs: readonly LoadedRun[]): Map<string, RunEvent> {
+/**
+ * Per case, its latest execution (§3) among the given runs, already filtered to
+ * one milestone: a later `skipped`/`not_run` never hides one.
+ */
+export function latestResults(runs: readonly LoadedRun[]): Map<string, RunEvent> {
   const latest = new Map<string, RunEvent>();
   for (const { event } of runs) {
     if (!EXECUTED.has(event.status)) continue;

@@ -3,7 +3,9 @@ import { ingestOperation } from "../ingest/operation.js";
 import { coverOperation } from "./cover.js";
 import { idNextOperation } from "./id-next.js";
 import { initOperation } from "./init.js";
+import { milestoneCloseOperation } from "./milestone-close.js";
 import { milestoneOpenOperation } from "./milestone-open.js";
+import { milestoneReportOperation } from "./milestone-report.js";
 import type { Operation } from "./operation.js";
 import { overviewOperation } from "./overview.js";
 import { projectAddOperation } from "./project-add.js";
@@ -28,5 +30,7 @@ export const builtinOperations: readonly Operation[] = [
   reviewOperation,
   runOperation,
   milestoneOpenOperation,
+  milestoneReportOperation,
+  milestoneCloseOperation,
   ingestOperation(junitIngester),
 ];

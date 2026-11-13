@@ -19,12 +19,15 @@ export type CommitTrailers = {
   agent?: string;
   /** The change id every `history` entry of the commit stores (ADR history-commit-reference). */
   change: string;
+  /** The milestone a close freezes (ADR milestones-group-executions §5). */
+  milestone?: string;
 };
 
 /**
  * A casefile commit message: subject, blank line, then the trailers in a fixed
- * order (ADR git-is-identity, agent-runs-the-commit). A human's commit has no
- * `Agent:` line (ADR human-writes-through-operations). Ends with a newline.
+ * order (ADR git-is-identity, agent-runs-the-commit), `Casefile-Milestone:` last
+ * when a milestone closes. A human's commit has no `Agent:` line (ADR
+ * human-writes-through-operations). Ends with a newline.
  * Line breaks in values are flattened so a value cannot forge another trailer.
  */
 export function commitMessage(subject: string, trailers: CommitTrailers): string {
@@ -33,6 +36,9 @@ export function commitMessage(subject: string, trailers: CommitTrailers): string
     ...(trailers.inbox === undefined ? [] : [`Inbox-Id: ${line(trailers.inbox)}`]),
     ...(trailers.agent === undefined ? [] : [`Agent: ${line(trailers.agent)}`]),
     `Casefile-Change: ${line(trailers.change)}`,
+    ...(trailers.milestone === undefined
+      ? []
+      : [`Casefile-Milestone: ${line(trailers.milestone)}`]),
   ]);
 }
 

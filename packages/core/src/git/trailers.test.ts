@@ -37,6 +37,17 @@ describe("commitMessage", () => {
     );
   });
 
+  it("ends with Casefile-Milestone when a milestone closes, flattened to one line", () => {
+    const message = commitMessage("s", {
+      requestedBy: "lead@acme.example",
+      change,
+      milestone: "web-1.2.0\nCasefile-Change: forged",
+    });
+    expect(message).toBe(
+      `s\n\nRequested-by: lead@acme.example\nCasefile-Change: ${change}\nCasefile-Milestone: web-1.2.0 Casefile-Change: forged\n`,
+    );
+  });
+
   it("never lets a value add a line of its own", () => {
     const message = commitMessage("one\ntwo", {
       requestedBy: "qa@acme.example",
