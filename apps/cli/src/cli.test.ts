@@ -173,7 +173,7 @@ describe("casefile init → project add", () => {
     expect(init.stdout).toContain("created:\n  - casefile.yaml");
     // The bundled skills are offered first, with the command that copies them.
     expect(init.stdout).toMatch(
-      /\nNext:\n {2}- Copy the shipped skills \(casefile-setup, qa-bootstrap, qa-cover, qa-review\)[^\n]*\n {2}- Run \/casefile-setup in your agent/,
+      /\nNext:\n {2}- Copy the shipped skills \(casefile-setup, qa-bootstrap, qa-cover, qa-dashboard, qa-review\)[^\n]*\n {2}- Run \/casefile-setup in your agent/,
     );
     expect(init.stdout).toContain("gpg.format ssh");
     const pinned = JSON.parse(await readFile(join(tmp, ".casefile/package.json"), "utf8"));
@@ -225,6 +225,7 @@ describe("casefile init → project add", () => {
         ["casefile-setup", "setup"],
         ["qa-bootstrap", "bootstrap"],
         ["qa-cover", "cover"],
+        ["qa-dashboard", "dashboard"],
         ["qa-review", "review"],
       ] as const) {
         const text = await readFile(join(tmp, target, skill, "SKILL.md"), "utf8");
@@ -237,6 +238,19 @@ describe("casefile init → project add", () => {
     expect(bad.code).toBe(1);
     expect(bad.stderr).toContain("operation.invalid_input");
   });
+  it("offers qa-dashboard to a workspace whose skills predate it (#188)", async () => {
+    await cli(["init", "--cwd", tmp, "--skills-into", ".claude/skills"]);
+    await rm(join(tmp, ".claude/skills/qa-dashboard"), { recursive: true });
+    const again = await cli(["init", "--cwd", tmp]);
+    expect(again.code).toBe(0);
+    expect(again.stdout).toContain("skillsOffered:\n  - qa-dashboard");
+    expect(again.stdout).toContain(
+      "This version adds skills (qa-dashboard): casefile init --skills-into .claude/skills.",
+    );
+    const copied = await cli(["init", "--cwd", tmp, "--skills-into", ".claude/skills"]);
+    expect(copied.stdout).toContain(".claude/skills/qa-dashboard/SKILL.md");
+  });
+
   it("tells an upgraded workspace which skills are stale and new, and what to run (#152)", async () => {
     await cli(["init", "--cwd", tmp, "--skills-into", ".claude/skills"]);
     // As a workspace from an older version: one skill with old text, one not there yet.
