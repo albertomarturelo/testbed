@@ -152,14 +152,14 @@ new version, then run `init --skills-into` again for the skills the new version
 adds (it never overwrites the ones you have). Tell your agent the toolchain is
 already installed. Extensions are not in the tarball and still need npm.
 
-### Upgrading from `0.1.x` to `0.2.0`
+### Upgrading from `0.1.x` to `0.2.x`
 
-`0.2.0` changes what casefile commits and how executions are grouped:
+`0.2.0` changed what casefile commits and how executions are grouped:
 
-1. **Pins.** Set `@casefile/cli` and `@casefile/web` to `0.2.0` in
-   `.casefile/package.json`, delete `.casefile/node_modules` and install again
-   (`npm install --prefix .casefile --ignore-scripts`, or unpack the `0.2.0`
-   tarball).
+1. **Pins.** Set `@casefile/cli` and `@casefile/web` to the new version
+   (`0.2.1`) in `.casefile/package.json`, delete `.casefile/node_modules` and
+   install again (`npm install --prefix .casefile --ignore-scripts`, or unpack
+   that version's tarball).
 2. **Commit subjects.** casefile's commits now read like the rest of the
    history, `test(web): propose 2 cases` by default. If the repository has its
    own rules (a ticket key first, no AI tool named), describe them in a
@@ -173,12 +173,13 @@ already installed. Extensions are not in the tarball and still need npm.
    releases no milestone declares (`run.undeclared_milestone`): open one with
    the same slug to group them.
 4. **Skills.** Their text changed (they read the `commit` section), and
-   `init` never overwrites a skill you have. If you have not edited them,
-   delete the four and copy them again:
-   ```bash
-   rm -rf .claude/skills/{casefile-setup,qa-bootstrap,qa-cover,qa-review}
-   .casefile/node_modules/.bin/casefile init --skills-into .claude/skills
-   ```
+   `init` never overwrites a skill you have. Run
+   `.casefile/node_modules/.bin/casefile init`: it lists the skills whose text
+   differs from the new version's as `stale` and prints the command that
+   replaces them. Run it only for skills you have not edited.
+
+From `0.2.0` to `0.2.1` only step 1 applies; case bodies then render as
+Markdown in the viewer, and `casefile init` says whether any skill is stale.
 
 ### From source
 
@@ -285,13 +286,13 @@ The reasons behind each one are in [docs/decisions](docs/decisions/_index.md).
 
 ## Today / Next
 
-| Today (`0.2.0`) | Next (ranked by the [authoring loop](docs/decisions/2026-10-19-authoring-loop-first.md)) |
+| Today (`0.2.1`) | Next (ranked by the [authoring loop](docs/decisions/2026-10-19-authoring-loop-first.md)) |
 |---|---|
 | `init`, `project add`, `validate`, `cover`, `review` (edit, approve, retire a case), `run` (record a result by hand), `milestone open`, `list`, `report` and `close`, `gates`, `overview`, `runs`, `query`, `resolve`, `id next`, `whoami`, `spec` | |
 | Milestones group the executions of a release, a sprint regression or a UAT round; closing one freezes its evidence in `evidence.md`, in a commit that the repository signs when it signs commits ([decided](docs/decisions/2026-11-12-milestones-group-executions.md)) | Fail a CI step on red gates (#171), a Markdown summary for workflows and PRs (#115) |
 | casefile's commits follow the repository's conventions: a subject template in `casefile.yaml`, Conventional by default, with a ticket key when the repository asks, and the `Agent:` trailer optional ([decided](docs/decisions/2026-11-12-commit-shape-follows-host-repo.md)) | |
-| Skills `casefile-setup`, `qa-bootstrap` (a project's feature tree and first drafts from its code), `qa-cover` and `qa-review` (change, approve or retire cases from the chat) | `init` says which skills an upgraded repository has stale, how to replace them, and which skill to run next (#152) is on `main` and ships in the next release |
-| Local UI (`casefile ui`, installed with the CLI): projects, feature tree with coverage, cases that read as documents, each case's runs and why they failed; the QA creates a case, edits, approves and retires it, and records a manual result into a milestone, with the case open in a sheet over the list; a Milestones view with progress, open and close, and evidence to print or save as PDF ([decided](docs/decisions/2026-10-19-human-writes-through-operations.md)) | Case bodies rendered as Markdown ([decided](docs/decisions/2026-11-13-case-body-markdown.md), #178) are on `main` and ship in the next release. Then: live reload (#26) |
+| Skills `casefile-setup`, `qa-bootstrap` (a project's feature tree and first drafts from its code), `qa-cover` and `qa-review` (change, approve or retire cases from the chat); `init` says which skills an upgraded repository has stale, how to replace them, and which skill to run next | |
+| Local UI (`casefile ui`, installed with the CLI): projects, feature tree with coverage, cases that read as documents, each case's runs and why they failed; the QA creates a case, edits, approves and retires it, and records a manual result into a milestone, with the case open in a sheet over the list; a Milestones view with progress, open and close, and evidence to print or save as PDF; case bodies rendered as Markdown ([decided](docs/decisions/2026-10-19-human-writes-through-operations.md), [Markdown](docs/decisions/2026-11-13-case-body-markdown.md)) | Live reload (#26) |
 | `@casefile/cli`, `@casefile/web` (the viewer, [decided](docs/decisions/2026-11-09-casefile-ui-command.md)) and `@casefile/core` on npm, published by CI with provenance ([release process](docs/decisions/2026-10-20-release-process.md)); a toolchain tarball on each GitHub release for networks without the npm registry ([decided](docs/decisions/2026-11-09-release-toolchain-tarball.md)) | |
 | `ingest junit` (Playwright, Surefire), keeping failure messages and attachments; `ingest` returns the commit, and `casefile spec ci` has a GitHub Actions template that records shared-branch runs as `casefile-ci` ([decided](docs/decisions/2026-10-17-ci-commits-run-files.md)) | |
 | Release gates per milestone: `casefile gates`, and their verdicts in the evidence | Complements, when the real case needs them: CTRF and Allure, environment-blocked results, MCP, Zephyr and Xray bridges |

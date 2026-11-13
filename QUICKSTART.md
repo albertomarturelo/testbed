@@ -47,11 +47,12 @@ ls casefile.yaml .casefile/package.json 2>/dev/null
 - After an upgrade, run step 6's `init --skills-into` again: it adds the skills
   the new version ships (`qa-bootstrap` and `qa-review` from `0.1.3`) and keeps
   the ones already there, with their old text.
-- An upgrade from `0.1.x` to `0.2.0` changes commit subjects and replaces
+- An upgrade from `0.1.x` to `0.2.x` changes commit subjects and replaces
   `--release` with `--milestone`: read the README's *Upgrading from `0.1.x` to
-  `0.2.0`* and tell the human the plan first. The four skills' text changed in
-  `0.2.0`: ask before deleting the skill folders so step 6 copies them again;
-  keep any the human edited.
+  `0.2.x`* and tell the human the plan first.
+- From `0.2.1`, `casefile init` lists the kept skills whose text differs from
+  the new version's (`stale`) and prints the command that replaces them: ask
+  the human before running it, and keep any skill they edited.
 
 ## 2. Pick the version
 

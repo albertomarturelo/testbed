@@ -1,6 +1,6 @@
 {
   "name": "@casefile/core",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "casefile core: test cases as files in your repository — schemas, resolver, query DSL, operations.",
   "license": "MIT",
   "keywords": [
