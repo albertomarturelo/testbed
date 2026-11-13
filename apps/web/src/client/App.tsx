@@ -1,5 +1,5 @@
 import { Eye, EyeOff, FilePen, Plus, RefreshCw } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { type Covered, call, type Overview, type Result, type Session, session } from "@/api";
 import { ErrorList } from "@/components/ErrorList";
 import { compareFeatures, FeatureTree, inFeature } from "@/components/FeatureTree";
@@ -12,11 +12,33 @@ import { cn } from "@/lib/utils";
 import { DRAFT, formatRoute, parseRoute, type Route, type StateFilter } from "@/route";
 import { CaseList } from "@/views/CaseList";
 import { CaseSheet } from "@/views/CaseSheet";
+import type * as DashboardViews from "@/views/Dashboards";
 import { EvidencePrint, MilestonePage } from "@/views/MilestonePage";
 import { Milestones } from "@/views/Milestones";
 import { NewCase } from "@/views/NewCase";
 import { QueryView } from "@/views/QueryView";
 import { ValidateView } from "@/views/ValidateView";
+
+// Dashboards bring Recharts (#187): a chunk of its own, loaded when one is opened.
+// A chunk that does not load (a tab left open across an upgrade) says so in place
+// instead of unmounting the whole viewer.
+const dashboardsChunk = (): Promise<Pick<typeof DashboardViews, "Dashboards" | "DashboardPage">> =>
+  import("@/views/Dashboards").catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    const NotLoaded = () => (
+      <ErrorList
+        errors={[
+          {
+            code: "ui.unreachable",
+            message: `the dashboards view did not load (${message}): reload the page`,
+          },
+        ]}
+      />
+    );
+    return { Dashboards: NotLoaded, DashboardPage: NotLoaded };
+  });
+const Dashboards = lazy(() => dashboardsChunk().then((m) => ({ default: m.Dashboards })));
+const DashboardPage = lazy(() => dashboardsChunk().then((m) => ({ default: m.DashboardPage })));
 
 function useRoute(): Route {
   const [route, setRoute] = useState(() => parseRoute(window.location.hash));
@@ -70,11 +92,15 @@ export function App() {
     );
   }, [route]);
 
-  // The page a case was opened from stays behind its Sheet: a case list (#146) or a
-  // milestone (#166). Any other view forgets it.
+  // The page a case was opened from stays behind its Sheet: a case list (#146), a
+  // milestone (#166) or a dashboard (#187). Any other view forgets it.
   const [pageBehind, setPageBehind] = useState<BehindRoute | null>(null);
   useEffect(() => {
-    if (route.view === "cases" || (route.view === "milestone" && !route.evidence)) {
+    if (
+      route.view === "cases" ||
+      route.view === "dashboard" ||
+      (route.view === "milestone" && !route.evidence)
+    ) {
       setPageBehind(route);
     } else if (route.view !== "case") setPageBehind(null);
   }, [route]);
@@ -88,7 +114,7 @@ export function App() {
     load();
     setReload((n) => n + 1);
   };
-  // A write in a case over a milestone changes its progress: read both again.
+  // A write in a case over a milestone or a dashboard changes its numbers: read both again.
   const written = () => {
     load();
     setReload((n) => n + 1);
@@ -97,7 +123,9 @@ export function App() {
   const projects = overview?.ok ? overview.value.projects : [];
   // A case opened from a link or a reload: its own project and feature's list.
   const behind: BehindRoute | undefined =
-    route.view === "cases" || (route.view === "milestone" && !route.evidence)
+    route.view === "cases" ||
+    route.view === "dashboard" ||
+    (route.view === "milestone" && !route.evidence)
       ? route
       : route.view === "case"
         ? (pageBehind ?? {
@@ -110,25 +138,26 @@ export function App() {
         : undefined;
   const list = behind?.view === "cases" ? behind : undefined;
   const milestone = behind?.view === "milestone" ? behind : undefined;
+  const dashboard = behind?.view === "dashboard" ? behind : undefined;
   // Over a case, the header names the page behind it.
   const project = route.view === "case" ? behind?.project : route.project;
   const unresolved = projects
     .filter((p) => project === undefined || p.name === project)
     .reduce((sum, p) => sum + p.unresolved, 0);
-  const tab = (view: "cases" | "milestones" | "query" | "validate") =>
+  const tab = (view: "cases" | "milestones" | "dashboards" | "query" | "validate") =>
     formatRoute({ view, project });
   // A case page or the new-case form is part of the case list, a milestone of the
-  // Milestones view: switching project goes back to the list.
+  // Milestones view, a dashboard of Dashboards: switching project goes back to the list.
+  const listOf = (view: Exclude<Route["view"], "case" | "new">) =>
+    view === "milestone" ? "milestones" : view === "dashboard" ? "dashboards" : view;
   const listView =
     route.view === "case"
-      ? behind?.view === "milestone"
-        ? "milestones"
-        : "cases"
+      ? behind?.view === undefined || behind.view === "cases"
+        ? "cases"
+        : listOf(behind.view)
       : route.view === "new"
         ? "cases"
-        : route.view === "milestone"
-          ? "milestones"
-          : route.view;
+        : listOf(route.view);
   const onCreated = (covered: Covered) => {
     setCreated(covered);
     // The tree and the list read the workspace again, so the new case is in them.
@@ -178,6 +207,9 @@ export function App() {
           </ProjectLink>
           <ProjectLink href={tab("milestones")} active={listView === "milestones"}>
             Milestones
+          </ProjectLink>
+          <ProjectLink href={tab("dashboards")} active={listView === "dashboards"}>
+            Dashboards
           </ProjectLink>
           <ProjectLink href={tab("query")} active={route.view === "query"}>
             Query
@@ -234,6 +266,23 @@ export function App() {
                 version={reload}
                 onWritten={load}
               />
+            ) : route.view === "dashboards" ? (
+              <Suspense fallback={<Skeleton className="h-40 w-full" />}>
+                <Dashboards
+                  project={project}
+                  projects={projects.map((p) => p.name)}
+                  version={reload}
+                />
+              </Suspense>
+            ) : dashboard !== undefined ? (
+              <Suspense fallback={<Skeleton className="h-64 w-full" />}>
+                <DashboardPage
+                  key={`${dashboard.project}/${dashboard.slug}`}
+                  project={dashboard.project}
+                  slug={dashboard.slug}
+                  version={reload}
+                />
+              </Suspense>
             ) : route.view === "query" ? (
               <QueryView key={project ?? ""} project={project} />
             ) : route.view === "validate" ? (
@@ -253,7 +302,7 @@ export function App() {
               reload={reload}
               created={created}
               milestone={milestone?.slug}
-              onWritten={milestone === undefined ? load : written}
+              onWritten={milestone === undefined && dashboard === undefined ? load : written}
               onClose={() => {
                 if (behind !== undefined) window.location.hash = formatRoute(behind);
               }}
@@ -267,7 +316,10 @@ export function App() {
 
 type CasesRoute = Extract<Route, { view: "cases" }>;
 /** What a case's Sheet can slide over. */
-type BehindRoute = CasesRoute | Extract<Route, { view: "milestone" }>;
+type BehindRoute =
+  | CasesRoute
+  | Extract<Route, { view: "milestone" }>
+  | Extract<Route, { view: "dashboard" }>;
 
 /** Remembers, per viewer, whether the case list shows Automation and Last run (#110). */
 export const RUN_COLUMNS_KEY = "casefile.caseList.runColumns";

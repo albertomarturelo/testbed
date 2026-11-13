@@ -37,6 +37,7 @@ Upgrades are deliberate PRs that update this table.
 | `@casefile/web` | `lucide-react` | dev (bundled) | 1.54.0 | Icons (shadcn default) |
 | `@casefile/web` | `tw-animate-css` | dev (bundled) | 1.4.0 | Animations the shadcn components use |
 | `@casefile/web` | `markdown-it` | dev (bundled) | 15.0.3 | Case bodies as Markdown on the case page, raw HTML escaped ([case-body-markdown](decisions/2026-11-13-case-body-markdown.md)); ships its own types |
+| `@casefile/web` | `recharts` | dev (bundled) | 3.8.0 | Dashboard charts through shadcn's `chart` component; a chunk of its own, loaded when a dashboard opens. The `redux`, `react-redux` and `immer` it brings are its internals, not a state library of ours ([dashboards-as-files](decisions/2026-11-13-dashboards-as-files.md)) |
 | `@casefile/web` | `happy-dom`, `@testing-library/react` | dev | 20.14.6, 16.3.3 | Client smoke tests |
 | `@casefile/web` | `@testing-library/user-event` | dev | 14.6.8 | Keyboard and pointer in client tests: happy-dom does not activate a button on Enter or Space (#114) |
 
@@ -66,7 +67,6 @@ shadcn/ui itself is not a dependency: its CLI (`shadcn@4.21.4`, run with
 |---|---|---|
 | File watching | chokidar | #9 |
 | MCP | Official MCP TypeScript SDK (stdio + Streamable HTTP) | #15 |
-| Dashboard charts | Recharts through shadcn's `chart` component, bundled dev dependency of `@casefile/web` ([dashboards-as-files](decisions/2026-11-13-dashboards-as-files.md)) | #187 |
 
 Not used, by decision: any LLM SDK, database, Docker, auth provider, a bundler
 outside the `apps/web` client, an HTTP server framework (`node:http` serves the UI),
