@@ -73,3 +73,26 @@ export function gitUserEmail(
     });
   });
 }
+
+/**
+ * The checked-out branch in `dir` (`git symbolic-ref --short HEAD`), or `null`
+ * on a detached HEAD or outside a repository: the `branch` host input that
+ * `ticket_from_branch` reads (ADR commit-shape-follows-host-repo §3). A thin
+ * adapter; core's subject logic stays pure.
+ */
+export function gitBranch(
+  dir: string,
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): Promise<string | null> {
+  return new Promise((resolve) => {
+    execFile(
+      "git",
+      ["symbolic-ref", "--short", "-q", "HEAD"],
+      { cwd: dir, env },
+      (error, stdout) => {
+        const branch = error === null ? stdout.trim() : "";
+        resolve(branch === "" ? null : branch);
+      },
+    );
+  });
+}

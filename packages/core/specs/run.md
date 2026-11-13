@@ -35,6 +35,8 @@ report (`casefile spec ingest`), and only those events make a case
 | `agent` | text | The agent recording it (`claude-code`): the executor is `agent:<agent>`. Required for an agent, refused for a human. |
 | `identity` | email | Filled by the host: `CASEFILE_USER_EMAIL` when set, else `git config user.email` in the workspace (ADR identity-override; `casefile whoami` shows it): a human's executor is `human:<identity>`. |
 | `project` | project name | Filled by the host from `--project` or the project containing `--cwd`. |
+| `ticket` | text, optional | The ticket key, only for a subject template that names `{ticket}` (`casefile spec cover`, *Commit subject*): `--ticket PROJ-123`. |
+| `branch` | text | Filled by the host: the checked-out branch, none on a detached HEAD. `commit.ticket_from_branch` reads the ticket from it. |
 
 `identity` is a host input, never a flag (ADR cli-generic-host). There is no
 `automation_ref` input: an event recorded here never carries one, so it can
@@ -64,7 +66,8 @@ never make a case `automated`.
      that one path, workspace-relative: the pathspec to stage and commit, and
      nothing else.
 
-   The subject is `run(<feature>): record <id> as <status>`. When nothing was
+   The subject follows the workspace's template (`casefile spec cover`, *Commit
+   subject*), by default `test(<feature>): record <id> as <status>`. When nothing was
    appended there is no `commit`.
 
 **Postconditions:** `casefile runs <ref>` lists the event first (newest
@@ -88,7 +91,7 @@ the last result.)
   "appended": true,
   "event": { "run_id": "manual-2026-10-21", "case_id": "TC-0002", "status": "failed", "…": "…" },
   "commit": {
-    "message": "run(login): record TC-0002 as failed\n\nCasefile-Run: manual-2026-10-21\nExecutor: human:qa@acme.example\n",
+    "message": "test(login): record TC-0002 as failed\n\nCasefile-Run: manual-2026-10-21\nExecutor: human:qa@acme.example\n",
     "files": ["apps/web/context/tests/.runs/manual-2026-10-21.jsonl"] },
   "next": ["Commit the run file with commit.message taken from --json output, as yourself, staging only it (`git commit -F <message> -- <path>`)"] }
 ```
@@ -129,4 +132,7 @@ Nothing is written when any of these is returned.
 | `case.unknown` / `case.ambiguous` | no such case, or a bare id found in several projects |
 | `project.unknown` | `project` names no project |
 | `operation.actor_not_allowed` | invoked by CI: CI records results with `casefile ingest` |
+| `commit.ticket_missing` | the subject template names `{ticket}`, and none was given, found in the branch or set as `commit.ticket_default` |
+| `commit.ticket_invalid` / `commit.ticket_unused` | the ticket is not one token (letters, digits, `._#/-`), or the template names no `{ticket}` |
+| `config.commit_subject` / `config.commit_ticket_regex` | `commit.subject` or `commit.ticket_from_branch` in `casefile.yaml` is broken; `casefile validate` reports it too |
 | loader codes | `casefile.yaml` cannot be read; run `casefile validate` |

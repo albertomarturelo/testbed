@@ -1,0 +1,22 @@
+[
+  {
+    "code": "config.commit_subject",
+    "path": "casefile.yaml",
+    "field": "commit.subject"
+  },
+  {
+    "code": "config.commit_ticket_default",
+    "path": "casefile.yaml",
+    "field": "commit.ticket_default"
+  },
+  {
+    "code": "config.commit_ticket_regex",
+    "path": "casefile.yaml",
+    "field": "commit.ticket_from_branch"
+  },
+  {
+    "code": "workspace.no_projects",
+    "path": "casefile.yaml",
+    "field": "projects"
+  }
+]

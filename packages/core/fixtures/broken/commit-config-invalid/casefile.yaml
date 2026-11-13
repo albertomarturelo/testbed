@@ -1,0 +1,6 @@
+version: 1
+projects: []
+commit:
+  subject: "[{ticket}] {kind}({scope}): done"
+  ticket_from_branch: "([A-Z]+-"
+  ticket_default: "NO TICKET"

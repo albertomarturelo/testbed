@@ -1,6 +1,7 @@
 import { posix } from "node:path";
 import { z } from "zod";
 import { type CasefileError, fail, ok, type Result } from "../errors.js";
+import { CommitInput, commitSubject } from "../git/subject.js";
 import { AGENT_AUTHOR, CI_AUTHOR, runCommitMessage } from "../git/trailers.js";
 import { TESTS_DIR } from "../load/paths.js";
 import { loadWorkspace } from "../load/workspace.js";
@@ -26,6 +27,7 @@ const IngestInput = z.strictObject({
     .string()
     .regex(/^[0-9a-f]{7,64}$/, "a commit hash: 7 to 64 lowercase hex digits")
     .optional(),
+  ...CommitInput,
   project: z.string().min(1).optional().meta({ host: "project" }),
 });
 
@@ -80,6 +82,13 @@ export function ingestOperation(ingester: Ingester): Operation {
       const selected = requireProject(workspace, input.project);
       if (!selected.ok) return selected;
       const project = selected.value;
+      // Checked before anything is written: a refused subject writes nothing.
+      const subject = commitSubject(
+        workspace.config.commit,
+        { type: "test", scope: project.name, summary: `record run ${input.run}` },
+        input,
+      );
+      if (!subject.ok) return subject;
 
       const text = await context.readText(input.report);
       if (text === null) {
@@ -168,7 +177,7 @@ export function ingestOperation(ingester: Ingester): Operation {
       }
 
       let commit: RunFileCommit | undefined;
-      if (fresh.length > 0) commit = runFileCommit(input, project.name, path, context.actor);
+      if (fresh.length > 0) commit = runFileCommit(input, subject.value, path, context.actor);
       const next: string[] = [];
       if (commit !== undefined) {
         next.push(
@@ -204,19 +213,20 @@ export function ingestOperation(ingester: Ingester): Operation {
 
 /**
  * The commit of the run file (ADR ci-commits-run-files §2): authored by
- * `casefile-ci` for CI and `casefile-agent` for an agent, with `Tested-Commit:`
+ * `casefile-ci` for CI and `casefile-agent` for an agent, its subject from the
+ * workspace template (ADR commit-shape-follows-host-repo), with `Tested-Commit:`
  * when the host passed it.
  */
 function runFileCommit(
   input: z.infer<typeof IngestInput>,
-  project: string,
+  subject: string,
   path: string,
   actor: Actor,
 ): RunFileCommit {
   const trailers = { run: input.run, executor: input.executor };
   const tested = input.testedCommit;
   const message = runCommitMessage(
-    `ingest(${project}): record run ${input.run}`,
+    subject,
     tested === undefined ? trailers : { ...trailers, testedCommit: tested },
   );
   return { author: actor === "ci" ? CI_AUTHOR : AGENT_AUTHOR, message, files: [path] };

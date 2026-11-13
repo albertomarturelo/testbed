@@ -1,4 +1,5 @@
 import { posix } from "node:path";
+import { isTicket, templateProblems, ticketRegexProblem } from "../git/subject.js";
 import {
   CONFIG_FILE,
   normalizeProjectPath,
@@ -9,11 +10,40 @@ import {
 import { CASEFILE_PACKAGE, TOOLCHAIN_DIR, type Toolchain } from "../operations/extensions.js";
 import { NPM_INSTALL, notInstalled, TOOLCHAIN_PACKAGE } from "../operations/toolchain.js";
 import { commonsChain, resolveCase, workspaceLayer } from "../resolve/resolve.js";
-import { ExactVersion } from "../schema/index.js";
+import { type CommitConfig, ExactVersion } from "../schema/index.js";
 import { type Finding, finding, fromError } from "./finding.js";
 import type { Level } from "./validate.js";
 
 // The five levels of ADR agent-driven-setup, point 5, in order.
+
+/** The `commit` section (ADR commit-shape-follows-host-repo): what every writing operation would refuse. */
+function commitFindings(commit: CommitConfig | undefined): Finding[] {
+  const found: Finding[] = [];
+  const at = (field: string) => ({ path: CONFIG_FILE, field: `commit.${field}` });
+  const problems = commit?.subject === undefined ? [] : templateProblems(commit.subject);
+  if (problems.length > 0) {
+    found.push(
+      finding("config.commit_subject", { ...at("subject"), message: problems.join("; ") }),
+    );
+  }
+  const regex = commit?.ticket_from_branch;
+  const problem = regex === undefined ? null : ticketRegexProblem(regex);
+  if (problem !== null) {
+    found.push(
+      finding("config.commit_ticket_regex", { ...at("ticket_from_branch"), message: problem }),
+    );
+  }
+  const fallback = commit?.ticket_default;
+  if (fallback !== undefined && !isTicket(fallback)) {
+    found.push(
+      finding("config.commit_ticket_default", {
+        ...at("ticket_default"),
+        message: `'${fallback}' is not one token a commit subject can carry`,
+      }),
+    );
+  }
+  return found;
+}
 
 /** `casefile.yaml` and the projects it lists. */
 export const workspaceLevel: Level = {
@@ -21,13 +51,15 @@ export const workspaceLevel: Level = {
   workspace({ workspace: { config, errors } }) {
     // Without a config the loader stopped: its errors are all about casefile.yaml.
     if (config === null) return errors.map(fromError);
-    if (config.projects.length > 0) return [];
+    const found = commitFindings(config.commit);
+    if (config.projects.length > 0) return found;
     return [
       finding("workspace.no_projects", {
         path: CONFIG_FILE,
         field: "projects",
         message: "casefile.yaml lists no projects; a workspace needs at least one",
       }),
+      ...found,
     ];
   },
   project({ index, entry, loaded }, { workspace: { config, errors } }) {

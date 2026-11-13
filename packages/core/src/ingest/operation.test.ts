@@ -87,8 +87,7 @@ describe("ingest junit", () => {
       ],
       commit: {
         author: "casefile-ci <casefile-ci@casefile.invalid>",
-        message:
-          "ingest(web): record run pw-1\n\nCasefile-Run: pw-1\nExecutor: ci:github-actions\n",
+        message: "test(web): record run pw-1\n\nCasefile-Run: pw-1\nExecutor: ci:github-actions\n",
         files: [`${RUNS}/pw-1.jsonl`],
       },
       next: [
@@ -278,8 +277,7 @@ describe("ingest junit", () => {
       appended: 1,
       commit: {
         author: "casefile-agent <casefile-agent@casefile.invalid>",
-        message:
-          "ingest(web): record run pw-1\n\nCasefile-Run: pw-1\nExecutor: agent:claude-code\n",
+        message: "test(web): record run pw-1\n\nCasefile-Run: pw-1\nExecutor: agent:claude-code\n",
         files: [`${RUNS}/pw-1.jsonl`],
       },
     });
@@ -292,7 +290,7 @@ describe("ingest junit", () => {
     const sha = "4f1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c";
     const value = await ingested({ testedCommit: sha });
     expect(value.commit?.message).toBe(
-      `ingest(web): record run pw-1\n\nCasefile-Run: pw-1\nExecutor: ci:github-actions\nTested-Commit: ${sha}\n`,
+      `test(web): record run pw-1\n\nCasefile-Run: pw-1\nExecutor: ci:github-actions\nTested-Commit: ${sha}\n`,
     );
     expect(await read(`${RUNS}/pw-1.jsonl`)).not.toContain(sha);
   });

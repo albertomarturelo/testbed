@@ -104,8 +104,10 @@ Run every casefile command below with `CASEFILE_ACTOR=agent`.
    `.casefile/package-lock.json` (if npm wrote one), `.casefile/.gitignore` and every
    `context/tests/` scaffold in one commit. Author it as
    `casefile-agent <casefile-agent@casefile.invalid>`, the fixed agent
-   identity (ADR agent-runs-the-commit). The subject is
-   `setup: register <project names>`, and the trailers are
+   identity (ADR agent-runs-the-commit). The subject follows `commit.subject`
+   (`casefile spec cover`, *Commit subject*) with type `chore`, scope
+   `casefile` and summary `register <project names>`: by default
+   `chore(casefile): register web api`. The trailers are
    `Requested-by: <the human's git email>` and `Agent: <your name>`. Commit
    only those paths (`git commit -F <message> -- <paths>`), never what the
    human had staged. The skills `init` copied are the human's to commit.

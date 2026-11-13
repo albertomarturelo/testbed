@@ -38,6 +38,8 @@ edits a case file by hand.
 | `base` | change id, optional | The `change` of the last `history` entry the caller read. |
 | `via` | text | Filled by the host: `cli:review` from the CLI, `ui:review` from the viewer. Written as `history[].via`. |
 | `project` | project name | Filled by the host from `--project` or the project containing `--cwd`. |
+| `ticket` | text, optional | The ticket key, only for a subject template that names `{ticket}` (`casefile spec cover`, *Commit subject*): `--ticket PROJ-123`. |
+| `branch` | text | Filled by the host: the checked-out branch, none on a detached HEAD. `commit.ticket_from_branch` reads the ticket from it. |
 
 `identity` and `via` are host inputs, never flags (ADR cli-generic-host).
 
@@ -108,9 +110,10 @@ including moving to the state the case already has, is
      human-writes-through-operations). `commit.files` is that one path,
      workspace-relative: the pathspec to stage and commit, and nothing else.
 
-   The subject is `review(<feature>): <verbs> <id>`, the verbs being `edit`
+   The subject follows the workspace's template (`casefile spec cover`,
+   *Commit subject*), by default `test(<feature>): <verbs> <id>`, the verbs being `edit`
    when `set` changed something and the transition's verb, joined with `and`:
-   `review(login): edit and approve TC-0003`.
+   `test(login): edit and approve TC-0003`.
 
 **Postconditions:** `casefile resolve <ref>` shows the new values and state,
 and its last `history` entries carry the returned `change`. `casefile
@@ -131,7 +134,7 @@ retry with `base` is `review.stale`. Commit the file of the first call instead.
   "events": ["updated", "reviewed"],
   "commit": {
     "author": "casefile-agent <casefile-agent@casefile.invalid>",
-    "message": "review(login): edit and approve TC-0003\n\nRequested-by: qa@acme.example\nAgent: claude-code\nCasefile-Change: 5e1c7a2b-8d3f-4a6e-9b0c-2f4d6e8a1c3b\n",
+    "message": "test(login): edit and approve TC-0003\n\nRequested-by: qa@acme.example\nAgent: claude-code\nCasefile-Change: 5e1c7a2b-8d3f-4a6e-9b0c-2f4d6e8a1c3b\n",
     "files": ["apps/web/context/tests/login/TC-0003.md"] },
   "next": ["Commit the file with commit.author and commit.message taken from --json output, staging only it (`git commit -F <message> -- <path>`)"] }
 ```
@@ -189,7 +192,7 @@ history:
 Had the QA approved it themselves on the case page, the viewer would have
 sent the same `to` with actor human and `via: ui:review`, and committed as
 the QA with the message
-`review(login): approve TC-0003\n\nRequested-by: qa@acme.example\nCasefile-Change: <id>\n`.
+`test(login): approve TC-0003\n\nRequested-by: qa@acme.example\nCasefile-Change: <id>\n`.
 
 ## Errors
 
@@ -212,4 +215,7 @@ Nothing is written when any of these is returned.
 | `case.unknown` / `case.ambiguous` | no such case, or a bare id found in several projects |
 | `project.unknown` | `project` names no project |
 | `operation.actor_not_allowed` | invoked by CI |
+| `commit.ticket_missing` | the subject template names `{ticket}`, and none was given, found in the branch or set as `commit.ticket_default` |
+| `commit.ticket_invalid` / `commit.ticket_unused` | the ticket is not one token (letters, digits, `._#/-`), or the template names no `{ticket}` |
+| `config.commit_subject` / `config.commit_ticket_regex` | `commit.subject` or `commit.ticket_from_branch` in `casefile.yaml` is broken; `casefile validate` reports it too |
 | loader codes | `casefile.yaml` cannot be read; run `casefile validate` |

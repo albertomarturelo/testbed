@@ -2,6 +2,7 @@
 export * from "./errors.js";
 export * from "./gates/evaluate.js";
 export * from "./git/identity.js";
+export * from "./git/subject.js";
 export * from "./git/trailers.js";
 export * from "./ids.js";
 export * from "./ingest/ingester.js";
