@@ -5,6 +5,8 @@
 Accepted — 2026-10-17 (#53). Amends [build-and-test-tooling](2026-10-15-build-and-test-tooling.md)
 §1 (no bundler) for `apps/web` only. §7's deferred `casefile ui` is settled by
 [casefile-ui-command](2026-11-09-casefile-ui-command.md): `@casefile/web` is published and the CLI runs it.
+§5's first bundled renderer, markdown-it for case bodies, is decided in
+[case-body-markdown](2026-11-13-case-body-markdown.md).
 
 ## Context
 
