@@ -3,7 +3,9 @@
 ## Status
 
 Accepted — 2026-10-17 (#10). Settles the two gaps found by #6 (release naming,
-source of `release.build`).
+source of `release.build`). Amended by
+[milestones-group-executions](2026-11-12-milestones-group-executions.md): the release is a
+milestone, `release.*` becomes `milestone.*`; the rules below are unchanged.
 
 ## Context
 
