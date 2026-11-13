@@ -3,14 +3,18 @@
  * (`&state=draft` lists only the drafts awaiting review, #87; no other state is a filter),
  * `#/case/web/TC-0001` (the case in a Sheet over the list it was opened from, else its
  * feature's, #146), `#/new?project=web&feature=login` (create a case there, #94),
- * `#/query`, `#/validate`. A reload keeps the view.
+ * `#/query`, `#/validate`, `#/milestones?project=web` (#166),
+ * `#/milestone/web/web-2.1.0` (one milestone; a case opened from it slides over it)
+ * and `#/milestone/web/web-2.1.0/evidence` (its printable evidence). A reload keeps the view.
  */
 export type Route =
   | { view: "cases"; project?: string; feature?: string; state?: StateFilter }
   | { view: "case"; ref: string }
   | { view: "new"; project?: string; feature?: string }
   | { view: "query"; project?: string }
-  | { view: "validate"; project?: string };
+  | { view: "validate"; project?: string }
+  | { view: "milestones"; project?: string }
+  | { view: "milestone"; project: string; slug: string; evidence?: boolean };
 
 /** The state the "drafts awaiting review" filter lists: what a `state = draft` query matches. */
 export const DRAFT = "draft";
@@ -25,6 +29,14 @@ export function parseRoute(hash: string): Route {
   if (view === "new") return { view: "new", project, feature: params.get("feature") ?? undefined };
   if (view === "query") return { view: "query", project };
   if (view === "validate") return { view: "validate", project };
+  if (view === "milestones") return { view: "milestones", project };
+  const [milestoneProject, slug, page, ...extra] = rest;
+  if (view === "milestone" && milestoneProject && slug && extra.length === 0) {
+    if (page === undefined) return { view: "milestone", project: milestoneProject, slug };
+    if (page === "evidence") {
+      return { view: "milestone", project: milestoneProject, slug, evidence: true };
+    }
+  }
   return {
     view: "cases",
     project,
@@ -36,6 +48,9 @@ export function parseRoute(hash: string): Route {
 
 export function formatRoute(route: Route): string {
   if (route.view === "case") return `#/case/${route.ref}`;
+  if (route.view === "milestone") {
+    return `#/milestone/${route.project}/${route.slug}${route.evidence ? "/evidence" : ""}`;
+  }
   const params = new URLSearchParams();
   if (route.project !== undefined) params.set("project", route.project);
   if ((route.view === "cases" || route.view === "new") && route.feature !== undefined) {

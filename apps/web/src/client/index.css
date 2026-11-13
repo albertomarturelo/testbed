@@ -79,3 +79,26 @@
     @apply bg-background text-foreground;
   }
 }
+
+/*
+ * Paper (#166): the printable milestone evidence. The page size is the
+ * printer's (A4 or Letter); badges keep their colours, so a red verdict
+ * stays red in the PDF without "Background graphics".
+ */
+@media print {
+  @page {
+    margin: 14mm 12mm;
+  }
+  body {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  /* A table is never cut at the page edge: on paper there is nothing to scroll. */
+  [data-slot="table-container"] {
+    overflow: visible;
+  }
+  /* A long table repeats its head on every page it spans. */
+  thead {
+    display: table-header-group;
+  }
+}

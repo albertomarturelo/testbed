@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App, RUN_COLUMNS_KEY } from "@/App";
 import type { Overview } from "@/api";
@@ -285,5 +285,97 @@ describe("routes and feature tree", () => {
         children: [],
       },
     ]);
+  });
+});
+
+describe("App: milestones (#166)", () => {
+  const report = {
+    project: "web",
+    slug: "web-1.2.0",
+    state: "open",
+    path: "p",
+    evidence: "",
+    red_gates: [],
+    next: [],
+    report: {
+      project: "web",
+      slug: "web-1.2.0",
+      title: "Web 1.2.0",
+      release: null,
+      due: null,
+      scope: "state = active",
+      build: null,
+      opened: null,
+      closed: null,
+      totals: { in_scope: 1, executed: 0, passed: 0, failed: 0, blocked: 0, not_run: 1 },
+      gates: null,
+      cases: [
+        {
+          id: "TC-0001",
+          title: "Sign in",
+          priority: "P1",
+          result: null,
+          executor: null,
+          at: null,
+          build: null,
+          note: null,
+          evidence: [],
+        },
+      ],
+      note: null,
+    },
+  };
+  beforeEach(() => {
+    vi.stubGlobal("fetch", async (url: string, init?: { body: string }) => {
+      const name = url.split("/").at(-1) as string;
+      if (init !== undefined) calls.push({ name, input: JSON.parse(init.body) });
+      const value =
+        name === "milestone-report"
+          ? report
+          : name === "milestone-list"
+            ? { milestones: [] }
+            : name === "overview"
+              ? overview
+              : null;
+      return new Response(
+        JSON.stringify(
+          value === null
+            ? { ok: false, errors: [{ code: "x", message: name }] }
+            : { ok: true, value },
+        ),
+      );
+    });
+  });
+
+  it("has a Milestones view that keeps the selected project", async () => {
+    window.location.hash = formatRoute({ view: "cases", project: "web" });
+    render(<App />);
+    const tab = await screen.findByRole("link", { name: "Milestones" });
+    expect(tab.getAttribute("href")).toBe("#/milestones?project=web");
+    window.location.hash = "#/milestones?project=web";
+    fireEvent(window, new HashChangeEvent("hashchange"));
+    expect(await screen.findByRole("heading", { name: "Milestones" })).toBeTruthy();
+    await waitFor(() =>
+      expect(calls).toContainEqual({ name: "milestone-list", input: { project: "web" } }),
+    );
+  });
+
+  it("opens a case over its milestone, and closing returns to the milestone", async () => {
+    window.location.hash = formatRoute({ view: "milestone", project: "web", slug: "web-1.2.0" });
+    render(<App />);
+    const [link] = await screen.findAllByRole("link", { name: "TC-0001" });
+    if (link === undefined) throw new Error("no case link");
+    window.location.hash = link.getAttribute("href") as string;
+    fireEvent(window, new HashChangeEvent("hashchange"));
+    const sheet = await screen.findByRole("dialog");
+    expect(sheet.textContent).toContain("web/TC-0001");
+    // The milestone stays behind the Sheet, and the header calls it Milestones.
+    expect(screen.getByRole("heading", { name: "Web 1.2.0", hidden: true })).toBeTruthy();
+    const views = screen.getByRole("navigation", { name: "Views", hidden: true });
+    expect(
+      within(views).getByRole("link", { name: "Milestones", hidden: true }).className,
+    ).toContain("font-medium");
+    fireEvent.keyDown(sheet, { key: "Escape" });
+    await waitFor(() => expect(window.location.hash).toBe("#/milestone/web/web-1.2.0"));
   });
 });

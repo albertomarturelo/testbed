@@ -15,6 +15,7 @@ export function CaseSheet({
   caseRef,
   reload,
   created,
+  milestone,
   onWritten,
   onClose,
 }: {
@@ -23,6 +24,8 @@ export function CaseSheet({
   reload: number;
   /** The last case created here (#94): its page names that commit. */
   created: Covered | null;
+  /** The milestone page behind the Sheet, if that is what it was opened from (#166). */
+  milestone?: string;
   onWritten: () => void;
   onClose: () => void;
 }) {
@@ -54,6 +57,7 @@ export function CaseSheet({
               key={`${shown}:${reload}`}
               caseRef={shown}
               written={created?.created.some((c) => c.ref === shown) ? created : undefined}
+              milestone={milestone}
               onWritten={onWritten}
             />
           )}

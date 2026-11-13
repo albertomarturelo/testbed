@@ -25,6 +25,7 @@ export * from "./operations/host.js";
 export * from "./operations/id-next.js";
 export * from "./operations/init.js";
 export * from "./operations/milestone-close.js";
+export * from "./operations/milestone-list.js";
 export * from "./operations/milestone-open.js";
 export * from "./operations/milestone-report.js";
 export * from "./operations/operation.js";
