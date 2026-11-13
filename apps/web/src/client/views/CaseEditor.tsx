@@ -14,6 +14,7 @@ import {
   placeErrors,
   rowKey,
 } from "@/views/CaseFields";
+import { TicketField, ticketErrors, useTicket } from "@/views/TicketField";
 
 /**
  * The case page in edit mode (#92, ADR human-writes-through-operations): the
@@ -35,6 +36,7 @@ export function CaseEditor({
   const [errors, setErrors] = useState<CasefileError[]>([]);
   const [saving, setSaving] = useState(false);
   const [unchanged, setUnchanged] = useState(false);
+  const ticket = useTicket();
 
   const update = (patch: Partial<Draft>) => {
     setDraft((d) => ({ ...d, ...patch }));
@@ -55,13 +57,15 @@ export function CaseEditor({
       ref: resolved.ref,
       set,
       ...(base === undefined ? {} : { base }),
+      ...ticket.input(),
     });
     setSaving(false);
     if (result.ok) onSaved(result.value);
     else setErrors(result.errors);
   };
 
-  const placed = placeErrors(errors, "set");
+  const ticketed = ticketErrors(errors);
+  const placed = placeErrors(ticketed.rest, "set");
 
   return (
     <form onSubmit={submit} aria-label="Edit case" className="flex flex-col gap-4">
@@ -75,6 +79,7 @@ export function CaseEditor({
             prefix="set"
             fromCommons={fromCommons}
           />
+          <TicketField ticket={ticket} errors={ticketed.ticket} />
         </CardContent>
       </Card>
       <div className="flex flex-wrap items-center gap-2">

@@ -177,6 +177,38 @@ describe("writes (ADR human-writes-through-operations §2–3)", () => {
     expect(session.value.token).toMatch(/^[A-Za-z0-9_-]{40,}$/);
   });
 
+  it("reports the ticket the branch names, and puts it in the commit subject (#158)", async () => {
+    await repository();
+    const config = join(root, "casefile.yaml");
+    await writeFile(
+      config,
+      `${await readFile(config, "utf8")}commit:\n  subject: "[{ticket}] {type}({scope}): {summary}"\n  ticket_from_branch: "(PROJ-[0-9]+)"\n`,
+    );
+    git(root, "commit", "-q", "-am", "template");
+    git(root, "checkout", "-q", "-b", "feature/PROJ-42-login");
+    const session = await start(await gitIdentity(root));
+    expect(session).toMatchObject({
+      ok: true,
+      value: { commit: { ticket: true, branchTicket: "PROJ-42" } },
+    });
+    // The branch is a host input: the page cannot set it.
+    const { body } = await write("run", { ...result, branch: "main" }, fromPage());
+    expect(body.value.commit.message.split("\n")[0]).toBe(
+      "[PROJ-42] test(login): record TC-0002 as passed",
+    );
+    const typed = await write("run", { ...result, status: "failed", ticket: "QA-7" }, fromPage());
+    expect(typed.body.value.commit.message.split("\n")[0]).toBe(
+      "[QA-7] test(login): record TC-0002 as failed",
+    );
+  });
+
+  it("says no ticket is needed with the default subject", async () => {
+    await repository();
+    expect(await start(await gitIdentity(root))).toMatchObject({
+      value: { commit: { ticket: false } },
+    });
+  });
+
   it("refuses a write without the page's origin and token, and writes nothing", async () => {
     await repository();
     await start(await gitIdentity(root));

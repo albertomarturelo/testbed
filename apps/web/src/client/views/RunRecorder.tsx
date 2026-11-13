@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
 import { FieldErrors } from "@/views/CaseFields";
+import { TicketField, ticketErrors, useTicket } from "@/views/TicketField";
 
 /** The results `run` accepts (`casefile spec run`). */
 const STATUSES = ["passed", "failed", "blocked", "skipped"] as const;
@@ -35,6 +36,7 @@ export function RunRecorder({
   const [text, setText] = useState({ note: "", env: "", build: "", release: "" });
   const [errors, setErrors] = useState<CasefileError[]>([]);
   const [saving, setSaving] = useState(false);
+  const ticket = useTicket();
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -49,14 +51,20 @@ export function RunRecorder({
         .filter(([, value]) => value !== ""),
     );
     setSaving(true);
-    const result = await call<Recorded>("run", { ref: caseRef, status, ...filled });
+    const result = await call<Recorded>("run", {
+      ref: caseRef,
+      status,
+      ...filled,
+      ...ticket.input(),
+    });
     setSaving(false);
     if (result.ok) onRecorded(result.value);
     else setErrors(result.errors);
   };
 
   const at = (name: InputName) => errors.filter((e) => e.field === name);
-  const rest = errors.filter((e) => !INPUTS.includes(e.field as InputName));
+  const placed = ticketErrors(errors);
+  const rest = placed.rest.filter((e) => !INPUTS.includes(e.field as InputName));
   const invalid = (name: InputName) => at(name).length > 0 || undefined;
   const line = (name: "env" | "build" | "release", label: string, hint: string) => (
     <Field data-invalid={invalid(name)}>
@@ -119,6 +127,7 @@ export function RunRecorder({
           {line("build", "Build", "web-2.1.0+9")}
           {line("release", "Release", "web-2.1.0")}
         </div>
+        <TicketField ticket={ticket} errors={placed.ticket} />
       </FieldGroup>
       <div className="flex flex-wrap items-center gap-2">
         <Button type="submit" disabled={saving}>

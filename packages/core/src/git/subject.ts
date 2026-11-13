@@ -107,6 +107,27 @@ export function commitSubject(
   return ok(fill(template, { ...values, ticket }));
 }
 
+/** Whether the workspace's subject template names `{ticket}`: a host then asks for one (the viewer's field). */
+export function needsTicket(config: CommitConfig | undefined): boolean {
+  return (config?.subject ?? DEFAULT_SUBJECT).includes("{ticket}");
+}
+
+/**
+ * The ticket `ticket_from_branch` finds in `branch`: its first group, else the
+ * whole match; `undefined` when nothing matches, or the regex does not compile
+ * (`casefile validate` reports that).
+ */
+export function ticketFromBranch(
+  source: string | undefined,
+  branch: string | undefined,
+): string | undefined {
+  if (source === undefined || branch === undefined || ticketRegexProblem(source) !== null) {
+    return undefined;
+  }
+  const match = new RegExp(source).exec(branch);
+  return match === null ? undefined : (match[1] ?? match[0]);
+}
+
 /** The ticket `ticket_from_branch` finds in the branch: its first group, else the whole match. */
 function branchTicket(
   source: string | undefined,
@@ -117,8 +138,7 @@ function branchTicket(
   if (problem !== null) {
     return fail(configError("config.commit_ticket_regex", "commit.ticket_from_branch", problem));
   }
-  const match = new RegExp(source).exec(branch);
-  return ok(match === null ? undefined : (match[1] ?? match[0]));
+  return ok(ticketFromBranch(source, branch));
 }
 
 function fill(template: string, values: Record<string, string>): string {
