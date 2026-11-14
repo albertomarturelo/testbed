@@ -79,7 +79,7 @@ jobs:
           mkdir app && cd app && git init -q
           ../node_modules/.bin/casefile init --skills-into .claude/skills
           test -f casefile.yaml
-          for s in casefile-setup qa-bootstrap qa-cover qa-review; do test -f ".claude/skills/$s/SKILL.md"; done
+          for s in casefile-setup qa-bootstrap qa-cover qa-dashboard qa-review; do test -f ".claude/skills/$s/SKILL.md"; done
           grep -q "\"@casefile/cli\": \"$version\"" .casefile/package.json
           grep -q "\"@casefile/web\": \"$version\"" .casefile/package.json
           # The toolchain as npm lays it out, from the packed tarballs (the
@@ -98,7 +98,7 @@ jobs:
           test "$(.casefile/node_modules/.bin/casefile --version)" = "$version"
           .casefile/node_modules/.bin/casefile init --skills-into .claude/skills
           test -f casefile.yaml
-          for s in casefile-setup qa-bootstrap qa-cover qa-review; do test -f ".claude/skills/$s/SKILL.md"; done
+          for s in casefile-setup qa-bootstrap qa-cover qa-dashboard qa-review; do test -f ".claude/skills/$s/SKILL.md"; done
           grep -q "\"@casefile/cli\": \"$version\"" .casefile/package.json
           # Installed at its pin: no toolchain finding. A new workspace still
           # has other findings (no projects), so the exit code is not checked.

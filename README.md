@@ -235,6 +235,11 @@ repository (the toolchain `init` pinned); the skills already call it that way.
    `casefile ui`, then open <http://127.0.0.1:4321> (`--port <n>` for another
    port). A repository set up before `0.1.2` pins only the CLI: `casefile ui`
    answers `ui.not_installed` and its hint says how to add the viewer.
+6. **Ask for a dashboard**: **`/qa-dashboard`** ("a dashboard for release
+   2.0: results per case, the P0 and P1 that failed, executions per day").
+   The agent proposes the widgets in words, asks once, saves it with one
+   commit and tells you where it is in the viewer's *Dashboards* tab. To
+   change it, ask again; nobody edits the file by hand.
 
 Every command has `--help`, `--json` for scripts and agents, and a SPEC:
 
@@ -295,11 +300,11 @@ The reasons behind each one are in [docs/decisions](docs/decisions/_index.md).
 | `init`, `project add`, `validate`, `cover`, `review` (edit, approve, retire a case), `run` (record a result by hand), `milestone open`, `list`, `report` and `close`, `gates`, `overview`, `runs`, `query`, `resolve`, `id next`, `whoami`, `spec` | |
 | Milestones group the executions of a release, a sprint regression or a UAT round; closing one freezes its evidence in `evidence.md`, in a commit that the repository signs when it signs commits ([decided](docs/decisions/2026-11-12-milestones-group-executions.md)) | Fail a CI step on red gates (#171), a Markdown summary for workflows and PRs (#115) |
 | casefile's commits follow the repository's conventions: a subject template in `casefile.yaml`, Conventional by default, with a ticket key when the repository asks, and the `Agent:` trailer optional ([decided](docs/decisions/2026-11-12-commit-shape-follows-host-repo.md)) | |
-| Skills `casefile-setup`, `qa-bootstrap` (a project's feature tree and first drafts from its code), `qa-cover` and `qa-review` (change, approve or retire cases from the chat); `init` says which skills an upgraded repository has stale, how to replace them, and which skill to run next | |
+| Skills `casefile-setup`, `qa-bootstrap` (a project's feature tree and first drafts from its code), `qa-cover` and `qa-review` (change, approve or retire cases from the chat), and `qa-dashboard` on `main` (a dashboard from a sentence); `init` says which skills an upgraded repository has stale, how to replace them, and which skill to run next | |
 | Local UI (`casefile ui`, installed with the CLI): projects, feature tree with coverage, cases that read as documents, each case's runs and why they failed; the QA creates a case, edits, approves and retires it, and records a manual result into a milestone, with the case open in a sheet over the list; a Milestones view with progress, open and close, and evidence to print or save as PDF; case bodies rendered as Markdown ([decided](docs/decisions/2026-10-19-human-writes-through-operations.md), [Markdown](docs/decisions/2026-11-13-case-body-markdown.md)) | Live reload (#26) |
 | `@casefile/cli`, `@casefile/web` (the viewer, [decided](docs/decisions/2026-11-09-casefile-ui-command.md)) and `@casefile/core` on npm, published by CI with provenance ([release process](docs/decisions/2026-10-20-release-process.md)); a toolchain tarball on each GitHub release for networks without the npm registry ([decided](docs/decisions/2026-11-09-release-toolchain-tarball.md)) | |
 | `ingest junit` (Playwright, Surefire), keeping failure messages and attachments; `ingest` returns the commit, and `casefile spec ci` has a GitHub Actions template that records shared-branch runs as `casefile-ci` ([decided](docs/decisions/2026-10-17-ci-commits-run-files.md)) | |
-| | Dashboards the agent builds from a JSON description and the repository keeps ([decided](docs/decisions/2026-11-13-dashboards-as-files.md)): `dashboard save`, `list`, `show` (every widget's numbers) and `remove`, and the viewer's Dashboards view that draws them, are on `main`; the skill `qa-dashboard` (#188) follows |
+| | Dashboards the agent builds from a JSON description and the repository keeps ([decided](docs/decisions/2026-11-13-dashboards-as-files.md)): `dashboard save`, `list`, `show` (every widget's numbers) and `remove`, the viewer's Dashboards view that draws them, and the skill `qa-dashboard` that builds one on request are on `main`; they ship in the next release |
 | Release gates per milestone: `casefile gates`, and their verdicts in the evidence | Complements, when the real case needs them: CTRF and Allure, environment-blocked results, MCP, Zephyr and Xray bridges |
 
 Planned work is tracked in [issues](https://github.com/albertomarturelo/testbed/issues).
