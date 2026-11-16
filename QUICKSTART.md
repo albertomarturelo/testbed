@@ -46,7 +46,7 @@ ls casefile.yaml .casefile/package.json 2>/dev/null
   `.casefile/node_modules`, and redo step 5 with that version.
 - After an upgrade, run step 6's `init --skills-into` again: it adds the skills
   the new version ships (`qa-bootstrap` and `qa-review` from `0.1.3`,
-  `qa-dashboard` after `0.2.1`) and keeps
+  `qa-dashboard` from `0.2.2`) and keeps
   the ones already there, with their old text.
 - An upgrade from `0.1.x` to `0.2.x` changes commit subjects and replaces
   `--release` with `--milestone`: read the README's *Upgrading from `0.1.x` to
