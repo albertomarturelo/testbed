@@ -157,7 +157,7 @@ already installed. Extensions are not in the tarball and still need npm.
 `0.2.0` changed what casefile commits and how executions are grouped:
 
 1. **Pins.** Set `@casefile/cli` and `@casefile/web` to the new version
-   (`0.2.1`) in `.casefile/package.json`, delete `.casefile/node_modules` and
+   (`0.2.2`) in `.casefile/package.json`, delete `.casefile/node_modules` and
    install again (`npm install --prefix .casefile --ignore-scripts`, or unpack
    that version's tarball).
 2. **Commit subjects.** casefile's commits now read like the rest of the
@@ -180,6 +180,8 @@ already installed. Extensions are not in the tarball and still need npm.
 
 From `0.2.0` to `0.2.1` only step 1 applies; case bodies then render as
 Markdown in the viewer, and `casefile init` says whether any skill is stale.
+From `0.2.1` to `0.2.2`, step 1 and then `init --skills-into` again: it adds
+the skill `qa-dashboard` and no other skill's text changed.
 
 ### From source
 
@@ -256,10 +258,10 @@ Every command has `--help`, `--json` for scripts and agents, and a SPEC:
 | `casefile milestone report` | The evidence of a milestone: totals, gate verdicts, the latest result of each case and the cases not executed |
 | `casefile milestone close` | Freezes that evidence in `context/milestones/<slug>/evidence.md` and closes the milestone, in one commit |
 | `casefile gates` | Each release gate of the project, green or red with its reasons, for the executions in one milestone (`--date` for triages, `--build`) |
-| `casefile dashboard save` | Writes a dashboard (`context/dashboards/<slug>.yaml`) from a JSON description of its widgets: counts, bars, donuts, tables and executions over time, each with a query (after `0.2.1`) |
-| `casefile dashboard list` | Every dashboard of the workspace, with its title and number of widgets (after `0.2.1`) |
-| `casefile dashboard show` | A dashboard with the numbers of every widget, computed from the files now: what the viewer draws and what an agent quotes (after `0.2.1`) |
-| `casefile dashboard remove` | Deletes a dashboard and returns the commit of that deletion (after `0.2.1`) |
+| `casefile dashboard save` | Writes a dashboard (`context/dashboards/<slug>.yaml`) from a JSON description of its widgets: counts, bars, donuts, tables and executions over time, each with a query (from `0.2.2`) |
+| `casefile dashboard list` | Every dashboard of the workspace, with its title and number of widgets (from `0.2.2`) |
+| `casefile dashboard show` | A dashboard with the numbers of every widget, computed from the files now: what the viewer draws and what an agent quotes (from `0.2.2`) |
+| `casefile dashboard remove` | Deletes a dashboard and returns the commit of that deletion (from `0.2.2`) |
 | `casefile ingest junit` | Turns a JUnit report into run events matched by `automation.ref` |
 | `casefile overview` | Every project with its cases, automation status and last run |
 | `casefile runs` | One case's run events, newest first, with why each one failed |
@@ -295,16 +297,16 @@ The reasons behind each one are in [docs/decisions](docs/decisions/_index.md).
 
 ## Today / Next
 
-| Today (`0.2.1`) | Next (ranked by the [authoring loop](docs/decisions/2026-10-19-authoring-loop-first.md)) |
+| Today (`0.2.2`) | Next (ranked by the [authoring loop](docs/decisions/2026-10-19-authoring-loop-first.md)) |
 |---|---|
 | `init`, `project add`, `validate`, `cover`, `review` (edit, approve, retire a case), `run` (record a result by hand), `milestone open`, `list`, `report` and `close`, `gates`, `overview`, `runs`, `query`, `resolve`, `id next`, `whoami`, `spec` | |
 | Milestones group the executions of a release, a sprint regression or a UAT round; closing one freezes its evidence in `evidence.md`, in a commit that the repository signs when it signs commits ([decided](docs/decisions/2026-11-12-milestones-group-executions.md)) | Fail a CI step on red gates (#171), a Markdown summary for workflows and PRs (#115) |
 | casefile's commits follow the repository's conventions: a subject template in `casefile.yaml`, Conventional by default, with a ticket key when the repository asks, and the `Agent:` trailer optional ([decided](docs/decisions/2026-11-12-commit-shape-follows-host-repo.md)) | |
-| Skills `casefile-setup`, `qa-bootstrap` (a project's feature tree and first drafts from its code), `qa-cover` and `qa-review` (change, approve or retire cases from the chat), and `qa-dashboard` on `main` (a dashboard from a sentence); `init` says which skills an upgraded repository has stale, how to replace them, and which skill to run next | |
+| Skills `casefile-setup`, `qa-bootstrap` (a project's feature tree and first drafts from its code), `qa-cover` and `qa-review` (change, approve or retire cases from the chat), and `qa-dashboard` (a dashboard from a sentence); `init` says which skills an upgraded repository has stale, how to replace them, and which skill to run next | |
 | Local UI (`casefile ui`, installed with the CLI): projects, feature tree with coverage, cases that read as documents, each case's runs and why they failed; the QA creates a case, edits, approves and retires it, and records a manual result into a milestone, with the case open in a sheet over the list; a Milestones view with progress, open and close, and evidence to print or save as PDF; case bodies rendered as Markdown ([decided](docs/decisions/2026-10-19-human-writes-through-operations.md), [Markdown](docs/decisions/2026-11-13-case-body-markdown.md)) | Live reload (#26) |
 | `@casefile/cli`, `@casefile/web` (the viewer, [decided](docs/decisions/2026-11-09-casefile-ui-command.md)) and `@casefile/core` on npm, published by CI with provenance ([release process](docs/decisions/2026-10-20-release-process.md)); a toolchain tarball on each GitHub release for networks without the npm registry ([decided](docs/decisions/2026-11-09-release-toolchain-tarball.md)) | |
 | `ingest junit` (Playwright, Surefire), keeping failure messages and attachments; `ingest` returns the commit, and `casefile spec ci` has a GitHub Actions template that records shared-branch runs as `casefile-ci` ([decided](docs/decisions/2026-10-17-ci-commits-run-files.md)) | |
-| | Dashboards the agent builds from a JSON description and the repository keeps ([decided](docs/decisions/2026-11-13-dashboards-as-files.md)): `dashboard save`, `list`, `show` (every widget's numbers) and `remove`, the viewer's Dashboards view that draws them, and the skill `qa-dashboard` that builds one on request are on `main`; they ship in the next release |
+| Dashboards the agent builds from a JSON description and the repository keeps in `context/dashboards/` ([decided](docs/decisions/2026-11-13-dashboards-as-files.md)): `dashboard save`, `list`, `show` (every widget's numbers) and `remove`, the viewer's Dashboards view that draws them, and the skill `qa-dashboard` that builds one on request | |
 | Release gates per milestone: `casefile gates`, and their verdicts in the evidence | Complements, when the real case needs them: CTRF and Allure, environment-blocked results, MCP, Zephyr and Xray bridges |
 
 Planned work is tracked in [issues](https://github.com/albertomarturelo/testbed/issues).
