@@ -8,6 +8,7 @@ release process exists). Amended by
 [release-toolchain-tarball](2026-11-09-release-toolchain-tarball.md): the
 release also carries the toolchain tarball and its checksum. Three packages
 (`@casefile/web` too) since [casefile-ui-command](2026-11-09-casefile-ui-command.md).
+§5 amended 2026-11-16 (#101): trusted publishing replaces `NPM_TOKEN`.
 
 ## Context
 
@@ -45,11 +46,18 @@ a version is chosen, who decides to publish, and what CI checks before it does.
    `npm publish --dry-run` and without the token. npm refuses even a dry run
    of a version it already has, so a dry run between releases skips the
    publish step with a notice; the pack and smoke test still run (#123).
-5. **Auth and provenance:** the job authenticates with the secret `NPM_TOKEN`
-   (a granular token that can only publish `@casefile/*`) and signs provenance
-   through GitHub's OIDC (`id-token: write`), so each version on npm links to
-   the commit and workflow run that built it. Nothing is published from a
-   laptop.
+5. **Auth and provenance:** npm trusted publishing. Each of the three
+   packages names, on npmjs.com, one trusted publisher: GitHub Actions,
+   `albertomarturelo/testbed`, workflow `release.yml`. The job gets an OIDC
+   token from GitHub (`id-token: write`) that npm accepts for that package
+   only, so no npm token exists in the repository, and npm ≥ 11.5.1 on the
+   runner is checked on every run. The same OIDC token signs provenance
+   (`--provenance` stays explicit, so a publish that cannot sign fails), and
+   each version on npm links to the commit and workflow run that built it.
+   `setup-node` gets no `registry-url`, so no `.npmrc` reads a token. Nothing
+   is published from a laptop. Until `0.2.2` the job used the secret
+   `NPM_TOKEN`, a granular token for `@casefile/*`; npm could not attach a
+   trusted publisher to a package that did not exist yet.
 6. **Package contents:** `dist`, plus `schema` and `specs` (core) or `skills`
    (CLI), a README and the MIT `LICENSE`. The CLI's README is the repository
    README and core has its own; both are copied at pack time where not
@@ -67,9 +75,13 @@ a version is chosen, who decides to publish, and what CI checks before it does.
   a docs merge would ship a version.
 - **Publish from the maintainer's machine** — no provenance, a long-lived token
   on a laptop, and no record of what was built from which commit.
-- **npm trusted publishing (OIDC, no token) now** — better, but npm configures
-  it per existing package, so the first version needs a token. Move to it after
-  `0.1.0` is out and revoke `NPM_TOKEN`.
+- **npm trusted publishing (OIDC, no token) from the first version** — npm
+  configures it per existing package, so `0.1.0` needed a token. Adopted in
+  §5 once the packages existed (#101).
+- **Keep `NPM_TOKEN` next to OIDC as a fallback** (rejected in #101) — npm
+  tries OIDC first and falls back to the token silently, so a broken trusted
+  publisher would go unnoticed and the long-lived secret would stay; npm is
+  also restricting tokens that bypass 2FA for direct publishing.
 
 ## Consequences
 
@@ -79,5 +91,10 @@ a version is chosen, who decides to publish, and what CI checks before it does.
   out; until then it keeps the from-source path.
 - The scope must belong to the maintainer's npm organization `casefile`
   before the first tag, or the publish fails with 404/403.
-- After `0.1.0`: configure trusted publishing for both packages, drop
-  `NPM_TOKEN` from the workflow, revoke it.
+- Trusted publishing (#101): a fourth package published by this workflow
+  needs its trusted publisher on npmjs.com before its first tag, and its
+  first version a one-off token. Renaming `release.yml` breaks publishing
+  until each package's trusted publisher names the new file. After the
+  first publish through OIDC, each package's publishing access is set to
+  "Require two-factor authentication and disallow tokens", the secret
+  `NPM_TOKEN` is deleted and the npm token revoked.
