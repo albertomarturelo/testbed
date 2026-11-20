@@ -138,6 +138,8 @@ export const EvidenceDocumentOutput = z.strictObject({
   scope: z.string(),
   build: z.string().nullable(),
   opened: Stamp.nullable(),
+  /** Each `milestone edit`, oldest first (#213); empty when never edited, or frozen before #213. */
+  edited: z.array(z.strictObject({ at: z.string(), by: z.string(), fields: z.array(z.string()) })),
   closed: Stamp.nullable(),
   totals: EvidenceTotalsOutput,
   /** `null` when the project has no release policy. */

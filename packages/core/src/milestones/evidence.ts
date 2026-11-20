@@ -50,6 +50,9 @@ export type EvidenceRow = {
   attempts: Attempts | null;
 };
 
+/** One `milestone edit` (#210) as the evidence lists it (#213): when, who, which fields. */
+export type EvidenceEdit = { at: string; by: string; fields: string[] };
+
 /** How often a case was executed in the milestone (passed, failed, blocked) and how many failed. */
 export type Attempts = { total: number; failed: number };
 
@@ -76,6 +79,8 @@ export type MilestoneEvidence = {
   due: string | null;
   scope: string;
   opened: { at: string; by: string } | null;
+  /** Each `milestone edit`, oldest first; empty when it was never edited. */
+  edited: EvidenceEdit[];
   closed: { at: string; by: string } | null;
   /** The latest build among the milestone's events (`milestone.build`). */
   build: string | null;
@@ -162,6 +167,11 @@ export function milestoneEvidence(input: EvidenceInput): Result<MilestoneEvidenc
     scope,
     opened:
       milestone.opened === undefined ? null : { at: milestone.opened.at, by: milestone.opened.by },
+    edited: (milestone.edited ?? []).map((edit) => ({
+      at: edit.at,
+      by: edit.by,
+      fields: [...edit.fields],
+    })),
     closed: input.closed,
     build,
     totals: {
@@ -233,6 +243,8 @@ export type EvidenceDocument = {
   scope: string;
   build: string | null;
   opened: { at: string; by: string } | null;
+  /** Each edit after the open (#213); empty when never edited, and in evidence frozen before #213. */
+  edited: EvidenceEdit[];
   closed: { at: string; by: string } | null;
   totals: EvidenceTotals;
   /** `null` when the project has no release policy. */
@@ -259,6 +271,11 @@ export function evidenceDocument(evidence: MilestoneEvidence): EvidenceDocument 
     scope: oneLine(e.scope),
     build: line(e.build),
     opened: stamp(e.opened),
+    edited: e.edited.map((edit) => ({
+      at: oneLine(edit.at),
+      by: oneLine(edit.by),
+      fields: edit.fields.map(oneLine),
+    })),
     closed: stamp(e.closed),
     totals: { ...e.totals },
     gates:
@@ -310,6 +327,11 @@ export function renderEvidence(evidence: MilestoneEvidence): string {
     `| Scope | ${cell(e.scope)} |`,
     `| Build | ${cell(e.build)} |`,
     `| Opened | ${e.opened === null ? EMPTY : `${cell(e.opened.at)} by ${cell(e.opened.by)}`} |`,
+    // None for a milestone never edited, so its evidence reads as before #213.
+    ...e.edited.map(
+      (edit) =>
+        `| ${EDITED} | ${cell(edit.at)} by ${cell(edit.by)}: ${cell(edit.fields.join(LIST_SEPARATOR))} |`,
+    ),
     `| Closed | ${e.closed === null ? NOT_CLOSED : `${cell(e.closed.at)} by ${cell(e.closed.by)}`} |`,
     "",
     "## Totals",
@@ -406,11 +428,19 @@ export function parseEvidence(markdown: string): EvidenceDocument | null {
     } else current.push(line);
   }
 
+  const headRows = tableRows(sections.get("") ?? []);
   const head = new Map(
-    tableRows(sections.get("") ?? []).flatMap((row) =>
+    headRows.flatMap((row) =>
       row.length === 2 && row[0] !== null ? [[row[0], row[1] ?? null] as const] : [],
     ),
   );
+  const edited: EvidenceEdit[] = [];
+  for (const [label, value] of headRows) {
+    if (label !== EDITED) continue;
+    const edit = editOf(value ?? null);
+    if (edit === null) return null;
+    edited.push(edit);
+  }
   const named = head.get("Milestone")?.match(/^(.*) \(project (.*)\)$/);
   const scope = head.get("Scope");
   if (named === null || named === undefined || scope === undefined || scope === null) return null;
@@ -483,6 +513,7 @@ export function parseEvidence(markdown: string): EvidenceDocument | null {
     scope,
     build: head.get("Build") ?? null,
     opened: stampOf(head.get("Opened")),
+    edited,
     closed: stampOf(head.get("Closed")),
     totals: { in_scope, executed, passed, failed, blocked, not_run },
     gates,
@@ -494,6 +525,7 @@ export function parseEvidence(markdown: string): EvidenceDocument | null {
 }
 
 const TITLE_PREFIX = "Milestone evidence: ";
+const EDITED = "Edited";
 const EMPTY = "—";
 const NOT_CLOSED = "not closed: a report, not frozen evidence";
 const NOT_RUN = "not run";
@@ -532,6 +564,13 @@ function parseAttempts(value: string | null): Attempts | null | undefined {
 function stampOf(value: string | null | undefined): { at: string; by: string } | null {
   const match = value?.match(/^(\S+) by (.+)$/);
   return match?.[1] === undefined || match[2] === undefined ? null : { at: match[1], by: match[2] };
+}
+
+/** `<at> by <who>: <field>, <field>`, the inverse of an `Edited` row; `null` when not one. */
+function editOf(value: string | null): EvidenceEdit | null {
+  const match = value?.match(/^(\S+) by (.+): ([^:]+)$/);
+  if (match?.[1] === undefined || match[2] === undefined || match[3] === undefined) return null;
+  return { at: match[1], by: match[2], fields: match[3].split(LIST_SEPARATOR) };
 }
 
 /** The body rows of the first Markdown table in `lines`, cells unescaped, `—` as `null`. */

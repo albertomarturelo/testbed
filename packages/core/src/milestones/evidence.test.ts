@@ -231,6 +231,48 @@ describe("attempts and requirements (#208)", () => {
   });
 });
 
+describe("edits after the open (#213)", () => {
+  const opened = { at: "2026-10-10T09:00:00Z", by: "qa@acme.example", change: "c-open" };
+  const edited: Milestone["edited"] = [
+    { at: "2026-10-12T14:30:00Z", by: "qa@acme.example", change: "c-1", fields: ["due", "scope"] },
+    { at: "2026-10-15T08:05:00Z", by: "lead@acme.example", change: "c-2", fields: ["title"] },
+  ];
+
+  it("lists each edit after Opened, oldest first, and reads them back", async () => {
+    const value = evidence({ milestone: { ...declared.file, opened, edited } });
+    expect(value.edited).toEqual([
+      { at: "2026-10-12T14:30:00Z", by: "qa@acme.example", fields: ["due", "scope"] },
+      { at: "2026-10-15T08:05:00Z", by: "lead@acme.example", fields: ["title"] },
+    ]);
+    const markdown = renderEvidence(value);
+    expect(markdown).toContain(
+      [
+        "| Opened | 2026-10-10T09:00:00Z by qa@acme.example |",
+        "| Edited | 2026-10-12T14:30:00Z by qa@acme.example: due, scope |",
+        "| Edited | 2026-10-15T08:05:00Z by lead@acme.example: title |",
+        "| Closed | 2026-10-20T16:00:00Z by lead@acme.example |",
+      ].join("\n"),
+    );
+    await expect(markdown).toMatchFileSnapshot("./demo-web-1.2.0.edited.evidence.md");
+    expect(parseEvidence(markdown)).toEqual(evidenceDocument(value));
+  });
+
+  it("adds no row for a milestone never edited, and reads none back", () => {
+    const value = evidence({ milestone: { ...declared.file, opened } });
+    expect(value.edited).toEqual([]);
+    const markdown = renderEvidence(value);
+    expect(markdown).not.toContain("| Edited |");
+    expect(parseEvidence(markdown)?.edited).toEqual([]);
+  });
+
+  it("gives null for an Edited row it did not write", () => {
+    const markdown = renderEvidence(evidence({ milestone: { ...declared.file, opened, edited } }));
+    expect(
+      parseEvidence(markdown.replace("by lead@acme.example: title", "lead@acme.example")),
+    ).toBeNull();
+  });
+});
+
 describe("frozen evidence read back (#166: the viewer shows and prints the file)", () => {
   it("reads the golden file as the document it was rendered from", async () => {
     const { readFile } = await import("node:fs/promises");

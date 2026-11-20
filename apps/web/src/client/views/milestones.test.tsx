@@ -61,6 +61,7 @@ const doc = (over: Partial<EvidenceDocument> = {}): EvidenceDocument => ({
   scope: "state = active",
   build: "web-1.2.0+101",
   opened: { at: "2026-11-01T09:00:00Z", by: "qa@acme.example" },
+  edited: [],
   closed: null,
   totals: { in_scope: 2, executed: 1, passed: 0, failed: 1, blocked: 0, not_run: 1 },
   gates: [
@@ -336,6 +337,39 @@ describe("MilestonePage", () => {
     expect(requirements.textContent).toContain("Cases that name no requirement: TC-0009");
   });
 
+  it("lists each edit after Opened, and no Edited row for a milestone never edited (#213)", async () => {
+    const edited = [
+      { at: "2026-11-03T14:30:00Z", by: "qa@acme.example", fields: ["due", "scope"] },
+      { at: "2026-11-04T08:05:00Z", by: "lead@acme.example", fields: ["title"] },
+    ];
+    answers["milestone-report"] = () => report({ report: doc({ edited }) });
+    render(<MilestonePage project="web" slug="web-1.2.0" version={0} />);
+    const header = (await screen.findByRole("heading", { name: "Web 1.2.0" })).closest("header");
+    const terms = within(header as HTMLElement)
+      .getAllByRole("term")
+      .map((t) => t.textContent);
+    expect(terms).toEqual([
+      "Milestone",
+      "Release",
+      "Due",
+      "Scope",
+      "Build",
+      "Opened",
+      "Edited",
+      "Edited",
+      "Closed",
+    ]);
+    // As the evidence file has them: UTC, who, and the fields changed.
+    expect(screen.getByText("2026-11-03 14:30 UTC by qa@acme.example: due, scope")).toBeTruthy();
+    expect(screen.getByText("2026-11-04 08:05 UTC by lead@acme.example: title")).toBeTruthy();
+    cleanup();
+
+    answers["milestone-report"] = () => report();
+    render(<MilestonePage project="web" slug="web-1.2.0" version={0} />);
+    await screen.findByRole("heading", { name: "Web 1.2.0" });
+    expect(screen.getAllByRole("term").map((t) => t.textContent)).not.toContain("Edited");
+  });
+
   it("shows evidence frozen before #208 without attempts or requirements", async () => {
     const old = doc({ requirements: null, unlinked: null });
     old.cases = old.cases.map((c) => ({ ...c, attempts: null }));
@@ -393,7 +427,10 @@ describe("EvidencePrint", () => {
         state: "closed",
         path: "p",
         evidence: "",
-        report: doc({ closed: { at: "2026-11-13T10:00:00Z", by: "lead@acme.example" } }),
+        report: doc({
+          closed: { at: "2026-11-13T10:00:00Z", by: "lead@acme.example" },
+          edited: [{ at: "2026-11-03T14:30:00Z", by: "qa@acme.example", fields: ["scope"] }],
+        }),
         next: [],
       },
     });
@@ -402,6 +439,7 @@ describe("EvidencePrint", () => {
     expect(screen.queryByRole("link", { name: "TC-0007" })).toBeNull();
     expect(screen.queryByRole("form")).toBeNull();
     expect(document.title).toBe("Milestone evidence web web-1.2.0");
+    expect(screen.getByText("2026-11-03 14:30 UTC by qa@acme.example: scope")).toBeTruthy();
     // On paper the cases and what was not executed start a page.
     expect(screen.getByRole("region", { name: "Cases" }).className).toContain(
       "print:break-before-page",

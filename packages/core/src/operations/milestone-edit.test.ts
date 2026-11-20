@@ -5,12 +5,16 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { parse } from "yaml";
 import { DEMO_ROOT } from "../demo.fixture.js";
 import { AGENT_AUTHOR } from "../git/trailers.js";
+import { milestoneCloseOperation } from "./milestone-close.js";
 import { milestoneEditOperation } from "./milestone-edit.js";
+import { milestoneReportOperation } from "./milestone-report.js";
 import type { Actor } from "./operation.js";
 import { createRegistry } from "./registry.js";
 
 const registry = createRegistry();
 registry.register(milestoneEditOperation);
+registry.register(milestoneReportOperation);
+registry.register(milestoneCloseOperation);
 
 const MILESTONE = "context/milestones/web-1.2.0.yaml";
 
@@ -165,6 +169,38 @@ describe("milestone edit (#210, ADR milestones-group-executions §2)", () => {
       errors: [{ code: "milestone.closed", field: "slug" }],
     });
     expect(await read()).toBe("title: Web 1.2.0\nstate: closed\n");
+  });
+
+  it("shows each edit in the report and in the evidence close freezes (#213)", async () => {
+    const first = value(await edit({ scope: "feature = login", due: "2026-12-15" }));
+    value(await edit({ title: "Web 1.2.0 RC" }, "human"));
+    const at = (parse(await read()) as { edited: { at: string }[] }).edited.map((e) => e.at);
+    expect(first.changed).toEqual(["due", "scope"]);
+    const rows = [
+      `| Edited | ${at[0]} by qa@acme.example: due, scope |`,
+      `| Edited | ${at[1]} by qa@acme.example: title |`,
+    ];
+    const report = await registry.invoke(
+      "milestone-report",
+      { slug: "web-1.2.0" },
+      { root, actor: "human" },
+    );
+    if (!report.ok) throw new Error(JSON.stringify(report.errors));
+    const shown = report.value as { evidence: string; report: { edited: unknown[] } };
+    expect(shown.evidence).toContain(`| Opened | — |\n${rows.join("\n")}\n| Closed |`);
+    expect(shown.report.edited).toEqual([
+      { at: at[0], by: "qa@acme.example", fields: ["due", "scope"] },
+      { at: at[1], by: "qa@acme.example", fields: ["title"] },
+    ]);
+
+    const closed = await registry.invoke(
+      "milestone-close",
+      { identity: "lead@acme.example", via: "cli:milestone-close", slug: "web-1.2.0", note: "x" },
+      { root, actor: "human" },
+    );
+    if (!closed.ok) throw new Error(JSON.stringify(closed.errors));
+    const frozen = await readFile(join(root, "context/milestones/web-1.2.0/evidence.md"), "utf8");
+    expect(frozen).toContain(rows.join("\n"));
   });
 
   it("is refused for CI", async () => {
