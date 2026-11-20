@@ -18,9 +18,10 @@ writes.
 
 1. Loads the workspace, the toolchain in `.casefile/` and the extensions
    `casefile.yaml` lists, and hashes the evidence files `run` stored under
-   `.runs/<run-id>/` that run events name (`evidence.missing`,
-   `evidence.changed`; links and ingest's `attachment` references are not
-   checked).
+   `.runs/<run-id>/` that run events name, streamed and only for the projects
+   in scope (`evidence.missing`; `evidence.changed`, also for a symlink,
+   directory or device, never followed; links and ingest's `attachment`
+   references are not checked).
 2. Runs the checks in levels: workspace → file schemas → cross-file →
    resolution → environment. A level with an error stops the later levels for
    its scope (the whole workspace, or one project), so a broken `casefile.yaml`

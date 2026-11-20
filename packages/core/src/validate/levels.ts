@@ -10,7 +10,7 @@ import {
   pathContains,
   TESTS_DIR,
 } from "../load/paths.js";
-import { isCheckedEvidence, isScriptExtension } from "../operations/evidence.js";
+import { isCheckedEvidence, isScriptExtension, NOT_A_FILE } from "../operations/evidence.js";
 import { CASEFILE_PACKAGE, TOOLCHAIN_DIR, type Toolchain } from "../operations/extensions.js";
 import { NPM_INSTALL, notInstalled, TOOLCHAIN_PACKAGE } from "../operations/toolchain.js";
 import { queryCases } from "../query/evaluate.js";
@@ -248,6 +248,17 @@ export const crossFileLevel: Level = {
         if (hashes === undefined || !isCheckedEvidence(entry, loaded.path)) continue;
         const actual = hashes.get(entry.ref);
         if (actual === undefined || actual === entry.sha256) continue;
+        if (actual === NOT_A_FILE) {
+          found.push(
+            finding("evidence.changed", {
+              path,
+              line,
+              field: `evidence.${index}.ref`,
+              message: `${entry.ref} is not a regular file (a symlink, directory or device): stored evidence is a plain file`,
+            }),
+          );
+          continue;
+        }
         found.push(
           actual === null
             ? finding("evidence.missing", {

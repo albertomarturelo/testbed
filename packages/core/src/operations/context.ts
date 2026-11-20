@@ -103,10 +103,26 @@ export function createContext(
         throw error;
       }
     },
+    async sizeOf(absolutePath) {
+      try {
+        const stats = await stat(resolve(root, absolutePath));
+        return stats.isFile() ? stats.size : "not_a_file";
+      } catch (error) {
+        const code = (error as NodeJS.ErrnoException).code;
+        if (code === "ENOENT" || code === "ENOTDIR") return null;
+        throw error;
+      }
+    },
     async writeBytes(path, bytes) {
       const target = join(root, guard(path, false));
       await mkdir(dirname(target), { recursive: true });
-      await writeFile(target, bytes);
+      try {
+        await writeFile(target, bytes, { flag: "wx" });
+        return true;
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === "EEXIST") return false;
+        throw error;
+      }
     },
     async removeFile(path) {
       await rm(join(root, guard(path, false)), { force: true });

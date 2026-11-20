@@ -50,7 +50,8 @@ export const validateOperation = defineOperation({
       workspace,
       toolchain,
       extensionLayers: extensionLayers(extensions),
-      evidence: await hashStoredEvidence(workspace),
+      // Only the selected project's files are hashed: the others' findings are dropped below.
+      evidence: await hashStoredEvidence(workspace, input.project),
     });
     let projects = workspace.projects;
 

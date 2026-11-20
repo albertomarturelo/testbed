@@ -292,8 +292,16 @@ describe("invoke", () => {
         const bytes = await context.readBytes(join(outside, "shot.png"));
         if ((await context.readBytes(join(outside, "gone.png"))) !== null) throw new Error("gone");
         if ((await context.readBytes(outside)) !== null) throw new Error("a directory");
-        for (const path of paths) await context.writeBytes(path, bytes ?? new Uint8Array());
-        return ok({ written: paths.length });
+        expect(await context.sizeOf(join(outside, "shot.png"))).toBe(3);
+        expect(await context.sizeOf(join(outside, "gone.png"))).toBeNull();
+        expect(await context.sizeOf(outside)).toBe("not_a_file");
+        let written = 0;
+        for (const path of paths) {
+          if (await context.writeBytes(path, bytes ?? new Uint8Array())) written++;
+          // Create-only: a second write to the same path changes nothing.
+          expect(await context.writeBytes(path, new Uint8Array([9]))).toBe(false);
+        }
+        return ok({ written });
       },
     });
     const registry = registryWith(copier);

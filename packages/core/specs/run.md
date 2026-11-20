@@ -67,9 +67,9 @@ never make a case `automated`.
    `Requested-by:` and no `Casefile-Change:`.
    - **agent:** `commit.author` is `casefile-agent <casefile-agent@casefile.invalid>`.
      Commit it as `casefile spec cover` says
-     (`git -c user.name=… -c user.email=… commit -F <message> -- <path>`).
+     (`git -c user.name=… -c user.email=… commit -F <message> -- <files>`).
    - **human:** there is no `commit.author`; the commit is made with the
-     human's own Git identity (`git commit -F <message> -- <path>`), or the one
+     human's own Git identity (`git commit -F <message> -- <files>`), or the one
      casefile resolved for them (ADR identity-override). From the
      CLI, the human runs it; the viewer runs it for them. `commit.files` is
      the run file and the event's evidence files, workspace-relative: the
@@ -84,7 +84,10 @@ first). `casefile validate` reports nothing new for the run file.
 
 **Idempotency:** a retry of the same call (same case, run, status, note,
 env, build, milestone, evidence and executor) writes nothing while that result is still
-the case's last in the run file: commit the file of the first call instead.
+the case's last in the run file: commit the files of the first call instead.
+There is no `commit` then; `next` names the run file and the event's stored
+evidence files that are there, the pathspec to commit if the first call's
+commit failed.
 Executing the case again and recording a result always appends, even one
 equal to an earlier result: passed, then failed, then passed records three
 events, and the last result is `passed`. (`ingest`'s rule, which drops any
@@ -196,9 +199,9 @@ Nothing is written when any of these is returned.
 | `commit.ticket_invalid` / `commit.ticket_unused` | the ticket is not one token (letters, digits, `._#/-`), or the template names no `{ticket}` |
 | `config.commit_subject` / `config.commit_ticket_regex` | `commit.subject` or `commit.ticket_from_branch` in `casefile.yaml` is broken; `casefile validate` reports it too |
 | `milestone.unknown` / `milestone.closed` | the milestone is not declared, or is closed (`casefile spec milestone`) |
-| `evidence.not_found` | a file to attach is not there (the message names the path it looked for) |
+| `evidence.not_found` | a file to attach is not there, or is not a regular file (a directory, device); the message names the path it looked for |
 | `evidence.type` | a file's extension is not allowed in this workspace, or is a script type |
-| `evidence.too_large` | a file is over `evidence.max_file_mb` (default 10 MB) |
+| `evidence.too_large` | a file is over `evidence.max_file_mb` (default 10 MB), from its size: it is never read |
 | `evidence.too_many` | more than 20 entries in `evidence`, `link` and `attach` together |
 | `evidence.link` | a link is not an `http:` or `https:` URL |
 | `evidence.conflict` | the stored path exists with other content (edited after it was recorded); `casefile validate` says `evidence.changed` |

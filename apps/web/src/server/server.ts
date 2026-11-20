@@ -163,7 +163,9 @@ async function api(
     fields.filter((f) => f.host !== undefined && f.host !== "project").map((f) => f.name),
   );
   const input = Object.fromEntries(Object.entries(body.value).filter(([k]) => !hostOnly.has(k)));
-  if (namesLocalFile(input)) {
+  // Only `run` reads files named in its input (`evidence`, `attach[].file`): an
+  // extension's operation may use those field names for something else.
+  if (name === "run" && namesLocalFile(input)) {
     return [
       400,
       fail(

@@ -149,6 +149,9 @@ export function isCheckedEvidence(
   return EVIDENCE_FILE_KINDS.includes(entry.kind) && isStoredEvidenceRef(entry.ref, projectPath);
 }
 
+/** What `hashStoredEvidence` answers for a stored ref that is not a regular file. */
+export const NOT_A_FILE = "not_a_file";
+
 /** One entry of `run`'s input, before any file is read. */
 export type EvidenceEntry =
   | { field: string; file: string; label?: string }

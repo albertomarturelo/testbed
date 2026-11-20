@@ -156,6 +156,12 @@ export const runOperation = defineOperation({
     const existing = (await context.readText(path)) ?? "";
     const ref = `${project.name}/${loaded.file.id}`;
     if (isRetry(existing, event)) {
+      // The first call's commit may have failed: name every file it would carry.
+      const stored: string[] = [];
+      for (const file of attached.value.files) {
+        if ((await context.sizeOf(join(context.root, file))) !== null) stored.push(file);
+      }
+      const files = [path, ...stored].join(" ");
       return ok({
         ref,
         run,
@@ -163,7 +169,9 @@ export const runOperation = defineOperation({
         appended: false,
         event,
         next: [
-          `Nothing new: this result is already the last of ${ref} in ${path} (a retry? commit that file if the first call's commit failed)`,
+          stored.length === 0
+            ? `Nothing new: this result is already the last of ${ref} in ${path} (a retry? commit that file if the first call's commit failed)`
+            : `Nothing new: this result is already the last of ${ref} in ${path} (a retry? if the first call's commit failed, commit the run file and its evidence files: ${files})`,
         ],
       });
     }
@@ -178,7 +186,17 @@ export const runOperation = defineOperation({
     );
     if (!subject.ok) return subject;
     // Evidence first: the line never names a file that is not there.
-    for (const file of attached.value.writes) await context.writeBytes(file.path, file.bytes);
+    for (const file of attached.value.writes) {
+      if (await context.writeBytes(file.path, file.bytes)) continue;
+      // Created since it was checked (another call at the same time): fine
+      // when it holds the same content, never overwritten otherwise.
+      const absolute = join(context.root, file.path);
+      const size = await context.sizeOf(absolute);
+      const sha = sha256Hex(file.bytes);
+      if (!(await sameContent(context, absolute, size ?? 0, file.bytes.length, sha))) {
+        return fail(conflict(file.path, undefined));
+      }
+    }
     const separator = existing === "" || existing.endsWith("\n") ? "" : "\n";
     await context.writeText(path, `${existing}${separator}${JSON.stringify(event)}\n`);
 
@@ -264,20 +282,33 @@ async function prepareEvidence(
       continue;
     }
     const source = resolve(at.from, entry.file);
+    // The size first: a file over the limit is never read (ADR run-evidence-files §4).
+    const size = await context.sizeOf(source);
+    if (size === null || size === "not_a_file") {
+      errors.push({
+        code: "evidence.not_found",
+        field: entry.field,
+        message:
+          size === null
+            ? `${entry.file}: no such file (looked for ${source})`
+            : `${entry.file}: ${source} is not a regular file (a directory, device or socket)`,
+      });
+      continue;
+    }
+    if (size > limits.maxBytes) {
+      errors.push({
+        code: "evidence.too_large",
+        field: entry.field,
+        message: `${entry.file} is ${megabytes(size)} MB; evidence files are at most ${megabytes(limits.maxBytes)} MB (evidence.max_file_mb in casefile.yaml); attach a long video as a link`,
+      });
+      continue;
+    }
     const bytes = await context.readBytes(source);
     if (bytes === null) {
       errors.push({
         code: "evidence.not_found",
         field: entry.field,
         message: `${entry.file}: no such file (looked for ${source})`,
-      });
-      continue;
-    }
-    if (bytes.length > limits.maxBytes) {
-      errors.push({
-        code: "evidence.too_large",
-        field: entry.field,
-        message: `${entry.file} is ${megabytes(bytes.length)} MB; evidence files are at most ${megabytes(limits.maxBytes)} MB (evidence.max_file_mb in casefile.yaml); attach a long video as a link`,
       });
       continue;
     }
@@ -288,19 +319,37 @@ async function prepareEvidence(
     if (seen.has(ref)) continue;
     seen.add(ref);
     prepared.files.push(ref);
-    const existing = await context.readBytes(join(context.root, ref));
-    if (existing === null) prepared.writes.push({ path: ref, bytes });
-    else if (sha256Hex(existing) !== sha256) {
-      // A file is never overwritten (ADR run-evidence-files §2).
-      errors.push({
-        code: "evidence.conflict",
-        field: entry.field,
-        path: ref,
-        message: `${ref} already exists with other content; it is never overwritten (casefile validate reports it as evidence.changed)`,
-      });
+    const stored = join(context.root, ref);
+    const storedSize = await context.sizeOf(stored);
+    if (storedSize === null) prepared.writes.push({ path: ref, bytes });
+    else if (!(await sameContent(context, stored, storedSize, bytes.length, sha256))) {
+      errors.push(conflict(ref, entry.field));
     }
   }
   return errors.length > 0 ? fail(...errors) : ok(prepared);
+}
+
+/** Whether the stored file at `absolute` is a regular file holding these bytes. */
+async function sameContent(
+  context: OperationContext,
+  absolute: string,
+  size: number | "not_a_file",
+  expectedSize: number,
+  sha256: string,
+): Promise<boolean> {
+  if (size !== expectedSize) return false;
+  const bytes = await context.readBytes(absolute);
+  return bytes !== null && sha256Hex(bytes) === sha256;
+}
+
+/** A file is never overwritten (ADR run-evidence-files §2). */
+function conflict(ref: string, field: string | undefined): CasefileError {
+  return {
+    code: "evidence.conflict",
+    ...(field === undefined ? {} : { field }),
+    path: ref,
+    message: `${ref} already exists with other content; it is never overwritten (casefile validate reports it as evidence.changed)`,
+  };
 }
 
 function megabytes(bytes: number): string {

@@ -1,4 +1,15 @@
-import { appendFile, cp, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  appendFile,
+  cp,
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  symlink,
+  truncate,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -296,6 +307,8 @@ describe("run attaches evidence (ADR run-evidence-files)", () => {
     expect(retry).toMatchObject({ appended: false });
     expect(retry.commit).toBeUndefined();
     expect(await runFile("rc-1")).toBe(`${JSON.stringify(first.event)}\n`);
+    // Following the hint after a failed first commit also commits the evidence.
+    expect(retry.next[0]).toContain(`${first.path} ${first.commit?.files[1]}`);
   });
 
   it("lets validate report a stored file deleted or edited afterwards", async () => {
@@ -311,6 +324,27 @@ describe("run attaches evidence (ADR run-evidence-files)", () => {
     await rm(join(root, ref));
     const missing = await registry.invoke("validate", {}, { root, actor: "human" });
     expect(missing.ok || missing.errors.map((e) => e.code)).toEqual(["evidence.missing"]);
+    // Only the selected project's evidence is checked (and hashed).
+    expect(
+      await registry.invoke("validate", { project: "api" }, { root, actor: "human" }),
+    ).toMatchObject({ ok: true });
+  });
+
+  it("lets validate report a stored file replaced by a symlink, never following it", async (t) => {
+    const source = await shot("a.png");
+    const value = await recorded({ status: "failed", run: "rc-1", evidence: [source] });
+    const ref = (value.event.evidence as { ref: string }[])[0]?.ref as string;
+    await rm(join(root, ref));
+    try {
+      await symlink(source, join(root, ref));
+    } catch {
+      t.skip(); // no symlinks here (Windows without developer mode)
+    }
+    const result = await registry.invoke("validate", {}, { root, actor: "human" });
+    expect(result.ok || result.errors.map((e) => [e.code, e.field])).toEqual([
+      ["evidence.changed", "evidence.0.ref"],
+    ]);
+    expect(result.ok || result.errors[0]?.message).toContain("not a regular file");
   });
 });
 
@@ -322,8 +356,12 @@ describe("run refuses evidence, writing nothing", () => {
     expect(await readdir(join(root, RUNS))).toEqual(before);
   };
 
-  it("a file that is not there", async () => {
+  it("a file that is not there, or not a regular file", async () => {
     await refused({ evidence: [join(shots, "gone.png")] }, [["evidence.not_found", "evidence.0"]]);
+    await mkdir(join(shots, "folder.png"));
+    await refused({ evidence: [join(shots, "folder.png")] }, [
+      ["evidence.not_found", "evidence.0"],
+    ]);
   });
 
   it("a type outside the list, and a script type always", async () => {
@@ -345,6 +383,12 @@ describe("run refuses evidence, writing nothing", () => {
     await refused({ evidence: [join(shots, "small.png"), join(shots, "big.png")] }, [
       ["evidence.too_large", "evidence.1"],
     ]);
+  });
+
+  it("a file over 2 GiB, from its size, without reading it", async () => {
+    await writeFile(join(shots, "huge.webm"), "");
+    await truncate(join(shots, "huge.webm"), 3 * 1024 ** 3); // sparse: no disk used
+    await refused({ evidence: [join(shots, "huge.webm")] }, [["evidence.too_large", "evidence.0"]]);
   });
 
   it("more than 20 entries, and a link that is not http(s)", async () => {

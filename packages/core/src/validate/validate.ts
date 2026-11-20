@@ -22,7 +22,8 @@ export type ValidationInput = {
   extensionLayers?: readonly CommonsLayer[];
   /**
    * From `hashStoredEvidence`: the SHA-256 of each stored evidence file run
-   * events name, `null` when missing. Absent: stored evidence is not checked.
+   * events name, `null` when missing, `NOT_A_FILE` when not a regular file.
+   * Absent: stored evidence is not checked.
    */
   evidence?: ReadonlyMap<string, string | null>;
 };

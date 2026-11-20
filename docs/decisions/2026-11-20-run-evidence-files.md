@@ -5,8 +5,8 @@
 Accepted — 2026-11-20 (#201). Amends [run-event-note](2026-10-17-run-event-note.md)
 §5 (casefile reads and copies the files a `run` attaches; ingest keeps refs) and
 [write-ownership](2026-10-15-write-ownership.md) (`run` writes under `.runs/`).
-§5 amended by #203: the labelled form is `attach` (JSON); `--evidence`/`--link`
-take no label; relative paths resolve from the host's `cwd` input.
+§5 amended by #203: the labelled form is `attach` (JSON); `--evidence`/`--link` take
+no label; relative paths resolve from the host's `cwd` input; `evidence.conflict` added.
 
 ## Context
 
@@ -27,7 +27,7 @@ in an internal structure of the repository.
    `<project>/context/tests/.runs/<run-id>/<case-id>/<sha8>-<name>`. `sha8` is
    the first 8 hex digits of the file's SHA-256; `name` is the original base
    name, lower-cased, reduced to `[a-z0-9._-]`, at most 60 characters. A file
-   is never overwritten; the same content is written once.
+   is never overwritten; the same content under the same name is written once.
 3. **The event references them:** `{ kind, ref, sha256, label? }`. For a file,
    `kind` is `image`, `video` or `file` (from the extension), `ref` the
    workspace-relative path, `sha256` required. For a link, `kind` is `link`,
