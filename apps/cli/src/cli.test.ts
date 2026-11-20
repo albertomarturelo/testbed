@@ -90,6 +90,16 @@ describe("casefile cli: host commands", () => {
     expect(init.stdout).toContain("--skills-into <.claude/skills|.agents/skills>  (repeatable)");
     expect(init.stdout).not.toContain("--casefile-version");
   });
+
+  it("lists milestone edit's flags (#210)", async () => {
+    const result = await cli(["milestone", "edit", "--help"]);
+    expect(result.code).toBe(0);
+    expect(result.stdout).toContain("Usage: casefile milestone edit <slug> [flags]");
+    for (const flag of ["--title", "--due", "--release", "--scope", "--agent", "--ticket"]) {
+      expect(result.stdout).toContain(`${flag} <value>`);
+    }
+    expect(result.stdout).toContain("Full SPEC: casefile spec milestone-edit");
+  });
 });
 
 describe("casefile validate", () => {

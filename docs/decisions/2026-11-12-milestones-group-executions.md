@@ -11,6 +11,7 @@ milestone. [feature-tree-not-calendar](2026-10-15-feature-tree-not-calendar.md)
 holds: a milestone groups executions, never cases.
 §4 and §6 amended 2026-11-20 (#208): the evidence traces requirements and
 attempts, and the printed page names the commit that froze it.
+§2 amended by #210: `milestone edit` changes an open milestone; a closed one is refused.
 
 ## Context
 
@@ -34,7 +35,9 @@ a version.
 2. **Operations, actors agent and human** (CLI, viewer, skills alike):
    `milestone open <slug>` writes the file; `milestone close <slug>` writes
    the evidence (point 4) and sets `state: closed`, in one commit. Like every
-   write, they return the commit (ADR agent-runs-the-commit).
+   write, they return the commit (ADR agent-runs-the-commit). **(#210)**
+   `milestone edit <slug>` changes an open one's title, due, release or scope,
+   appending `edited: { at, by, change, fields }`; a closed one is refused.
 3. **Executions name an open milestone.** `run` and `ingest` take
    `--milestone <slug>`: an unknown one is `milestone.unknown`, a closed one
    `milestone.closed`, and nothing is written. A case runs in any number of
