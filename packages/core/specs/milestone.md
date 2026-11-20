@@ -94,13 +94,24 @@ the same files and date give the same text. In order:
    release-gate-evaluation, the milestone in place of the release; a triage
    counts until the day of the close).
 4. **Cases:** one row per in-scope case in case order: id, title, priority,
-   latest result, executor, date, build, note (the run's note on one line, cut
-   at 300 characters, then its triage) and evidence refs. A case's result is its
-   latest `passed`, `failed` or `blocked` event in the milestone; `skipped`,
-   `not_run` and other milestones' events do not count, so such a case shows
-   `not run`.
-5. **Not executed:** the in-scope cases with no result.
-6. **Close note**, when `close` got `--note`.
+   latest result, attempts, executor, date, build, note (the run's note on one
+   line, cut at 300 characters, then its triage) and evidence refs. A case's
+   result is its latest `passed`, `failed` or `blocked` event in the milestone;
+   `skipped`, `not_run` and other milestones' events do not count, so such a
+   case shows `not run`. **Attempts** counts those same events and how many
+   failed: `3 (1 failed)` is a pass after two tries that are not hidden; `0`
+   for a case not run.
+5. **Requirements:** one row per `acceptance_ref` the in-scope cases name, in
+   ref order, with those cases and one verdict: `failed` if any of them
+   failed, else `blocked`, else `not run` if any has no result, else
+   `passed`. Then the in-scope cases that name no requirement. casefile only
+   knows the requirements cases name: a requirement no case names cannot show
+   here.
+6. **Not executed:** the in-scope cases with no result.
+7. **Close note**, when `close` got `--note`.
+
+Evidence frozen before `Attempts` and `Requirements` existed (#208) still
+reads: its rows have no attempts and it has no requirements section.
 
 ## report
 
@@ -108,7 +119,8 @@ the same files and date give the same text. In order:
 2. Open: generates the evidence from the files as they are now, with today's
    date for triages, and returns it with the gates that are red now
    (`red_gates`). Closed: returns the frozen file
-   (`milestone.evidence_missing` if it is gone).
+   (`milestone.evidence_missing` if it is gone) and the commit that last wrote
+   it, as Git reports it where `report` runs (`commit`, below).
 
 It writes nothing. Without `--json` the evidence prints as a block under
 `evidence:`; to keep a copy, take `value.evidence` from the `--json` output.
@@ -196,6 +208,20 @@ the milestone fields, `totals`, `gates` with `name`, `verdict`, `cases` and
 (open only) and `next`. Once closed, `report` is read back from the frozen
 file, so it never differs from it; it is absent when that file no longer has
 the shape core writes (edited by hand), and `evidence` is the text as it is.
+Each case entry has `attempts` (`{ total, failed }`), and `report` has
+`requirements` (`[{ ref, cases, verdict }]`) and `unlinked` (case ids); all
+three are `null` for evidence frozen before #208.
+
+Closed only, `commit`: `{ sha, author, at, signature, signer, modified }` for
+the commit that last wrote the evidence file (`at` in UTC), read from Git every time and
+never stored in the file (ADR history-commit-reference). `signature` is
+`verified` (Git checked it against a key it trusts), `unverified` (signed,
+but this Git cannot vouch for it: no allowed signers or keyring, unknown,
+expired or revoked key), `bad` or `none`; `signer` is the key's name as Git
+gives it. `modified: true` means the file differs from that commit, so the
+commit does not vouch for what is shown. `commit` is `null` outside a Git
+repository or while the close is not committed yet. The viewer prints it at
+the end of the evidence page.
 
 `list`: `{ "milestones": [ { "project", "slug", "title", "state", "due",
 "release", "path", "closed", "totals", "red_gates" } ] }`.

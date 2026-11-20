@@ -7,7 +7,7 @@ import { eventMilestone, type Milestone, type ReleasePolicy } from "../schema/in
 
 // Pure (CONVENTIONS #3, #4): a milestone's evidence from its project's cases and
 // run files (ADR milestones-group-executions §4). `close` freezes the Markdown;
-// `report` prints it; #115's report reuses `renderEvidence`.
+// `milestone report` prints it.
 
 /** What a milestone covers when its file names no `scope` (ADR milestones-group-executions §1). */
 export const DEFAULT_MILESTONE_SCOPE = "state = active";
@@ -46,7 +46,18 @@ export type EvidenceRow = {
   build: string | null;
   note: string | null;
   evidence: string[];
+  /** Executions of the case in the milestone; `null` in evidence frozen before #208. */
+  attempts: Attempts | null;
 };
+
+/** How often a case was executed in the milestone (passed, failed, blocked) and how many failed. */
+export type Attempts = { total: number; failed: number };
+
+/** What a requirement's cases say together (ADR milestones-group-executions §4, #208). */
+export type RequirementVerdict = "passed" | "failed" | "blocked" | "not run";
+
+/** One `acceptance_ref` named by in-scope cases, with those cases and their verdict. */
+export type RequirementRow = { ref: string; cases: string[]; verdict: RequirementVerdict };
 
 export type EvidenceTotals = {
   in_scope: number;
@@ -73,6 +84,10 @@ export type MilestoneEvidence = {
   gates: GateResult[] | null;
   /** One row per in-scope case, in case order. */
   cases: EvidenceRow[];
+  /** One row per `acceptance_ref` of the in-scope cases, by ref. */
+  requirements: RequirementRow[];
+  /** In-scope cases that name no `acceptance_ref`. */
+  unlinked: string[];
   note: string | null;
 };
 
@@ -109,6 +124,16 @@ export function milestoneEvidence(input: EvidenceInput): Result<MilestoneEvidenc
   }
 
   const latest = latestResults(runs);
+  const attempts = new Map<string, Attempts>();
+  for (const { event } of runs) {
+    if (event.status !== "passed" && event.status !== "failed" && event.status !== "blocked") {
+      continue;
+    }
+    const seen = attempts.get(event.case_id) ?? { total: 0, failed: 0 };
+    seen.total += 1;
+    if (event.status === "failed") seen.failed += 1;
+    attempts.set(event.case_id, seen);
+  }
   const cases = scoped.value.map((c): EvidenceRow => {
     const event = latest.get(c.id);
     return {
@@ -121,8 +146,10 @@ export function milestoneEvidence(input: EvidenceInput): Result<MilestoneEvidenc
       build: event?.build ?? null,
       note: event === undefined ? null : rowNote(event.note, event.triage),
       evidence: event?.evidence?.map((e) => e.ref) ?? [],
+      attempts: attempts.get(c.id) ?? { total: 0, failed: 0 },
     };
   });
+  const { requirements, unlinked } = traceRequirements(scoped.value, cases);
   const count = (result: EvidenceRow["result"]) => cases.filter((c) => c.result === result).length;
   const notRun = count(null);
 
@@ -147,8 +174,43 @@ export function milestoneEvidence(input: EvidenceInput): Result<MilestoneEvidenc
     },
     gates,
     cases,
+    requirements,
+    unlinked,
     note: input.note ?? null,
   });
+}
+
+/**
+ * Requirements as the in-scope cases name them (`acceptance_ref`), in ref order,
+ * each with its cases in case order and one verdict: failed if any case failed,
+ * else blocked, else not run, else passed.
+ */
+function traceRequirements(
+  scoped: readonly ResolvedCase[],
+  rows: readonly EvidenceRow[],
+): { requirements: RequirementRow[]; unlinked: string[] } {
+  const result = new Map(rows.map((row) => [row.id, row.result]));
+  const byRef = new Map<string, string[]>();
+  const unlinked: string[] = [];
+  for (const c of scoped) {
+    const refs = [...new Set(c.acceptance_ref ?? [])];
+    if (refs.length === 0) unlinked.push(c.id);
+    for (const ref of refs) byRef.set(ref, [...(byRef.get(ref) ?? []), c.id]);
+  }
+  const requirements = [...byRef]
+    .sort(([a], [b]) => a.localeCompare(b, "en", { numeric: true }))
+    .map(([ref, ids]): RequirementRow => {
+      const results = ids.map((id) => result.get(id) ?? null);
+      const verdict: RequirementVerdict = results.includes("failed")
+        ? "failed"
+        : results.includes("blocked")
+          ? "blocked"
+          : results.includes(null)
+            ? "not run"
+            : "passed";
+      return { ref, cases: ids, verdict };
+    });
+  return { requirements, unlinked };
 }
 
 /** Gates whose verdict is red; empty without a policy. */
@@ -176,6 +238,9 @@ export type EvidenceDocument = {
   /** `null` when the project has no release policy. */
   gates: { name: string; verdict: string; cases: number; reasons: string | null }[] | null;
   cases: EvidenceRow[];
+  /** `null` in evidence frozen before #208, which has no `Requirements` section. */
+  requirements: RequirementRow[] | null;
+  unlinked: string[] | null;
   note: string | null;
 };
 
@@ -222,7 +287,10 @@ export function evidenceDocument(evidence: MilestoneEvidence): EvidenceDocument 
       build: line(c.build),
       note: line(c.note),
       evidence: c.evidence.map(oneLine),
+      attempts: c.attempts === null ? null : { ...c.attempts },
     })),
+    requirements: e.requirements.map((r) => ({ ...r, ref: oneLine(r.ref) })),
+    unlinked: [...e.unlinked],
     note: e.note === null ? null : e.note.trim() || null,
   };
 }
@@ -268,8 +336,8 @@ export function renderEvidence(evidence: MilestoneEvidence): string {
   if (e.cases.length === 0) lines.push(NO_CASES, "");
   else {
     lines.push(
-      "| Case | Title | Priority | Result | Executor | Date | Build | Note | Evidence |",
-      "|---|---|---|---|---|---|---|---|---|",
+      "| Case | Title | Priority | Result | Attempts | Executor | Date | Build | Note | Evidence |",
+      "|---|---|---|---|---|---|---|---|---|---|",
     );
     for (const c of e.cases) {
       lines.push(
@@ -278,6 +346,7 @@ export function renderEvidence(evidence: MilestoneEvidence): string {
           c.title,
           c.priority,
           c.result ?? NOT_RUN,
+          attemptsCell(c.attempts),
           c.executor,
           c.at,
           c.build,
@@ -289,6 +358,24 @@ export function renderEvidence(evidence: MilestoneEvidence): string {
       );
     }
     lines.push("");
+  }
+  if (e.requirements !== null) {
+    lines.push(`## ${REQUIREMENTS}`, "");
+    if (e.requirements.length === 0) lines.push(NO_REQUIREMENTS, "");
+    else {
+      lines.push("| Requirement | Cases | Verdict |", "|---|---|---|");
+      for (const r of e.requirements) {
+        lines.push(`| ${cell(r.ref)} | ${cell(r.cases.join(LIST_SEPARATOR))} | ${r.verdict} |`);
+      }
+      lines.push("");
+    }
+    const unlinked = e.unlinked ?? [];
+    if (unlinked.length > 0) {
+      lines.push(
+        `${UNLINKED_PREFIX}${unlinked.map((id) => oneLine(id)).join(LIST_SEPARATOR)}.`,
+        "",
+      );
+    } else if (e.requirements.length > 0) lines.push(ALL_LINKED, "");
   }
   const missing = e.cases.filter((c) => c.result === null);
   lines.push("## Not executed", "");
@@ -347,9 +434,16 @@ export function parseEvidence(markdown: string): EvidenceDocument | null {
         }));
 
   const caseRows = tableRows(sections.get("Cases") ?? []);
-  if (caseRows.some((row) => row.length !== 9)) return null;
-  const cases = caseRows.map(
-    ([id, caseTitle, priority, result, executor, at, build, note, evidence]): EvidenceRow => ({
+  // 9 columns before #208, 10 with `Attempts` after `Result`.
+  const width = caseRows[0]?.length ?? 10;
+  if ((width !== 9 && width !== 10) || caseRows.some((row) => row.length !== width)) return null;
+  const cases: EvidenceRow[] = [];
+  for (const row of caseRows) {
+    const [id, caseTitle, priority, result] = row;
+    const [executor, at, build, note, evidence] = row.slice(width - 5);
+    const attempts = width === 10 ? parseAttempts(row[4] ?? null) : null;
+    if (attempts === undefined) return null;
+    cases.push({
       id: id ?? "",
       title: caseTitle ?? "",
       priority: priority ?? "",
@@ -359,8 +453,25 @@ export function parseEvidence(markdown: string): EvidenceDocument | null {
       build: build ?? null,
       note: note ?? null,
       evidence: evidence == null ? [] : evidence.split(EVIDENCE_SEPARATOR),
-    }),
-  );
+      attempts,
+    });
+  }
+
+  const requirementLines = sections.get(REQUIREMENTS);
+  let requirements: RequirementRow[] | null = null;
+  let unlinked: string[] | null = null;
+  if (requirementLines !== undefined) {
+    requirements = [];
+    for (const [ref, ids, verdict] of tableRows(requirementLines)) {
+      if (ref == null || !isRequirementVerdict(verdict)) return null;
+      requirements.push({ ref, cases: ids == null ? [] : ids.split(LIST_SEPARATOR), verdict });
+    }
+    const listed = requirementLines.find((line) => line.startsWith(UNLINKED_PREFIX));
+    unlinked =
+      listed === undefined
+        ? []
+        : listed.slice(UNLINKED_PREFIX.length).replace(/\.$/, "").split(LIST_SEPARATOR);
+  }
   const noteLines = sections.get(CLOSE_NOTE);
 
   return {
@@ -376,6 +487,8 @@ export function parseEvidence(markdown: string): EvidenceDocument | null {
     totals: { in_scope, executed, passed, failed, blocked, not_run },
     gates,
     cases,
+    requirements,
+    unlinked,
     note: noteLines === undefined ? null : noteLines.join("\n").trim() || null,
   };
 }
@@ -388,6 +501,32 @@ const NO_GATES = "The release policy declares no gates.";
 const NO_CASES = "The scope selects no cases.";
 const CLOSE_NOTE = "Close note";
 const EVIDENCE_SEPARATOR = ", ";
+const LIST_SEPARATOR = ", ";
+const REQUIREMENTS = "Requirements";
+const NO_REQUIREMENTS = "No case in scope names a requirement (`acceptance_ref`).";
+const ALL_LINKED = "Every case in scope names a requirement.";
+const UNLINKED_PREFIX = "Cases that name no requirement: ";
+const VERDICTS: readonly RequirementVerdict[] = ["passed", "failed", "blocked", "not run"];
+
+function isRequirementVerdict(value: string | null | undefined): value is RequirementVerdict {
+  return VERDICTS.includes(value as RequirementVerdict);
+}
+
+/** `3 (1 failed)`, `1`, `0`. */
+function attemptsCell(attempts: Attempts | null): string | null {
+  if (attempts === null) return null;
+  return attempts.failed === 0
+    ? String(attempts.total)
+    : `${attempts.total} (${attempts.failed} failed)`;
+}
+
+/** The inverse of `attemptsCell`; `undefined` when the cell is not one it writes. */
+function parseAttempts(value: string | null): Attempts | null | undefined {
+  if (value === null) return null;
+  const match = value.match(/^(\d+)(?: \((\d+) failed\))?$/);
+  if (match === null) return undefined;
+  return { total: Number(match[1]), failed: Number(match[2] ?? 0) };
+}
 
 /** `<at> by <who>`; `null` for `—` and for a report's "not closed". */
 function stampOf(value: string | null | undefined): { at: string; by: string } | null {

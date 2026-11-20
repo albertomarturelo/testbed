@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { fail, ok } from "../errors.js";
+import { gitLastCommit } from "../git/history.js";
 import { FileSafeId } from "../schema/index.js";
 import { loadWorkspaceCases, requireProject } from "./cases.js";
 import {
@@ -30,6 +31,23 @@ const MilestoneReportOutput = z.strictObject({
    * core writes (edited by hand): show `evidence` as it is.
    */
   report: EvidenceDocumentOutput.optional(),
+  /**
+   * Closed only: the commit that last wrote the evidence file and its signature,
+   * as Git reports them here (ADR milestones-group-executions §6, #208); `null`
+   * outside a repository or while the close is not committed.
+   */
+  commit: z
+    .strictObject({
+      sha: z.string(),
+      author: z.string(),
+      at: z.string(),
+      signature: z.enum(["verified", "unverified", "bad", "none"]),
+      signer: z.string().nullable(),
+      /** The file differs from that commit: the commit does not vouch for it. */
+      modified: z.boolean(),
+    })
+    .nullable()
+    .optional(),
   /** Open only: the gates that are red now; `close` needs `--note` while any is. */
   red_gates: z.array(z.string()).optional(),
   next: z.array(z.string()),
@@ -86,6 +104,7 @@ export const milestoneReportOperation = defineOperation({
         path,
         evidence: markdown,
         ...(document === null ? {} : { report: document }),
+        commit: await gitLastCommit(context.root, path),
         next: [],
       });
     }
