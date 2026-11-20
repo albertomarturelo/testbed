@@ -112,7 +112,7 @@ describe("cover", () => {
       message: commitMessage("test(login): propose 1 case", { ...base, change: value.change }),
       files: [`${LOGIN}/TC-0003.md`],
     });
-    expect(value.next[0]).toContain("-- <paths>");
+    expect(value.next[0]).toContain(`git add -- ${LOGIN}/TC-0003.md`);
     expect(value.next[0]).toContain("--json");
     expect(value.next[1]).toContain("web/TC-0003");
   });

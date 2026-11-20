@@ -1,13 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { fail, ok } from "../errors.js";
+import { commitAdvice } from "../git/advice.js";
 import { CommitInput, commitSubject } from "../git/subject.js";
 import { DASHBOARDS_DIR } from "../load/paths.js";
 import { loadWorkspace } from "../load/workspace.js";
 import { FileSafeId } from "../schema/index.js";
 import { WriteCommit, WriterInput, writeCommit, writtenBy } from "./case-file.js";
 import { requireProject } from "./cases.js";
-import { commitHint, dashboardPath, unknownDashboard } from "./dashboards.js";
+import { dashboardPath, unknownDashboard } from "./dashboards.js";
 import { defineOperation } from "./operation.js";
 
 const DashboardRemoveInput = z.strictObject({
@@ -63,19 +64,20 @@ export const dashboardRemoveOperation = defineOperation({
     if (!subject.ok) return subject;
 
     const change = randomUUID();
+    const commit = writeCommit(
+      subject.value,
+      { requestedBy: by, inbox: input.inbox, agent, change, dashboard: input.slug },
+      [path],
+      asAgent,
+    );
     await context.removeFile(path);
     return ok({
       project: project.name,
       slug: input.slug,
       path,
       change,
-      commit: writeCommit(
-        subject.value,
-        { requestedBy: by, inbox: input.inbox, agent, change, dashboard: input.slug },
-        [path],
-        asAgent,
-      ),
-      next: [commitHint(asAgent)],
+      commit,
+      next: [commitAdvice("the file", commit)],
     });
   },
 });

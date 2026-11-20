@@ -2,6 +2,7 @@ import { join, posix, resolve } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { z } from "zod";
 import { type CasefileError, fail, ok, type Result } from "../errors.js";
+import { commitAdvice } from "../git/advice.js";
 import { CommitInput, commitSubject } from "../git/subject.js";
 import { AGENT_AUTHOR, runCommitMessage } from "../git/trailers.js";
 import { boundNote } from "../ingest/note.js";
@@ -203,19 +204,16 @@ export const runOperation = defineOperation({
     const message = runCommitMessage(subject.value, { run, executor });
     const files = [path, ...attached.value.files];
     const what = files.length > 1 ? "the run file and its evidence files" : "the run file";
-    const only = files.length > 1 ? "only commit.files" : "only it";
-    const pathspec = files.length > 1 ? "<files>" : "<path>";
+    const commit = agent ? { author: AGENT_AUTHOR, message, files } : { message, files };
     return ok({
       ref,
       run,
       path,
       appended: true,
       event,
-      commit: agent ? { author: AGENT_AUTHOR, message, files } : { message, files },
+      commit,
       next: [
-        agent
-          ? `Commit ${what} with commit.author and commit.message taken from --json output, staging ${only} (\`git commit -F <message> -- ${pathspec}\`)`
-          : `Commit ${what} with commit.message taken from --json output, as yourself, staging ${only} (\`git commit -F <message> -- ${pathspec}\`)`,
+        commitAdvice(what, commit),
         ...(input.release === undefined ? [] : [RELEASE_DEPRECATED]),
       ],
     });

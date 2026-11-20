@@ -3,13 +3,14 @@ import { stringify } from "yaml";
 import { z } from "zod";
 import { dashboardProblems } from "../dashboards/check.js";
 import { fail, ok } from "../errors.js";
+import { commitAdvice } from "../git/advice.js";
 import { CommitInput, commitSubject } from "../git/subject.js";
 import { DASHBOARDS_DIR } from "../load/paths.js";
 import { loadWorkspace } from "../load/workspace.js";
 import { Dashboard, FileSafeId } from "../schema/index.js";
 import { WriteCommit, WriterInput, writeCommit, writtenBy } from "./case-file.js";
 import { requireProject } from "./cases.js";
-import { commitHint, dashboardPath } from "./dashboards.js";
+import { dashboardPath } from "./dashboards.js";
 import { defineOperation } from "./operation.js";
 
 const DashboardSaveInput = z.strictObject({
@@ -86,6 +87,12 @@ export const dashboardSaveOperation = defineOperation({
     if (!subject.ok) return subject;
 
     const change = randomUUID();
+    const commit = writeCommit(
+      subject.value,
+      { requestedBy: by, inbox: input.inbox, agent, change, dashboard: input.slug },
+      [path],
+      asAgent,
+    );
     await context.writeText(path, text);
     return ok({
       project: project.name,
@@ -94,13 +101,11 @@ export const dashboardSaveOperation = defineOperation({
       created,
       widgets: input.spec.widgets.length,
       change,
-      commit: writeCommit(
-        subject.value,
-        { requestedBy: by, inbox: input.inbox, agent, change, dashboard: input.slug },
-        [path],
-        asAgent,
-      ),
-      next: [commitHint(asAgent), `Check it: casefile dashboard list --project ${project.name}`],
+      commit,
+      next: [
+        commitAdvice("the file", commit),
+        `Check it: casefile dashboard list --project ${project.name}`,
+      ],
     });
   },
 });

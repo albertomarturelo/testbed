@@ -3,6 +3,7 @@ import { posix } from "node:path";
 import { stringify } from "yaml";
 import { z } from "zod";
 import { fail, ok } from "../errors.js";
+import { commitAdvice } from "../git/advice.js";
 import { CommitInput, commitSubject } from "../git/subject.js";
 import { MILESTONES_DIR } from "../load/paths.js";
 import { loadWorkspace } from "../load/workspace.js";
@@ -99,21 +100,20 @@ export const milestoneOpenOperation = defineOperation({
       opened: { at, by, change },
     });
     await context.writeText(path, stringify(file, { lineWidth: 0 }));
+    const commit = writeCommit(
+      subject.value,
+      { requestedBy: by, inbox: input.inbox, agent, change },
+      [path],
+      asAgent,
+    );
     return ok({
       project: project.name,
       slug: input.slug,
       path,
       change,
-      commit: writeCommit(
-        subject.value,
-        { requestedBy: by, inbox: input.inbox, agent, change },
-        [path],
-        asAgent,
-      ),
+      commit,
       next: [
-        asAgent
-          ? "Commit the file with commit.author and commit.message taken from --json output, staging only it (`git commit -F <message> -- <path>`)"
-          : "Commit the file with commit.message taken from --json output, as yourself, staging only it (`git commit -F <message> -- <path>`)",
+        commitAdvice("the file", commit),
         `Record executions in it: casefile run <ref> --status <status> --milestone ${input.slug}`,
       ],
     });

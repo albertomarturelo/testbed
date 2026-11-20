@@ -1,6 +1,7 @@
 import { posix } from "node:path";
 import { z } from "zod";
 import { type CasefileError, fail, ok, type Result } from "../errors.js";
+import { commitAdvice } from "../git/advice.js";
 import { CommitInput, commitSubject } from "../git/subject.js";
 import { AGENT_AUTHOR, CI_AUTHOR, runCommitMessage } from "../git/trailers.js";
 import { TESTS_DIR } from "../load/paths.js";
@@ -183,9 +184,7 @@ export function ingestOperation(ingester: Ingester): Operation {
       if (fresh.length > 0) commit = runFileCommit(input, subject.value, path, context.actor);
       const next: string[] = [];
       if (commit !== undefined) {
-        next.push(
-          "Commit the run file with commit.author and commit.message taken from --json output, staging only it (`git commit -F <message> -- <path>`)",
-        );
+        next.push(commitAdvice("the run file", commit));
         if (context.actor === "ci") {
           next.push(
             "Push it; if the push is rejected, reset to the new tip and ingest again, never resolve a conflict (`casefile spec ci`)",

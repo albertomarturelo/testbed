@@ -3,6 +3,7 @@ import { posix } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { z } from "zod";
 import { type CasefileError, fail, ok } from "../errors.js";
+import { commitAdvice } from "../git/advice.js";
 import { CommitInput, commitSubject } from "../git/subject.js";
 import { TESTS_DIR } from "../load/paths.js";
 import { loadWorkspace } from "../load/workspace.js";
@@ -305,6 +306,12 @@ export const reviewOperation = defineOperation({
     if (!subject.ok) return subject;
 
     await context.writeText(loaded.path, caseFrontmatter(file) + body);
+    const commit = writeCommit(
+      subject.value,
+      { requestedBy: by, inbox: input.inbox, agent, change },
+      [loaded.path],
+      asAgent,
+    );
     return ok({
       ref: `${project.name}/${stored.id}`,
       path: loaded.path,
@@ -312,17 +319,8 @@ export const reviewOperation = defineOperation({
       state: file.state,
       changed,
       events,
-      commit: writeCommit(
-        subject.value,
-        { requestedBy: by, inbox: input.inbox, agent, change },
-        [loaded.path],
-        asAgent,
-      ),
-      next: [
-        !asAgent
-          ? "Commit the file with commit.message taken from --json output, as yourself, staging only it (`git commit -F <message> -- <path>`)"
-          : "Commit the file with commit.author and commit.message taken from --json output, staging only it (`git commit -F <message> -- <path>`)",
-      ],
+      commit,
+      next: [commitAdvice("the file", commit)],
     });
   },
 });

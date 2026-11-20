@@ -121,7 +121,8 @@ Run every casefile command below with `CASEFILE_ACTOR=agent`.
    `chore(casefile): register web api`. The trailers are
    `Requested-by: <the human's git email>` and `Agent: <your name>` (left
    out when `commit.agent_trailer` is `false`). Commit
-   only those paths (`git commit -F <message> -- <paths>`), never what the
+   only those paths (from the workspace root, `git add -- <paths>`, then
+   `git commit -F <message> -- <paths>`), never what the
    human had staged. The skills `init` copied are the human's to commit.
 9. **Offer the next step and stop.** Offer `/qa-bootstrap` for each project
    (`casefile spec bootstrap`). Do not propose cases yourself during setup.

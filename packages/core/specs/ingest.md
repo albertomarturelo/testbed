@@ -102,7 +102,7 @@ format; built-in formats are described here.
     "author": "casefile-ci <casefile-ci@casefile.invalid>",
     "message": "test(web): record run 9137\n\nCasefile-Run: 9137\nExecutor: ci:github-actions\nTested-Commit: 4f1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c\n",
     "files": ["apps/web/context/tests/.runs/9137.jsonl"] },
-  "next": ["Commit the run file with commit.author and commit.message taken from --json output, staging only it (`git commit -F <message> -- <path>`)",
+  "next": ["Commit the run file as casefile-ci, with commit.message from --json output saved to a file <message>, staging only it, from the workspace root: `git add -- apps/web/context/tests/.runs/9137.jsonl` then `git -c user.name=casefile-ci -c user.email=casefile-ci@casefile.invalid commit -F <message> -- apps/web/context/tests/.runs/9137.jsonl`",
            "Push it; if the push is rejected, reset to the new tip and ingest again, never resolve a conflict (`casefile spec ci`)",
            "1 result matches no case's automation.ref: …"] }
 ```
