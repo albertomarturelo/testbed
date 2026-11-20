@@ -346,17 +346,28 @@ describe("MilestonePage", () => {
     expect(screen.queryByText(/attempts/)).toBeNull();
   });
 
-  it("shows a frozen file core can no longer read as it is", async () => {
+  it("shows a frozen file core can no longer read as it is, and that no commit vouches for it", async () => {
     answers["milestone-report"] = () =>
       report({
         state: "closed",
         report: undefined,
         red_gates: undefined,
         evidence: "edited by hand",
+        commit: {
+          sha: "0123456789abcdef0123456789abcdef01234567",
+          author: "Lead <lead@acme.example>",
+          at: "2026-11-13T10:05:00Z",
+          signature: "unverified",
+          signer: null,
+          modified: true,
+        },
       });
     render(<MilestonePage project="web" slug="web-1.2.0" version={0} />);
     expect(await screen.findByText("edited by hand")).toBeTruthy();
     expect(screen.getByText("ui.evidence_unreadable", { exact: false })).toBeTruthy();
+    const commit = screen.getByRole("region", { name: "Commit" }).textContent ?? "";
+    expect(commit).toContain("unknown, expired or revoked key, or no key trusted here");
+    expect(commit).toContain("The file differs from that commit");
   });
 
   it("shows why a milestone cannot be read", async () => {

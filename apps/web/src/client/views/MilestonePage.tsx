@@ -164,10 +164,14 @@ function BackLink({ project }: { project: string }) {
   );
 }
 
-/** A frozen file no longer in the shape core writes: shown as it is, never re-generated. */
+/**
+ * A frozen file no longer in the shape core writes: shown as it is, never
+ * re-generated, then the commit that last wrote it: an edit by hand is when it
+ * matters most whether a commit vouches for the file.
+ */
 function FrozenText({ report }: { report: MilestoneReport }) {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-4">
       <ErrorList
         errors={[
           {
@@ -182,6 +186,9 @@ function FrozenText({ report }: { report: MilestoneReport }) {
       <pre className="overflow-x-auto whitespace-pre-wrap rounded-md border p-4 text-xs">
         {report.evidence}
       </pre>
+      {report.state !== "closed" || report.commit === undefined ? null : (
+        <CommitFooter commit={report.commit} />
+      )}
     </div>
   );
 }
@@ -555,7 +562,7 @@ function attemptsText(attempts: { total: number; failed: number }): string {
 const SIGNATURE: Record<EvidenceCommit["signature"], (signer: string | null) => string> = {
   verified: (signer) => `Signed by ${signer ?? "a trusted key"}; Git verified the signature.`,
   unverified: (signer) =>
-    `Signed${signer === null ? "" : ` by ${signer}`}, but the Git that printed this cannot verify the signature (no trusted key for it here).`,
+    `Signed${signer === null ? "" : ` by ${signer}`}, but the Git that printed this cannot verify the signature (unknown, expired or revoked key, or no key trusted here).`,
   bad: () => "The signature is BAD: the commit does not match it.",
   none: () => "The commit is not signed.",
 };
