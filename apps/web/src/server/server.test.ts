@@ -1,5 +1,16 @@
 import { execFileSync } from "node:child_process";
-import { access, cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  access,
+  appendFile,
+  cp,
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { request, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
@@ -12,6 +23,7 @@ import {
   NPM_LOGIN_EXPECTED,
   NPM_LOGIN_ROOT,
 } from "../../../../packages/core/src/demo.fixture.js";
+import { FILENAME_HEADER, UPLOAD_TTL_MS } from "./evidence.js";
 import { createUiServer, TOKEN_HEADER } from "./server.js";
 
 let server: Server;
@@ -132,12 +144,15 @@ describe("writes (ADR human-writes-through-operations §2–3)", () => {
     git(root, "init", "-q");
     git(root, "config", "user.name", "Dev");
     git(root, "config", "user.email", "dev@acme.example");
+    // No background maintenance writing into .git while afterEach removes it.
+    git(root, "config", "maintenance.auto", "false");
+    git(root, "config", "gc.auto", "0");
     git(root, "add", "-A");
     git(root, "commit", "-q", "-m", "init");
   }
 
-  async function start(identity: Identity | null) {
-    writer = createUiServer({ root, clientDir, identity, env: isolated });
+  async function start(identity: Identity | null, now?: () => number) {
+    writer = createUiServer({ root, clientDir, identity, env: isolated, now });
     const listening = writer;
     await new Promise<void>((done) => listening.listen(0, "127.0.0.1", done));
     origin = `http://127.0.0.1:${(listening.address() as AddressInfo).port}`;
@@ -152,7 +167,7 @@ describe("writes (ADR human-writes-through-operations §2–3)", () => {
   afterEach(async () => {
     if (writer !== null) await new Promise((done) => writer?.close(done));
     writer = null;
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 3 });
   });
 
   const write = async (name: string, input: unknown, headers: Record<string, string>) => {
@@ -321,6 +336,254 @@ describe("writes (ADR human-writes-through-operations §2–3)", () => {
     });
     const today = new Date().toISOString().slice(0, 10);
     await expect(access(join(root, RUN_FILE, `manual-${today}.jsonl`))).resolves.toBeUndefined();
+  });
+
+  describe("evidence (ADR run-evidence-files §6–7)", () => {
+    const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3, 4]);
+    const upload = async (
+      name: string,
+      body: Uint8Array | string | ReadableStream<Uint8Array>,
+      headers: Record<string, string> = fromPage(),
+    ) => {
+      const response = await fetch(`${origin}/api/evidence`, {
+        method: "POST",
+        headers: { [FILENAME_HEADER]: encodeURIComponent(name), ...headers },
+        body,
+        // A stream body goes chunked, without a Content-Length.
+        ...(body instanceof ReadableStream ? { duplex: "half" } : {}),
+      } as RequestInit);
+      // biome-ignore lint/suspicious/noExplicitAny: assertions narrow the JSON Result
+      return { status: response.status, body: (await response.json()) as any };
+    };
+    const served = (ref: string) => fetch(`${origin}/api/evidence?ref=${encodeURIComponent(ref)}`);
+    /** Whether an upload's directory is still staged under the OS temp dir. */
+    const staged = async (id: string) => {
+      for (const dir of await readdir(tmpdir())) {
+        if (!dir.startsWith("casefile-uploads-")) continue;
+        const ids = await readdir(join(tmpdir(), dir)).catch((): string[] => []);
+        if (ids.includes(id)) return true;
+      }
+      return false;
+    };
+
+    it("stages an upload, swaps it into run, commits the file and removes the upload", async () => {
+      await repository();
+      await start(await gitIdentity(root));
+      const up = await upload("Login Error.PNG", PNG);
+      expect(up).toMatchObject({
+        status: 200,
+        body: { ok: true, value: { name: "Login Error.PNG", size: PNG.length, kind: "image" } },
+      });
+      const id: string = up.body.value.upload;
+      expect(id).toMatch(/^[0-9a-f-]{36}$/);
+      expect(await staged(id)).toBe(true);
+
+      const { status, body } = await write(
+        "run",
+        {
+          ...result,
+          status: "failed",
+          attach: [
+            { upload: id, label: "The banner" },
+            { url: "https://example.com/bug/1", label: "Bug" },
+          ],
+        },
+        fromPage(),
+      );
+      expect(status).toBe(200);
+      const [image, link] = body.value.event.evidence;
+      expect(image).toMatchObject({ kind: "image", label: "The banner" });
+      expect(image.ref).toMatch(
+        /^apps\/web\/context\/tests\/\.runs\/manual-[\d-]+\/TC-0002\/[0-9a-f]{8}-login-error\.png$/,
+      );
+      expect(link).toEqual({ kind: "link", ref: "https://example.com/bug/1", label: "Bug" });
+      expect(git(root, "show", "--name-only", "--format=", "HEAD").split("\n").sort()).toEqual(
+        [body.value.path, image.ref].sort(),
+      );
+      expect(new Uint8Array(await readFile(join(root, image.ref)))).toEqual(PNG);
+      // Recorded: the upload is gone, and naming it again is refused.
+      expect(await staged(id)).toBe(false);
+      expect(await write("run", { ...result, attach: [{ upload: id }] }, fromPage())).toMatchObject(
+        { status: 400, body: { errors: [{ code: "ui.upload_unknown", field: "attach.0" }] } },
+      );
+    });
+
+    it("keeps the uploads of a refused result, so it can be sent again", async () => {
+      await repository();
+      await start(await gitIdentity(root));
+      const id = (await upload("shot.png", PNG)).body.value.upload;
+      const refused = await write(
+        "run",
+        { ...result, attach: [{ upload: id, label: "x".repeat(121) }] },
+        fromPage(),
+      );
+      expect(refused.body.ok).toBe(false);
+      expect(await staged(id)).toBe(true);
+      const again = await write("run", { ...result, attach: [{ upload: id }] }, fromPage());
+      expect(again).toMatchObject({ status: 200, body: { ok: true } });
+    });
+
+    it("refuses an upload without the page's origin and token, and stages nothing", async () => {
+      await repository();
+      await start(await gitIdentity(root));
+      const forbidden = { status: 403, body: { errors: [{ code: "ui.forbidden" }] } };
+      expect(await upload("shot.png", PNG, {})).toMatchObject(forbidden);
+      expect(await upload("shot.png", PNG, { origin })).toMatchObject(forbidden);
+      expect(await upload("shot.png", PNG, { [TOKEN_HEADER]: token })).toMatchObject(forbidden);
+      expect(
+        await upload("shot.png", PNG, { origin: "http://evil.example", [TOKEN_HEADER]: token }),
+      ).toMatchObject(forbidden);
+    });
+
+    it("applies casefile.yaml's limits: size, script types, other types, a name", async () => {
+      await repository();
+      const config = join(root, "casefile.yaml");
+      await appendFile(config, "evidence:\n  max_file_mb: 0.001\n");
+      await start(await gitIdentity(root));
+      const big = new Uint8Array(2000);
+      const tooLarge = { status: 413, body: { errors: [{ code: "evidence.too_large" }] } };
+      // Declared too large up front, and found too large while streaming.
+      expect(await upload("big.png", big)).toMatchObject(tooLarge);
+      const stream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(big);
+          controller.close();
+        },
+      });
+      expect(await upload("big.png", stream)).toMatchObject(tooLarge);
+      for (const name of ["x.svg", "page.html", "tool.exe", "README"]) {
+        expect(await upload(name, PNG)).toMatchObject({
+          status: 400,
+          body: { errors: [{ code: "evidence.type" }] },
+        });
+      }
+      const nameless = await fetch(`${origin}/api/evidence`, {
+        method: "POST",
+        headers: fromPage(),
+        body: PNG,
+      });
+      expect(nameless.status).toBe(400);
+      expect(await upload("ok.png", PNG)).toMatchObject({ status: 200 });
+    });
+
+    it("refuses an unknown or expired upload, and still refuses local files", async () => {
+      await repository();
+      let now = Date.now();
+      await start(await gitIdentity(root), () => now);
+      const unknown = await write("run", { ...result, attach: [{ upload: "nope" }] }, fromPage());
+      expect(unknown).toMatchObject({
+        status: 400,
+        body: { errors: [{ code: "ui.upload_unknown", field: "attach.0" }] },
+      });
+      const id = (await upload("shot.png", PNG)).body.value.upload;
+      now += UPLOAD_TTL_MS;
+      const expired = await write(
+        "run",
+        { ...result, attach: [{ url: "https://example.com" }, { upload: id }] },
+        fromPage(),
+      );
+      expect(expired).toMatchObject({
+        status: 400,
+        body: { errors: [{ code: "ui.upload_unknown", field: "attach.1" }] },
+      });
+      expect(await staged(id)).toBe(false);
+      // An upload never lets the page name a path.
+      expect(
+        await write("run", { ...result, attach: [{ upload: id, file: "/etc/hosts" }] }, fromPage()),
+      ).toMatchObject({ status: 400, body: { errors: [{ code: "ui.local_file" }] } });
+      expect(git(root, "status", "--porcelain")).toBe("");
+    });
+
+    it("commits an evidence file the host repository ignores", async () => {
+      await repository();
+      await writeFile(join(root, ".gitignore"), "*.log\n");
+      git(root, "add", ".gitignore");
+      git(root, "commit", "-q", "-m", "ignore logs");
+      await start(await gitIdentity(root));
+      const id = (await upload("console.log", "TypeError: x is undefined\n")).body.value.upload;
+      const { status, body } = await write(
+        "run",
+        { ...result, status: "failed", attach: [{ upload: id }] },
+        fromPage(),
+      );
+      expect(status).toBe(200);
+      const [log] = body.value.event.evidence;
+      expect(log).toMatchObject({ kind: "file" });
+      expect(log.ref).toMatch(/-console\.log$/);
+      expect(git(root, "show", "--name-only", "--format=", "HEAD").split("\n")).toContain(log.ref);
+      expect(git(root, "status", "--porcelain")).toBe("");
+    });
+
+    it("serves stored evidence a run event names, with safe headers, and nothing else", async () => {
+      await repository();
+      await start(await gitIdentity(root));
+      const png = (await upload("shot.png", PNG)).body.value.upload;
+      const pdf = (await upload("report.pdf", "%PDF-1.4\n")).body.value.upload;
+      const { body } = await write(
+        "run",
+        { ...result, attach: [{ upload: png }, { upload: pdf }] },
+        fromPage(),
+      );
+      const [image, file] = body.value.event.evidence.map((e: { ref: string }) => e.ref);
+
+      const shown = await served(image);
+      expect(shown.status).toBe(200);
+      expect(shown.headers.get("content-type")).toBe("image/png");
+      expect(shown.headers.get("x-content-type-options")).toBe("nosniff");
+      expect(shown.headers.get("cache-control")).toBe("no-store");
+      expect(shown.headers.get("content-disposition")).toMatch(
+        /^inline; filename="[0-9a-f]{8}-shot\.png"$/,
+      );
+      expect(new Uint8Array(await shown.arrayBuffer())).toEqual(PNG);
+      const download = await served(file);
+      expect(download.headers.get("content-type")).toBe("application/pdf");
+      expect(download.headers.get("content-disposition")).toMatch(/^attachment; /);
+      expect(download.headers.get("x-content-type-options")).toBe("nosniff");
+
+      // A file in .runs/ that no event names, a symlink an event names, traversal.
+      const dir = image.slice(0, image.lastIndexOf("/"));
+      await writeFile(join(root, dir, "unnamed.png"), PNG);
+      await symlink(join(root, "casefile.yaml"), join(root, dir, "link.png"));
+      const linked = `${dir}/link.png`;
+      const event = {
+        run_id: "hand",
+        case_id: "TC-0002",
+        status: "failed",
+        executor: "human:dev@acme.example",
+        at: "2026-11-20T10:00:00Z",
+        evidence: [
+          { kind: "image", ref: linked, sha256: "a".repeat(64) },
+          { kind: "file", ref: `${dir}/../../../../../../casefile.yaml`, sha256: "a".repeat(64) },
+        ],
+      };
+      await writeFile(join(root, RUN_FILE, "hand.jsonl"), `${JSON.stringify(event)}\n`);
+      for (const ref of [
+        `${dir}/unnamed.png`,
+        linked,
+        `${dir}/../../../../../../casefile.yaml`,
+        "casefile.yaml",
+        "apps/web/context/tests/.runs/nope/TC-0002/x.png",
+        "",
+      ]) {
+        const refused = await served(ref);
+        expect([ref, refused.status]).toEqual([ref, 404]);
+        expect(await refused.json()).toMatchObject({
+          errors: [{ code: "ui.evidence_not_found" }],
+        });
+      }
+      // Reads need no token; anything but GET and POST is refused.
+      expect((await fetch(`${origin}/api/evidence`, { method: "PUT" })).status).toBe(405);
+    });
+
+    it("removes staged uploads when the server closes", async () => {
+      await repository();
+      await start(await gitIdentity(root));
+      const id = (await upload("shot.png", PNG)).body.value.upload;
+      expect(await staged(id)).toBe(true);
+      await new Promise((done) => writer?.close(done));
+      writer = null;
+      expect(await staged(id)).toBe(false);
+    });
   });
 
   /** What `bin.ts` resolves when nothing overrides git: the repository's own user. */

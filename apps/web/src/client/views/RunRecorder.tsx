@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
 import { FieldErrors } from "@/views/CaseFields";
+import { attachInput, EvidenceFields, pastedFiles, useEvidenceDraft } from "@/views/EvidenceFields";
 import { TicketField, ticketErrors, useTicket } from "@/views/TicketField";
 
 /** The results `run` accepts (`casefile spec run`). */
@@ -22,7 +23,9 @@ type InputName = (typeof INPUTS)[number];
  * and only the optional fields the QA filled. No result is preselected: a
  * result is something that happened, not a default. The milestone is one of
  * the project's open ones or none (#166): never typed, so a typo cannot split
- * one. casefile runs nothing.
+ * one. Evidence (#204, ADR run-evidence-files §6): files dropped, picked or
+ * pasted upload at once and go as `attach: [{ upload }]` with the links.
+ * casefile runs nothing.
  */
 export function RunRecorder({
   caseRef,
@@ -43,13 +46,25 @@ export function RunRecorder({
   const [errors, setErrors] = useState<CasefileError[]>([]);
   const [saving, setSaving] = useState(false);
   const ticket = useTicket();
+  const evidence = useEvidenceDraft();
+  /** Which file or link each `attach.<i>` of the last call was: its errors show under it. */
+  const [owners, setOwners] = useState<number[]>([]);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (status === "") {
-      setErrors([{ code: "ui.required", field: "status", message: "Choose what happened." }]);
+    const blocked = evidence.blocked();
+    if (status === "" || blocked !== null) {
+      setErrors([
+        ...(status === ""
+          ? [{ code: "ui.required", field: "status", message: "Choose what happened." }]
+          : []),
+        ...(blocked === null ? [] : [blocked]),
+      ]);
       return;
     }
+    const attachments = evidence.attachments();
+    const keys = attachments.map((a) => a.key);
+    setOwners(keys);
     const filled = Object.fromEntries(
       Object.entries(text)
         // A note keeps its lines; only the blank edges go.
@@ -61,16 +76,27 @@ export function RunRecorder({
       ref: caseRef,
       status,
       ...filled,
+      ...(attachments.length === 0 ? {} : { attach: attachInput(attachments) }),
       ...ticket.input(),
     });
     setSaving(false);
     if (result.ok) onRecorded(result.value);
-    else setErrors(result.errors);
+    else {
+      setErrors(result.errors);
+      evidence.refused(keys, result.errors);
+    }
   };
 
   const at = (name: InputName) => errors.filter((e) => e.field === name);
+  /** The entry `attach.<i>` (or `attach.<i>.label`) names, by its key; `undefined` for any other error. */
+  const ownerOf = (error: CasefileError) => {
+    const index = /^attach\.(\d+)(?:\.|$)/.exec(error.field ?? "")?.[1];
+    return index === undefined ? undefined : owners[Number(index)];
+  };
   const placed = ticketErrors(errors);
-  const rest = placed.rest.filter((e) => !INPUTS.includes(e.field as InputName));
+  const rest = placed.rest.filter(
+    (e) => !INPUTS.includes(e.field as InputName) && ownerOf(e) === undefined,
+  );
   const invalid = (name: InputName) => at(name).length > 0 || undefined;
   const line = (name: "env" | "build", label: string, hint: string) => (
     <Field data-invalid={invalid(name)}>
@@ -87,7 +113,18 @@ export function RunRecorder({
   );
 
   return (
-    <form onSubmit={submit} aria-label="Record a result" className="flex flex-col gap-4">
+    <form
+      onSubmit={submit}
+      // An image pasted anywhere in the form is evidence; pasted text stays text.
+      onPaste={(event) => {
+        const files = pastedFiles(event);
+        if (files.length === 0) return;
+        event.preventDefault();
+        evidence.addFiles(files);
+      }}
+      aria-label="Record a result"
+      className="flex flex-col gap-4"
+    >
       {rest.length === 0 ? null : <ErrorList errors={rest} />}
       <FieldGroup>
         <Field data-invalid={invalid("status")}>
@@ -164,6 +201,10 @@ export function RunRecorder({
             <FieldErrors errors={at("milestone")} />
           </Field>
         </div>
+        <EvidenceFields
+          draft={evidence}
+          errorsOf={(key) => errors.filter((e) => ownerOf(e) === key)}
+        />
         <TicketField ticket={ticket} errors={placed.ticket} />
       </FieldGroup>
       <div className="flex flex-wrap items-center gap-2">

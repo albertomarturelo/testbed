@@ -4,7 +4,25 @@ import { lstat } from "node:fs/promises";
 import { join } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { isCheckedEvidence, NOT_A_FILE } from "../operations/evidence.js";
+import type { Evidence } from "../schema/index.js";
 import type { LoadedWorkspace } from "./workspace.js";
+
+/**
+ * The stored evidence entry a run event names under `ref` (ADR run-evidence-files
+ * §7): a file `run` stored (`image`, `video`, `file`) inside a `.runs/<run-id>/`
+ * directory of the event's own project. `null` when no event does: the viewer
+ * serves only what a run event names. Pure: reads nothing.
+ */
+export function namedStoredEvidence(workspace: LoadedWorkspace, ref: string): Evidence | null {
+  for (const loaded of workspace.projects) {
+    for (const { event } of loaded.runs) {
+      for (const entry of event.evidence ?? []) {
+        if (entry.ref === ref && isCheckedEvidence(entry, loaded.path)) return entry;
+      }
+    }
+  }
+  return null;
+}
 
 /**
  * Filesystem adapter for `validate`: the SHA-256 of every stored evidence file

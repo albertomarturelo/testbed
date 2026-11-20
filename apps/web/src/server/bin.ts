@@ -60,6 +60,13 @@ const server = createUiServer({ root, clientDir: CLIENT_DIR, identity });
 server.on("error", (error: NodeJS.ErrnoException) => {
   fatal(error.code === "EADDRINUSE" ? `port ${port} is in use: pass --port <n>` : error.message);
 });
+// Ctrl-C closes the server, so the uploads it staged go with it (ADR run-evidence-files §6).
+for (const signal of ["SIGINT", "SIGTERM"] as const) {
+  process.once(signal, () => {
+    server.close(() => process.exit(0));
+    server.closeAllConnections();
+  });
+}
 server.listen(port, "127.0.0.1", () => {
   const address = server.address();
   const actual = typeof address === "object" && address !== null ? address.port : port;
