@@ -306,6 +306,7 @@ describe("App: milestones (#166)", () => {
       scope: "state = active",
       build: null,
       opened: null,
+      edited: [],
       closed: null,
       totals: { in_scope: 1, executed: 0, passed: 0, failed: 0, blocked: 0, not_run: 1 },
       gates: null,

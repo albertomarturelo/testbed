@@ -284,6 +284,11 @@ export function EvidenceSections({
     ["Scope", d.scope],
     ["Build", d.build ?? "—"],
     ["Opened", stamp(d.opened, "—")],
+    // One row per edit, as the file has them (#213); none when never edited.
+    ...d.edited.map((e): [string, string] => [
+      "Edited",
+      `${stamp(e, "—")}: ${e.fields.join(", ")}`,
+    ]),
     ["Closed", stamp(d.closed, "not closed: a report, not frozen evidence")],
   ];
   return (
@@ -296,8 +301,10 @@ export function EvidenceSections({
           </Badge>
         </div>
         <dl className="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1 text-sm">
-          {fields.map(([label, value]) => (
-            <div key={label} className="contents">
+          {fields.map(([label, value], i) => (
+            // Labels repeat for edits; the rows never reorder.
+            // biome-ignore lint/suspicious/noArrayIndexKey: a fixed list built in order above
+            <div key={`${label}-${i}`} className="contents">
               <dt className="text-muted-foreground">{label}</dt>
               <dd className={cn("break-words", label === "Scope" && "font-mono text-xs")}>
                 {value}

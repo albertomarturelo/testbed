@@ -162,6 +162,8 @@ export type EvidenceDocument = {
   scope: string;
   build: string | null;
   opened: { at: string; by: string } | null;
+  /** Each `milestone edit`, oldest first (#213); empty when never edited, or frozen before #213. */
+  edited: { at: string; by: string; fields: string[] }[];
   closed: { at: string; by: string } | null;
   totals: EvidenceTotals;
   /** `null` when the project has no release policy. */
