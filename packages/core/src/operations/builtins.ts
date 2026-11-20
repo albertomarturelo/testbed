@@ -16,6 +16,7 @@ import type { Operation } from "./operation.js";
 import { overviewOperation } from "./overview.js";
 import { projectAddOperation } from "./project-add.js";
 import { queryOperation } from "./query.js";
+import { reportOperation } from "./report.js";
 import { resolveOperation } from "./resolve.js";
 import { reviewOperation } from "./review.js";
 import { runOperation } from "./run.js";
@@ -31,6 +32,7 @@ export const builtinOperations: readonly Operation[] = [
   queryOperation,
   idNextOperation,
   overviewOperation,
+  reportOperation,
   runsOperation,
   coverOperation,
   reviewOperation,

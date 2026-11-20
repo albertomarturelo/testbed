@@ -83,6 +83,15 @@ describe("renderValue", () => {
     );
   });
 
+  it("prints a `markdown` output alone and as-is, without its final newline (#115)", () => {
+    const markdown = "# casefile report\n\n| Feature | Cases |\n|---|--:|\n| login | 2 |\n";
+    expect(renderValue({ markdown, projects: [{ name: "web", cases: 2 }], left_out: 0 })).toBe(
+      markdown.slice(0, -1),
+    );
+    // Not text: an ordinary field.
+    expect(renderValue({ markdown: 3 })).toBe("markdown: 3");
+  });
+
   it("prints a non-object value as is", () => {
     expect(renderValue("text")).toBe("text");
     expect(renderValue([1, 2])).toBe("[1,2]");
