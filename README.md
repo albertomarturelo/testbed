@@ -157,7 +157,7 @@ already installed. Extensions are not in the tarball and still need npm.
 `0.2.0` changed what casefile commits and how executions are grouped:
 
 1. **Pins.** Set `@casefile/cli` and `@casefile/web` to the new version
-   (`0.2.3`) in `.casefile/package.json`, delete `.casefile/node_modules` and
+   (`0.3.0`) in `.casefile/package.json`, delete `.casefile/node_modules` and
    install again (`npm install --prefix .casefile --ignore-scripts`, or unpack
    that version's tarball).
 2. **Commit subjects.** casefile's commits now read like the rest of the
@@ -183,6 +183,30 @@ Markdown in the viewer, and `casefile init` says whether any skill is stale.
 From `0.2.1` to `0.2.2`, step 1 and then `init --skills-into` again: it adds
 the skill `qa-dashboard` and no other skill's text changed. From `0.2.2` to
 `0.2.3` only step 1 applies: only how casefile is published changed.
+
+### Upgrading from `0.2.x` to `0.3.0`
+
+Steps 1 and 4 above: `init` lists `casefile-setup` and `qa-dashboard` as
+stale. Nothing needs migrating: run files and milestone files written by
+`0.2.x` stay valid, and an `evidence.md` frozen by `0.2.x` prints as before.
+`0.3.0` writes fields that `0.2.x` refuses, so every clone needs `0.3.0`
+once one of them uses what follows:
+
+- **Evidence.** `casefile run --evidence <file> --link <url>`, and *Record a
+  result* in the viewer, copy files to
+  `context/tests/.runs/<run-id>/<case-id>/` and record their `sha256` and an
+  optional `label` in the event. They go in the run file's commit; `validate`
+  reports one that is missing or changed. An optional `evidence` section of
+  `casefile.yaml` sets the limits (`max_file_mb`, default 10, and
+  `extensions`).
+- **`milestone edit`** changes an open milestone's title, due date, release or
+  scope, and appends who changed what to its `edited` list.
+- **`evidence.md`** frozen by `milestone close` gains a *Requirements* section,
+  an *Attempts* column and an *Edited* row per edit; `milestone report` on a
+  closed milestone also returns the commit that froze it and its signature.
+- **Commit advice** (`next`) now reads `git add -- <files>`, then
+  `git commit -F <message> -- <files>`, from the workspace root, so a new file
+  commits too.
 
 ### From source
 
@@ -246,7 +270,7 @@ repository (the toolchain `init` pinned); the skills already call it that way.
 7. **Ask for a report**: the evidence of a milestone ("the evidence of
    web-2.1.0") is `casefile milestone report <slug>`; the agent gives it to
    you and the milestone's page in the viewer prints it to PDF (*Printable
-   evidence*). A summary of the cases to share (after `0.2.3`) is `casefile
+   evidence*). A summary of the cases to share (from `0.3.0`) is `casefile
    report`: per feature its cases, drafts, P0 and automation, the drafts
    awaiting review, the cases whose latest run failed and what `validate`
    finds, as Markdown. In a workflow it goes to the job summary
@@ -267,9 +291,9 @@ Every command has `--help`, `--json` for scripts and agents, and a SPEC:
 | `casefile validate` | Checks the whole workspace; lists every problem with how to fix it |
 | `casefile cover` | Writes the cases the agent proposes for a feature, as drafts |
 | `casefile review` | Edits, approves or retires one case, for the agent or the QA |
-| `casefile run` | Records the result of a case someone executed by hand; casefile runs nothing |
+| `casefile run` | Records the result of a case someone executed by hand, with evidence files and links (from `0.3.0`); casefile runs nothing |
 | `casefile milestone open` | Declares a milestone (a release to certify, a sprint regression, a UAT round) that executions name with `--milestone` |
-| `casefile milestone edit` | Changes an open milestone's title, due date, release or scope (a closed one is frozen), recording who changed what |
+| `casefile milestone edit` | Changes an open milestone's title, due date, release or scope (a closed one is frozen), recording who changed what (from `0.3.0`) |
 | `casefile milestone list` | Every milestone with its progress (executed, passed) and red gates; `--open` for the ones an execution can name |
 | `casefile milestone report` | The evidence of a milestone: totals, gate verdicts, the latest result of each case and the cases not executed |
 | `casefile milestone close` | Freezes that evidence in `context/milestones/<slug>/evidence.md` and closes the milestone, in one commit |
@@ -280,7 +304,7 @@ Every command has `--help`, `--json` for scripts and agents, and a SPEC:
 | `casefile dashboard remove` | Deletes a dashboard and returns the commit of that deletion (from `0.2.2`) |
 | `casefile ingest junit` | Turns a JUnit report into run events matched by `automation.ref` |
 | `casefile overview` | Every project with its cases, automation status and last run |
-| `casefile report` | A Markdown summary per feature (cases, drafts, P0, automation, failed), the drafts awaiting review and the failed cases, for a job summary or a PR comment; `--json` adds the counts (after `0.2.3`) |
+| `casefile report` | A Markdown summary per feature (cases, drafts, P0, automation, failed), the drafts awaiting review and the failed cases, for a job summary or a PR comment; `--json` adds the counts (from `0.3.0`) |
 | `casefile runs` | One case's run events, newest first, with why each one failed |
 | `casefile query` | Lists the cases a query selects (`priority = P1 and state = draft`) |
 | `casefile resolve` | Shows a case after inheritance, with where each value came from, and its Markdown body |
@@ -314,15 +338,15 @@ The reasons behind each one are in [docs/decisions](docs/decisions/_index.md).
 
 ## Today / Next
 
-| Today (`0.2.3`) | Next (ranked by the [authoring loop](docs/decisions/2026-10-19-authoring-loop-first.md)) |
+| Today (`0.3.0`) | Next (ranked by the [authoring loop](docs/decisions/2026-10-19-authoring-loop-first.md)) |
 |---|---|
-| `init`, `project add`, `validate`, `cover`, `review` (edit, approve, retire a case), `run` (record a result by hand), `milestone open`, `list`, `report` and `close`, `gates`, `overview`, `runs`, `query`, `resolve`, `id next`, `whoami`, `spec` | |
-| Milestones group the executions of a release, a sprint regression or a UAT round; closing one freezes its evidence in `evidence.md`, in a commit that the repository signs when it signs commits ([decided](docs/decisions/2026-11-12-milestones-group-executions.md)) | Fail a CI step on red gates (#171), a Markdown summary for workflows and PRs (#115) |
+| `init`, `project add`, `validate`, `cover`, `review` (edit, approve, retire a case), `run` (record a result by hand, with evidence files and links), `milestone open`, `edit`, `list`, `report` and `close`, `gates`, `overview`, `report` (a Markdown summary), `runs`, `query`, `resolve`, `id next`, `whoami`, `spec` | |
+| Milestones group the executions of a release, a sprint regression or a UAT round; closing one freezes its evidence in `evidence.md`, in a commit that the repository signs when it signs commits ([decided](docs/decisions/2026-11-12-milestones-group-executions.md)); the evidence traces requirements, counts attempts, lists the milestone's edits, and names the commit that froze it with its signature | Fail a CI step on red gates (#171) |
 | casefile's commits follow the repository's conventions: a subject template in `casefile.yaml`, Conventional by default, with a ticket key when the repository asks, and the `Agent:` trailer optional ([decided](docs/decisions/2026-11-12-commit-shape-follows-host-repo.md)) | |
 | Skills `casefile-setup`, `qa-bootstrap` (a project's feature tree and first drafts from its code), `qa-cover` and `qa-review` (change, approve or retire cases from the chat), and `qa-dashboard` (a dashboard from a sentence); `init` says which skills an upgraded repository has stale, how to replace them, and which skill to run next | |
-| Local UI (`casefile ui`, installed with the CLI): projects, feature tree with coverage, cases that read as documents, each case's runs and why they failed; the QA creates a case, edits, approves and retires it, and records a manual result into a milestone, with the case open in a sheet over the list; a Milestones view with progress, open and close, and evidence to print or save as PDF; case bodies rendered as Markdown ([decided](docs/decisions/2026-10-19-human-writes-through-operations.md), [Markdown](docs/decisions/2026-11-13-case-body-markdown.md)) | Live reload (#26) |
+| Local UI (`casefile ui`, installed with the CLI): projects, feature tree with coverage, cases that read as documents, each case's runs and why they failed; the QA creates a case, edits, approves and retires it, and records a manual result into a milestone, attaching screenshots, files and links as evidence ([decided](docs/decisions/2026-11-20-run-evidence-files.md)), with the case open in a sheet over the list; a Milestones view with progress, open and close, and evidence to print or save as PDF; case bodies rendered as Markdown ([decided](docs/decisions/2026-10-19-human-writes-through-operations.md), [Markdown](docs/decisions/2026-11-13-case-body-markdown.md)) | Live reload (#26) |
 | `@casefile/cli`, `@casefile/web` (the viewer, [decided](docs/decisions/2026-11-09-casefile-ui-command.md)) and `@casefile/core` on npm, published by CI with provenance ([release process](docs/decisions/2026-10-20-release-process.md)); a toolchain tarball on each GitHub release for networks without the npm registry ([decided](docs/decisions/2026-11-09-release-toolchain-tarball.md)) | |
-| `ingest junit` (Playwright, Surefire), keeping failure messages and attachments; `ingest` returns the commit, and `casefile spec ci` has a GitHub Actions template that records shared-branch runs as `casefile-ci` ([decided](docs/decisions/2026-10-17-ci-commits-run-files.md)) | |
+| `ingest junit` (Playwright, Surefire), keeping failure messages and attachments; `ingest` returns the commit, and `casefile spec ci` has a GitHub Actions template that records shared-branch runs as `casefile-ci` ([decided](docs/decisions/2026-10-17-ci-commits-run-files.md)); `casefile report` writes a Markdown summary for a job summary or a PR comment | |
 | Dashboards the agent builds from a JSON description and the repository keeps in `context/dashboards/` ([decided](docs/decisions/2026-11-13-dashboards-as-files.md)): `dashboard save`, `list`, `show` (every widget's numbers) and `remove`, the viewer's Dashboards view that draws them, and the skill `qa-dashboard` that builds one on request | |
 | Release gates per milestone: `casefile gates`, and their verdicts in the evidence | Complements, when the real case needs them: CTRF and Allure, environment-blocked results, MCP, Zephyr and Xray bridges |
 

@@ -51,6 +51,9 @@ ls casefile.yaml .casefile/package.json 2>/dev/null
 - An upgrade from `0.1.x` to `0.2.x` changes commit subjects and replaces
   `--release` with `--milestone`: read the README's *Upgrading from `0.1.x` to
   `0.2.x`* and tell the human the plan first.
+- An upgrade from `0.2.x` to `0.3.0` adds fields `0.2.x` refuses (evidence,
+  milestone edits), so every clone needs `0.3.0`: read the README's
+  *Upgrading from `0.2.x` to `0.3.0`* and tell the human the plan first.
 - From `0.2.1`, `casefile init` lists the kept skills whose text differs from
   the new version's (`stale`) and prints the command that replaces them: ask
   the human before running it, and keep any skill they edited.
