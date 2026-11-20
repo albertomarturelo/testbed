@@ -13,14 +13,14 @@ import { AGENT_AUTHOR, CI_AUTHOR } from "./trailers.js";
 describe("commitAdvice (ADR agent-runs-the-commit §2)", () => {
   it("tells a human to stage the file, then commit only it, as themself", () => {
     expect(commitAdvice("the file", { files: ["a/b.yaml"] })).toBe(
-      "Commit the file as yourself, with commit.message from --json output saved to a file <message>, staging only it: `git add -- a/b.yaml` then `git commit -F <message> -- a/b.yaml`",
+      "Commit the file as yourself, with commit.message from --json output saved to a file <message>, staging only it, from the workspace root: `git add -- a/b.yaml` then `git commit -F <message> -- a/b.yaml`",
     );
   });
 
   it("commits an agent's or CI's files as that author", () => {
     const agent = commitAdvice("both files", { author: AGENT_AUTHOR, files: ["a", "b"] });
     expect(agent).toContain("Commit both files as casefile-agent,");
-    expect(agent).toContain("staging only them:");
+    expect(agent).toContain("staging only them, from the workspace root:");
     expect(agent).toContain(
       "`git add -- a b` then `git -c user.name=casefile-agent -c user.email=casefile-agent@casefile.invalid commit -F <message> -- a b`",
     );
@@ -34,7 +34,9 @@ describe("commitAdvice (ADR agent-runs-the-commit §2)", () => {
       "`git add -- 'a b.png' 'it'\\''s.png' c`",
     );
     const many = commitAdvice("the created files", { files: ["1", "2", "3", "4"] });
-    expect(many).toContain("staging only <files>, the paths of commit.files:");
+    expect(many).toContain(
+      "staging only <files> (each path of commit.files, quoted, as its own argument), from the workspace root:",
+    );
     expect(many).toContain("`git add -- <files>` then `git commit -F <message> -- <files>`");
   });
 });

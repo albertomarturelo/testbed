@@ -67,11 +67,11 @@ never make a case `automated`.
    `Requested-by:` and no `Casefile-Change:`.
    - **agent:** `commit.author` is `casefile-agent <casefile-agent@casefile.invalid>`.
      Commit it as `casefile spec cover` says
-     (`git add -- <files>`, then
+     (from the workspace root, `git add -- <files>`, then
      `git -c user.name=… -c user.email=… commit -F <message> -- <files>`).
    - **human:** there is no `commit.author`; the commit is made with the
-     human's own Git identity (`git add -- <files>`, then
-     `git commit -F <message> -- <files>`), or the one
+     human's own Git identity (from the workspace root, `git add -- <files>`,
+     then `git commit -F <message> -- <files>`), or the one
      casefile resolved for them (ADR identity-override). From the
      CLI, the human runs it; the viewer runs it for them. `commit.files` is
      the run file and the event's evidence files, workspace-relative: the
@@ -139,7 +139,7 @@ order: `evidence`, then `link`, then `attach`.
   "commit": {
     "message": "test(login): record TC-0002 as failed\n\nCasefile-Run: manual-2026-10-21\nExecutor: human:qa@acme.example\n",
     "files": ["apps/web/context/tests/.runs/manual-2026-10-21.jsonl"] },
-  "next": ["Commit the run file as yourself, with commit.message from --json output saved to a file <message>, staging only it: `git add -- apps/web/context/tests/.runs/manual-2026-10-21.jsonl` then `git commit -F <message> -- apps/web/context/tests/.runs/manual-2026-10-21.jsonl`"] }
+  "next": ["Commit the run file as yourself, with commit.message from --json output saved to a file <message>, staging only it, from the workspace root: `git add -- apps/web/context/tests/.runs/manual-2026-10-21.jsonl` then `git commit -F <message> -- apps/web/context/tests/.runs/manual-2026-10-21.jsonl`"] }
 ```
 
 For an agent, `commit` also has `author`. When `appended` is `false`, there is
