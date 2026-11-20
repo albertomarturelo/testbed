@@ -1,6 +1,6 @@
 ---
 name: qa-dashboard
-description: "Build or change a casefile dashboard from what the QA asks in the chat: propose its widgets in words, ask once, write it with one committed `casefile dashboard save`, check it with `casefile dashboard show`. Use when asked for a dashboard, a chart or a summary page of cases or executions, e.g. `/qa-dashboard a dashboard for release 2.0`."
+description: "Build or change a casefile dashboard from what the QA asks in the chat: propose its widgets in words, ask once, write it with one committed `casefile dashboard save`, check it with `casefile dashboard show`. Use when asked for a dashboard, a chart or a summary page of cases or executions, e.g. `/qa-dashboard a dashboard for release 2.0`; also when asked for a report or the evidence of a milestone, which it answers with `casefile milestone report` or `casefile report` instead."
 ---
 
 # qa-dashboard
@@ -12,6 +12,18 @@ through `casefile dashboard save`. You never:
   remove` is for that request only);
 - change another dashboard, a case, a milestone or product code;
 - invent a measure: a widget counts cases or executions, nothing else.
+
+**A report is not a dashboard.** When the human asks for a report to hand
+over, answer it with a read and stop; nothing is written or committed:
+- **Evidence** of a milestone, a release, a sprint or a UAT round (the usual
+  report): `casefile milestone report <slug> --json` (`casefile spec
+  milestone`; `casefile milestone list --json` gives the slugs). Give them its
+  `evidence` Markdown and say where it prints to PDF: run `casefile ui`, open
+  the milestone's page and use *Printable evidence*. It is final only once
+  the milestone is closed; say so while it is open.
+- **A summary of the cases** to share (a PR comment, a job summary):
+  `casefile report [--project <name>] [--query <query>]` (`casefile spec
+  report`) prints it as Markdown.
 
 In these steps, `casefile` means `.casefile/node_modules/.bin/casefile`, or the
 CLI the human installed. Never run `npx casefile`: this tool is the npm

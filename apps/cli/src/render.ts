@@ -6,8 +6,18 @@ type Diagnostic = CasefileError & { severity?: string; hint?: string };
 /** Output field printed last, as advice (ADR cli-generic-host). */
 const NEXT = "next";
 
-/** A successful operation's output as indented `key: value` lines, `next` last. */
+/** Output field that makes the output a document, printed alone and as-is (ADR cli-generic-host §6). */
+const MARKDOWN = "markdown";
+
+/**
+ * A successful operation's output as indented `key: value` lines, `next` last;
+ * an output with a `markdown` text is that text alone, so it can be piped.
+ */
 export function renderValue(value: unknown): string {
+  if (isRecord(value) && typeof value[MARKDOWN] === "string") {
+    // The host ends stdout with a newline; the document's own last one would double it.
+    return value[MARKDOWN].replace(/\r?\n$/, "");
+  }
   const lines: string[] = [];
   const next = isRecord(value) && Array.isArray(value[NEXT]) ? (value[NEXT] as unknown[]) : [];
   if (isRecord(value)) {

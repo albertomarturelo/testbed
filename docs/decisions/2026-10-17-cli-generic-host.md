@@ -3,7 +3,7 @@
 ## Status
 
 Accepted — 2026-10-17 (#11); output rules extended by #45; host inputs
-`identity` and `via` added by #84. Amends the `project add <name> <path>` form of
+`identity` and `via` added by #84; a `markdown` output prints as-is by #115. Amends the `project add <name> <path>` form of
 [agent-driven-setup](2026-10-15-agent-driven-setup.md) and the interactive
 skill prompt of `init`'s SPEC.
 
@@ -64,7 +64,12 @@ the bundled skills), and the actor (human, agent, CI) is invisible to a process.
    prints as `key: |` with its lines indented under it, never in a table cell;
    text ending in a newline counts as multi-line, and that final newline adds no
    line (a case `body`).
-   *(Tables and caret added by #45; multi-line text by #68; final newline by #86.)*
+   An output with a field `markdown: string` is a document: the CLI prints
+   only that text, as-is, with no `key:` and no indent, so it can be piped to
+   a file, `$GITHUB_STEP_SUMMARY` or `gh pr comment`; `--json` still prints the
+   whole result.
+   *(Tables and caret added by #45; multi-line text by #68; final newline by #86;
+   `markdown` by #115.)*
 7. **Exit codes:** 0 `ok`; 1 errors (usage errors included); 2 when an error is
    `workspace.missing`. `validate` returns `ok` with warnings only and fails with
    every finding when one is an error, so ADR agent-driven-setup's 0 / 1 / 2 hold.
@@ -85,6 +90,11 @@ the bundled skills), and the actor (human, agent, CI) is invisible to a process.
   version) — small today, but it is operation knowledge inside an app.
 - **Actor flag (`--as agent`)** — visible in every command line an agent copies;
   an environment variable is set once by the skill or the CI job.
+- **Mark the document field with Zod output metadata**
+  (`.meta({ render: "document" })`, #115) — explicit, but metadata on outputs
+  is a mechanism hosts do not read today (only inputs carry `host`); a field
+  name, like `next`, is a rule the CLI already follows and every host reads
+  the same way.
 - **Interactive prompts** (`init` asking for skill targets) — a generic host
   cannot know when to ask; flags plus `next` advice work for humans and agents.
 

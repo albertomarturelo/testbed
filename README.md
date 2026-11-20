@@ -243,6 +243,20 @@ repository (the toolchain `init` pinned); the skills already call it that way.
    The agent proposes the widgets in words, asks once, saves it with one
    commit and tells you where it is in the viewer's *Dashboards* tab. To
    change it, ask again; nobody edits the file by hand.
+7. **Ask for a report**: the evidence of a milestone ("the evidence of
+   web-2.1.0") is `casefile milestone report <slug>`; the agent gives it to
+   you and the milestone's page in the viewer prints it to PDF (*Printable
+   evidence*). A summary of the cases to share (after `0.2.3`) is `casefile
+   report`: per feature its cases, drafts, P0 and automation, the drafts
+   awaiting review, the cases whose latest run failed and what `validate`
+   finds, as Markdown. In a workflow it goes to the job summary
+   (`casefile spec report` also shows a pull-request comment):
+
+   ```yaml
+   - name: casefile report
+     if: always()
+     run: .casefile/node_modules/.bin/casefile report >> "$GITHUB_STEP_SUMMARY"
+   ```
 
 Every command has `--help`, `--json` for scripts and agents, and a SPEC:
 
@@ -265,6 +279,7 @@ Every command has `--help`, `--json` for scripts and agents, and a SPEC:
 | `casefile dashboard remove` | Deletes a dashboard and returns the commit of that deletion (from `0.2.2`) |
 | `casefile ingest junit` | Turns a JUnit report into run events matched by `automation.ref` |
 | `casefile overview` | Every project with its cases, automation status and last run |
+| `casefile report` | A Markdown summary per feature (cases, drafts, P0, automation, failed), the drafts awaiting review and the failed cases, for a job summary or a PR comment; `--json` adds the counts (after `0.2.3`) |
 | `casefile runs` | One case's run events, newest first, with why each one failed |
 | `casefile query` | Lists the cases a query selects (`priority = P1 and state = draft`) |
 | `casefile resolve` | Shows a case after inheritance, with where each value came from, and its Markdown body |

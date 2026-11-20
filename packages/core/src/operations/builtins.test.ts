@@ -29,6 +29,7 @@ describe("builtinOperations", () => {
       "overview",
       "project-add",
       "query",
+      "report",
       "resolve",
       "review",
       "run",
