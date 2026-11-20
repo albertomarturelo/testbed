@@ -157,7 +157,7 @@ already installed. Extensions are not in the tarball and still need npm.
 `0.2.0` changed what casefile commits and how executions are grouped:
 
 1. **Pins.** Set `@casefile/cli` and `@casefile/web` to the new version
-   (`0.2.2`) in `.casefile/package.json`, delete `.casefile/node_modules` and
+   (`0.2.3`) in `.casefile/package.json`, delete `.casefile/node_modules` and
    install again (`npm install --prefix .casefile --ignore-scripts`, or unpack
    that version's tarball).
 2. **Commit subjects.** casefile's commits now read like the rest of the
@@ -181,7 +181,8 @@ already installed. Extensions are not in the tarball and still need npm.
 From `0.2.0` to `0.2.1` only step 1 applies; case bodies then render as
 Markdown in the viewer, and `casefile init` says whether any skill is stale.
 From `0.2.1` to `0.2.2`, step 1 and then `init --skills-into` again: it adds
-the skill `qa-dashboard` and no other skill's text changed.
+the skill `qa-dashboard` and no other skill's text changed. From `0.2.2` to
+`0.2.3` only step 1 applies: only how casefile is published changed.
 
 ### From source
 
@@ -297,7 +298,7 @@ The reasons behind each one are in [docs/decisions](docs/decisions/_index.md).
 
 ## Today / Next
 
-| Today (`0.2.2`) | Next (ranked by the [authoring loop](docs/decisions/2026-10-19-authoring-loop-first.md)) |
+| Today (`0.2.3`) | Next (ranked by the [authoring loop](docs/decisions/2026-10-19-authoring-loop-first.md)) |
 |---|---|
 | `init`, `project add`, `validate`, `cover`, `review` (edit, approve, retire a case), `run` (record a result by hand), `milestone open`, `list`, `report` and `close`, `gates`, `overview`, `runs`, `query`, `resolve`, `id next`, `whoami`, `spec` | |
 | Milestones group the executions of a release, a sprint regression or a UAT round; closing one freezes its evidence in `evidence.md`, in a commit that the repository signs when it signs commits ([decided](docs/decisions/2026-11-12-milestones-group-executions.md)) | Fail a CI step on red gates (#171), a Markdown summary for workflows and PRs (#115) |
