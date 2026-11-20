@@ -59,7 +59,8 @@ describe("following the advice in a repository (#212)", () => {
     git("add", "-A");
     git("commit", "-q", "-m", "demo");
   });
-  afterEach(() => rm(root, { recursive: true, force: true }));
+  // Git can still be writing in `.git` as the test ends (ENOTEMPTY): retry.
+  afterEach(() => rm(root, { recursive: true, force: true, maxRetries: 3 }));
 
   /** Runs every command the advice names, as printed, with `<message>` a file holding the message. */
   async function follow(advice: string, message: string): Promise<void> {

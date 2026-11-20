@@ -429,9 +429,12 @@ export function parseEvidence(markdown: string): EvidenceDocument | null {
   }
 
   const headRows = tableRows(sections.get("") ?? []);
+  // One value per label; `Edited` repeats, one row per edit, and is read below.
   const head = new Map(
     headRows.flatMap((row) =>
-      row.length === 2 && row[0] !== null ? [[row[0], row[1] ?? null] as const] : [],
+      row.length === 2 && row[0] !== null && row[0] !== EDITED
+        ? [[row[0], row[1] ?? null] as const]
+        : [],
     ),
   );
   const edited: EvidenceEdit[] = [];

@@ -265,6 +265,35 @@ describe("edits after the open (#213)", () => {
     expect(parseEvidence(markdown)?.edited).toEqual([]);
   });
 
+  it("round-trips an awkward who: an agent, a pipe, one and two fields", () => {
+    const value = evidence({
+      milestone: {
+        ...declared.file,
+        opened,
+        edited: [
+          { at: "2026-10-12T14:30:00Z", by: "agent:claude-code@x", change: "c-1", fields: ["due"] },
+          {
+            at: "2026-10-13T09:00:00Z",
+            by: "a|b@acme.example",
+            change: "c-2",
+            fields: ["release", "scope"],
+          },
+        ],
+      },
+    });
+    const markdown = renderEvidence(value);
+    expect(markdown).toContain("| Edited | 2026-10-12T14:30:00Z by agent:claude-code@x: due |");
+    expect(markdown).toContain(
+      "| Edited | 2026-10-13T09:00:00Z by a\\|b@acme.example: release, scope |",
+    );
+    const document = parseEvidence(markdown);
+    expect(document).toEqual(evidenceDocument(value));
+    expect(document?.edited).toEqual([
+      { at: "2026-10-12T14:30:00Z", by: "agent:claude-code@x", fields: ["due"] },
+      { at: "2026-10-13T09:00:00Z", by: "a|b@acme.example", fields: ["release", "scope"] },
+    ]);
+  });
+
   it("gives null for an Edited row it did not write", () => {
     const markdown = renderEvidence(evidence({ milestone: { ...declared.file, opened, edited } }));
     expect(

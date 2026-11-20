@@ -12,6 +12,7 @@ holds: a milestone groups executions, never cases.
 §4 and §6 amended 2026-11-20 (#208): the evidence traces requirements and
 attempts, and the printed page names the commit that froze it.
 §2 amended by #210: `milestone edit` changes an open milestone; a closed one is refused.
+§4 amended by #213: the evidence header lists the milestone's edits.
 
 ## Context
 
@@ -59,6 +60,7 @@ a version.
    then the in-scope cases that name none. casefile only knows the
    requirements cases name, so a requirement no case names cannot be listed.
    Evidence frozen before (no attempts, no `Requirements`) still reads.
+   **Amendment (#213):** the header lists each `edited` entry after the open (when, who, fields); a milestone never edited renders as before.
 5. **Signed when the repository signs.** Close's commit carries
    `Casefile-Milestone: <slug>`; the human's commit uses their Git signing
    setup (`casefile init` recommends SSH signing), so the evidence shows who
