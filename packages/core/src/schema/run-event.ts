@@ -12,6 +12,15 @@ import {
 export const RunStatus = z.enum(["passed", "failed", "blocked", "skipped", "not_run"]);
 export const TriageKind = z.enum(["defect", "test_bug", "known_issue", "flaky", "environment"]);
 
+/** What a person reads for one piece of evidence (ADR run-evidence-files §3). */
+export const EvidenceLabel = z.string().min(1).max(120);
+
+/**
+ * A file or link attached to a result. `run` writes `image`, `video` and `file`
+ * entries with `sha256` and `link` entries without; ingest writes references
+ * (`attachment`). The schema keeps `sha256` optional: `run` and `validate`
+ * apply the per-kind rules (ADR run-evidence-files §3).
+ */
 export const Evidence = z.strictObject({
   kind: z.string().min(1),
   ref: z.string().min(1),
@@ -19,6 +28,7 @@ export const Evidence = z.strictObject({
     .string()
     .regex(/^[a-f0-9]{64}$/)
     .optional(),
+  label: EvidenceLabel.optional(),
 });
 
 export const StepResult = z.strictObject({
@@ -63,6 +73,7 @@ export const RunEvent = z.strictObject({
 });
 
 export type RunEvent = z.infer<typeof RunEvent>;
+export type Evidence = z.infer<typeof Evidence>;
 
 /**
  * The milestone an event belongs to: `milestone`, else the `release` that run

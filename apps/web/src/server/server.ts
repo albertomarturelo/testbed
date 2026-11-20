@@ -163,6 +163,19 @@ async function api(
     fields.filter((f) => f.host !== undefined && f.host !== "project").map((f) => f.name),
   );
   const input = Object.fromEntries(Object.entries(body.value).filter(([k]) => !hostOnly.has(k)));
+  // Only `run` reads files named in its input (`evidence`, `attach[].file`): an
+  // extension's operation may use those field names for something else.
+  if (name === "run" && namesLocalFile(input)) {
+    return [
+      400,
+      fail(
+        error(
+          "ui.local_file",
+          "the page cannot name a file on this machine: evidence files reach the UI as uploads (ADR run-evidence-files §6)",
+        ),
+      ),
+    ];
+  }
   const branch = fields.some((f) => f.host === "branch")
     ? ((await gitBranch(root, session.env)) ?? undefined)
     : undefined;
@@ -237,6 +250,20 @@ function returnedCommit(value: unknown): ReturnedCommit | null {
   const { message, files } = commit as { message?: unknown; files?: unknown };
   const paths = Array.isArray(files) ? files.filter((f) => typeof f === "string") : [];
   return typeof message === "string" && paths.length > 0 ? { message, files: paths } : null;
+}
+
+/**
+ * Whether a request names a path on this machine (`run`'s `evidence`, or a
+ * `file` in `attach`). The page never may: core would copy any file the server
+ * can read into the repository. Uploads (#204) are swapped in by the server.
+ */
+function namesLocalFile(input: Record<string, unknown>): boolean {
+  if (input.evidence !== undefined) return true;
+  const attach = input.attach;
+  return (
+    Array.isArray(attach) &&
+    attach.some((item) => item !== null && typeof item === "object" && "file" in item)
+  );
 }
 
 async function readJson(request: IncomingMessage): Promise<Result<Record<string, unknown>>> {

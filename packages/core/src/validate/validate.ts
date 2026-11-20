@@ -20,6 +20,12 @@ export type ValidationInput = {
   toolchain: Toolchain;
   /** Commons of the installed extensions (`extensionLayers`); resolution needs them. */
   extensionLayers?: readonly CommonsLayer[];
+  /**
+   * From `hashStoredEvidence`: the SHA-256 of each stored evidence file run
+   * events name, `null` when missing, `NOT_A_FILE` when not a regular file.
+   * Absent: stored evidence is not checked.
+   */
+  evidence?: ReadonlyMap<string, string | null>;
 };
 
 /** One `projects` entry of `casefile.yaml` and what the loader read for it. */

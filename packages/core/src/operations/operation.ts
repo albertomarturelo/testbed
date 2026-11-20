@@ -18,6 +18,25 @@ export type OperationContext = {
   exists(path: string): Promise<boolean>;
   /** Writes a file, creating parent directories. */
   writeText(path: string, text: string): Promise<void>;
+  /**
+   * The bytes of a file given by its absolute path, which may lie outside the
+   * workspace (a file `run` attaches as evidence), or `null` when there is no
+   * such file (a relative path is taken from `root`). Never guarded: reading
+   * is not writing.
+   */
+  readBytes(absolutePath: string): Promise<Uint8Array | null>;
+  /**
+   * The size in bytes of a regular file given by its absolute path (a relative
+   * one is taken from `root`), without reading it; `null` when there is no
+   * such path, `"not_a_file"` for a directory, device or other non-regular file.
+   */
+  sizeOf(absolutePath: string): Promise<number | "not_a_file" | null>;
+  /**
+   * Creates a file with these bytes, creating parent directories; guarded like
+   * `writeText`. Create-only: answers `false`, writing nothing, when the file
+   * already exists.
+   */
+  writeBytes(path: string, bytes: Uint8Array): Promise<boolean>;
   /** Deletes a file; guarded like a write. Nothing happens when it does not exist. */
   removeFile(path: string): Promise<void>;
   /** Creates a directory (and parents); allowed when a file inside it could be written. */

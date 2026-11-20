@@ -1,0 +1,5 @@
+version: 1
+projects: []
+evidence:
+  max_file_mb: 5
+  extensions: [png, ".SVG", txt, html]

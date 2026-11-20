@@ -227,6 +227,29 @@ describe("writes (ADR human-writes-through-operations §2–3)", () => {
     expect(await write("overview", {}, {})).toMatchObject({ status: 200, body: { ok: true } });
   });
 
+  it("refuses a page that names a file on this machine as evidence, and writes nothing", async () => {
+    await repository();
+    await start(await gitIdentity(root));
+    const refused = { status: 400, body: { errors: [{ code: "ui.local_file" }] } };
+    expect(
+      await write("run", { ...result, evidence: ["/etc/hosts.txt"] }, fromPage()),
+    ).toMatchObject(refused);
+    expect(
+      await write("run", { ...result, attach: [{ file: "/etc/hosts.txt" }] }, fromPage()),
+    ).toMatchObject(refused);
+    expect(git(root, "status", "--porcelain")).toBe("");
+    // A link names nothing local.
+    const linked = await write(
+      "run",
+      { ...result, attach: [{ url: "https://example.com/bug/1", label: "Bug" }] },
+      fromPage(),
+    );
+    expect(linked.body).toMatchObject({
+      ok: true,
+      value: { event: { evidence: [{ kind: "link", label: "Bug" }] } },
+    });
+  });
+
   it("records a result and commits only the operation's file, as the git user", async () => {
     await repository();
     await start(await gitIdentity(root));

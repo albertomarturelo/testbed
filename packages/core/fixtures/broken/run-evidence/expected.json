@@ -1,0 +1,17 @@
+[
+  {
+    "code": "evidence.missing",
+    "path": "context/tests/.runs/r.jsonl",
+    "field": "evidence.0.ref"
+  },
+  {
+    "code": "evidence.changed",
+    "path": "context/tests/.runs/r.jsonl",
+    "field": "evidence.1.sha256"
+  },
+  {
+    "code": "evidence.changed",
+    "path": "context/tests/.runs/r.jsonl",
+    "field": "evidence.2.sha256"
+  }
+]
