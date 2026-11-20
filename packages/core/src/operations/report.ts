@@ -199,7 +199,7 @@ function automationKind(
 }
 
 /** Parents before children, siblings by name: `auth`, `auth/login`, `catalog`. */
-function compareTree(a: string, b: string): number {
+export function compareTree(a: string, b: string): number {
   const x = a.split("/");
   const y = b.split("/");
   for (let i = 0; i < Math.min(x.length, y.length); i++) {
@@ -310,23 +310,23 @@ const COLUMNS: { key: keyof FeatureCounts; title: string; runs?: true }[] = [
 ];
 
 function projectBlocks(project: ProjectReport): Block[] {
+  const heading = [`## ${text(project.name)}`, ""];
+  // No case selected: a table of headers only would render empty.
+  if (project.features.length === 0) {
+    return [{ head: [...heading, "No cases.", ""], rows: [], more: () => "", tail: [] }];
+  }
   const columns = COLUMNS.filter((c) => project.hasRuns || c.runs !== true);
   const row = (name: string, counts: FeatureCounts) =>
     `| ${name} | ${columns.map((c) => counts[c.key]).join(" | ")} |`;
   const table: Block = {
     head: [
-      `## ${text(project.name)}`,
-      "",
+      ...heading,
       `| Feature | ${columns.map((c) => c.title).join(" | ")} |`,
       `|---|${columns.map(() => "--:").join("|")}|`,
     ],
     rows: project.features.map((f) => row(text(f.feature || "(root)"), f)),
     more: (n) => `| _${plural(n, "more feature")} not shown_ |${" |".repeat(columns.length)}`,
-    tail: [
-      ...(project.features.length > 1 ? [row("**Total**", project.total)] : []),
-      ...(project.features.length === 0 ? ["", "No cases."] : []),
-      "",
-    ],
+    tail: [...(project.features.length > 1 ? [row("**Total**", project.total)] : []), ""],
   };
   const list = (title: string, items: readonly ReportItem[]): Block => ({
     head: [`### ${title} (${items.length})`, ""],

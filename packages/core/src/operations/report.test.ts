@@ -12,7 +12,13 @@ import {
 } from "../demo.fixture.js";
 import { overviewOperation } from "./overview.js";
 import { createRegistry } from "./registry.js";
-import { type ProjectReport, REPORT_LIMIT, renderReport, reportOperation } from "./report.js";
+import {
+  compareTree,
+  type ProjectReport,
+  REPORT_LIMIT,
+  renderReport,
+  reportOperation,
+} from "./report.js";
 
 const registry = createRegistry();
 registry.register(reportOperation);
@@ -128,6 +134,13 @@ describe("report operation", () => {
     expect(drafts.cases).toMatchObject({ total: DEMO_EXPECTED.states.draft, failed: 0 });
   });
 
+  it("says a project has no cases instead of drawing an empty table", async () => {
+    const value = await report(DEMO_ROOT, { query: "state = nonexistent" });
+    expect(value.cases.total).toBe(0);
+    expect(value.markdown).toContain(`## ${DEMO_EXPECTED.project}\n\nNo cases.\n`);
+    expect(value.markdown).not.toContain("| Feature |");
+  });
+
   it("points at the query when it does not parse", async () => {
     const result = await registry.invoke(
       "report",
@@ -203,5 +216,19 @@ describe("renderReport size cut", () => {
     const { markdown, left_out } = renderReport({ projects: [project(5_000)], findings });
     expect(markdown.length).toBeLessThanOrEqual(REPORT_LIMIT);
     expect(left_out).toBeGreaterThan(0);
+  });
+});
+
+describe("compareTree", () => {
+  it("puts parents before children and orders siblings by name, segment by segment", () => {
+    // A plain string sort would put `auth-legacy` before `auth/login` ('-' < '/').
+    const features = ["checkout/payments", "auth-legacy", "auth/login", "checkout", "auth"];
+    expect([...features].sort(compareTree)).toEqual([
+      "auth",
+      "auth/login",
+      "auth-legacy",
+      "checkout",
+      "checkout/payments",
+    ]);
   });
 });

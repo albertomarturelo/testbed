@@ -49,6 +49,9 @@ The Markdown, per project in `casefile.yaml` order:
 - **Drafts awaiting review**, `ref` and title, when there are any.
 - **Latest run failed**, `ref` and title, when there are any.
 
+A project where no case is selected (none yet, or none the `query` matches)
+says `No cases.` under its heading, with no table.
+
 A project with no run event at all is documentation only: its table has no
 `Automated` and no `Failed` column, it has no failed list, and its `failed`
 count is `null`. Nothing says "never ran"; a case with no run is complete (ADR
