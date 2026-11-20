@@ -1,17 +1,40 @@
-import { posix } from "node:path";
+import { join, posix, resolve } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { z } from "zod";
-import { fail, ok } from "../errors.js";
+import { type CasefileError, fail, ok, type Result } from "../errors.js";
 import { CommitInput, commitSubject } from "../git/subject.js";
 import { AGENT_AUTHOR, runCommitMessage } from "../git/trailers.js";
 import { boundNote } from "../ingest/note.js";
 import { TESTS_DIR } from "../load/paths.js";
 import { loadWorkspace } from "../load/workspace.js";
-import { FileSafeId, RunEvent, RunStatus, withMilestone } from "../schema/index.js";
+import {
+  type Evidence,
+  type EvidenceConfig,
+  EvidenceLabel,
+  FileSafeId,
+  RunEvent,
+  RunStatus,
+  withMilestone,
+} from "../schema/index.js";
 import { WriteCommit, WriterInput } from "./case-file.js";
 import { CaseRef, findCase } from "./cases.js";
+import {
+  type EvidenceEntry,
+  evidenceEntryProblems,
+  evidenceKind,
+  evidenceLimits,
+  extensionOf,
+  sha256Hex,
+  storedEvidencePath,
+} from "./evidence.js";
 import { MilestoneInput, namedMilestone, RELEASE_DEPRECATED } from "./milestones.js";
-import { defineOperation } from "./operation.js";
+import { defineOperation, type OperationContext } from "./operation.js";
+
+/** One labelled file or link, for the viewer and agents (ADR run-evidence-files §5). */
+const Attachment = z.union([
+  z.strictObject({ file: z.string().min(1), label: EvidenceLabel.optional() }),
+  z.strictObject({ url: z.string().min(1), label: EvidenceLabel.optional() }),
+]);
 
 const RunInput = z.strictObject({
   /** The case, looked up like `casefile resolve`. */
@@ -20,6 +43,12 @@ const RunInput = z.strictObject({
   status: RunStatus.exclude(["not_run"]),
   /** Why it ended so; cut to `NOTE_MAX` (ADR run-event-note). */
   note: z.string().min(1).optional(),
+  /** Files to attach, copied into `.runs/<run>/<case>/` (ADR run-evidence-files). */
+  evidence: z.array(z.string().min(1)).optional(),
+  /** Links to attach, kept as URLs and never fetched. */
+  link: z.array(z.string().min(1)).optional(),
+  /** Files and links with a label: `[{ file, label? } | { url, label? }]`, after `evidence` and `link`. */
+  attach: z.array(Attachment).optional(),
   env: z.string().min(1).optional(),
   build: z.string().min(1).optional(),
   ...MilestoneInput,
@@ -29,6 +58,8 @@ const RunInput = z.strictObject({
   agent: WriterInput.agent,
   ...CommitInput,
   project: z.string().min(1).optional().meta({ host: "project" }),
+  /** Where relative `file` paths resolve: the directory the user invoked the host from. */
+  cwd: z.string().min(1).optional().meta({ host: "cwd" }),
 });
 
 const RunOutput = z.strictObject({
@@ -54,7 +85,7 @@ export const runOperation = defineOperation({
   input: RunInput,
   output: RunOutput,
   actor: ["human", "agent"],
-  writes: [`**/${TESTS_DIR}/.runs/*.jsonl`],
+  writes: [`**/${TESTS_DIR}/.runs/*.jsonl`, `**/${TESTS_DIR}/.runs/*/*/*`],
   spec: "specs/run.md",
   subject: "ref",
   async run(input, context) {
@@ -93,10 +124,22 @@ export const runOperation = defineOperation({
 
     const at = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
     const run = input.run ?? `manual-${at.slice(0, 10)}`;
+    const entries: EvidenceEntry[] = [
+      ...(input.evidence ?? []).map((file, i) => ({ field: `evidence.${i}`, file })),
+      ...(input.link ?? []).map((url, i) => ({ field: `link.${i}`, url })),
+      ...(input.attach ?? []).map((entry, i) => ({ field: `attach.${i}`, ...entry })),
+    ];
+    const attached = await prepareEvidence(entries, context, {
+      from: input.cwd ?? context.root,
+      config: workspace.config.evidence,
+      dir: { project: project.path, run, caseId: loaded.file.id },
+    });
+    if (!attached.ok) return attached;
     const optional = {
       env: input.env,
       build: input.build,
       milestone: milestone.value,
+      evidence: entries.length === 0 ? undefined : attached.value.evidence,
       note: boundNote(input.note),
     };
     // Absent fields are left out, not `undefined`: the event equals its line in the file.
@@ -134,21 +177,27 @@ export const runOperation = defineOperation({
       input,
     );
     if (!subject.ok) return subject;
+    // Evidence first: the line never names a file that is not there.
+    for (const file of attached.value.writes) await context.writeBytes(file.path, file.bytes);
     const separator = existing === "" || existing.endsWith("\n") ? "" : "\n";
     await context.writeText(path, `${existing}${separator}${JSON.stringify(event)}\n`);
 
     const message = runCommitMessage(subject.value, { run, executor });
+    const files = [path, ...attached.value.files];
+    const what = files.length > 1 ? "the run file and its evidence files" : "the run file";
+    const only = files.length > 1 ? "only commit.files" : "only it";
+    const pathspec = files.length > 1 ? "<files>" : "<path>";
     return ok({
       ref,
       run,
       path,
       appended: true,
       event,
-      commit: agent ? { author: AGENT_AUTHOR, message, files: [path] } : { message, files: [path] },
+      commit: agent ? { author: AGENT_AUTHOR, message, files } : { message, files },
       next: [
         agent
-          ? "Commit the run file with commit.author and commit.message taken from --json output, staging only it (`git commit -F <message> -- <path>`)"
-          : "Commit the run file with commit.message taken from --json output, as yourself, staging only it (`git commit -F <message> -- <path>`)",
+          ? `Commit ${what} with commit.author and commit.message taken from --json output, staging ${only} (\`git commit -F <message> -- ${pathspec}\`)`
+          : `Commit ${what} with commit.message taken from --json output, as yourself, staging ${only} (\`git commit -F <message> -- ${pathspec}\`)`,
         ...(input.release === undefined ? [] : [RELEASE_DEPRECATED]),
       ],
     });
@@ -175,4 +224,85 @@ function isRetry(existing: string, event: RunEvent): boolean {
   const { at: _, ...previous } = withMilestone(last as Record<string, unknown>);
   const { at: __, ...current } = event;
   return isDeepStrictEqual(previous, current);
+}
+
+type PreparedEvidence = {
+  /** The event's `evidence`, in input order. */
+  evidence: Evidence[];
+  /** Files to write: each stored path once, only when it is not there yet. */
+  writes: { path: string; bytes: Uint8Array }[];
+  /** Every stored path the event names, once: the commit carries them. */
+  files: string[];
+};
+
+/**
+ * Checks every entry against the workspace's limits, reads and hashes the
+ * files, and plans where they go (ADR run-evidence-files §2–4). Writes nothing:
+ * any problem fails the call before the first write.
+ */
+async function prepareEvidence(
+  entries: readonly EvidenceEntry[],
+  context: OperationContext,
+  at: {
+    from: string;
+    config: EvidenceConfig | undefined;
+    dir: { project: string; run: string; caseId: string };
+  },
+): Promise<Result<PreparedEvidence>> {
+  const prepared: PreparedEvidence = { evidence: [], writes: [], files: [] };
+  if (entries.length === 0) return ok(prepared);
+  const limits = evidenceLimits(at.config);
+  const problems = evidenceEntryProblems(entries, limits.extensions);
+  if (problems.length > 0) return fail(...problems);
+
+  const errors: CasefileError[] = [];
+  const seen = new Set<string>();
+  for (const entry of entries) {
+    const label = entry.label === undefined ? {} : { label: entry.label };
+    if ("url" in entry) {
+      prepared.evidence.push({ kind: "link", ref: entry.url, ...label });
+      continue;
+    }
+    const source = resolve(at.from, entry.file);
+    const bytes = await context.readBytes(source);
+    if (bytes === null) {
+      errors.push({
+        code: "evidence.not_found",
+        field: entry.field,
+        message: `${entry.file}: no such file (looked for ${source})`,
+      });
+      continue;
+    }
+    if (bytes.length > limits.maxBytes) {
+      errors.push({
+        code: "evidence.too_large",
+        field: entry.field,
+        message: `${entry.file} is ${megabytes(bytes.length)} MB; evidence files are at most ${megabytes(limits.maxBytes)} MB (evidence.max_file_mb in casefile.yaml); attach a long video as a link`,
+      });
+      continue;
+    }
+    const sha256 = sha256Hex(bytes);
+    const { project, run, caseId } = at.dir;
+    const ref = storedEvidencePath(project, run, caseId, sha256, source);
+    prepared.evidence.push({ kind: evidenceKind(extensionOf(source)), ref, sha256, ...label });
+    if (seen.has(ref)) continue;
+    seen.add(ref);
+    prepared.files.push(ref);
+    const existing = await context.readBytes(join(context.root, ref));
+    if (existing === null) prepared.writes.push({ path: ref, bytes });
+    else if (sha256Hex(existing) !== sha256) {
+      // A file is never overwritten (ADR run-evidence-files §2).
+      errors.push({
+        code: "evidence.conflict",
+        field: entry.field,
+        path: ref,
+        message: `${ref} already exists with other content; it is never overwritten (casefile validate reports it as evidence.changed)`,
+      });
+    }
+  }
+  return errors.length > 0 ? fail(...errors) : ok(prepared);
+}
+
+function megabytes(bytes: number): string {
+  return (bytes / (1024 * 1024)).toFixed(1).replace(/\.0$/, "");
 }

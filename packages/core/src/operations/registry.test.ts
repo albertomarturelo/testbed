@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
+import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -280,6 +280,45 @@ describe("invoke", () => {
     );
     const outside = await registry.invoke("reader", { path: "../x" }, { root, actor: "ci" });
     expect(outside.ok || outside.errors[0]?.code).toBe("path.outside_workspace");
+  });
+
+  it("reads bytes from any absolute path and writes them only inside `writes`", async () => {
+    const outside = await mkdtemp(join(tmpdir(), "casefile-src-"));
+    await writeFile(join(outside, "shot.png"), new Uint8Array([1, 2, 3]));
+    const copier = defineOperation({
+      ...writeFiles,
+      name: "copier",
+      async run({ paths }, context) {
+        const bytes = await context.readBytes(join(outside, "shot.png"));
+        if ((await context.readBytes(join(outside, "gone.png"))) !== null) throw new Error("gone");
+        if ((await context.readBytes(outside)) !== null) throw new Error("a directory");
+        for (const path of paths) await context.writeBytes(path, bytes ?? new Uint8Array());
+        return ok({ written: paths.length });
+      },
+    });
+    const registry = registryWith(copier);
+    try {
+      const inside = await registry.invoke(
+        "copier",
+        { paths: ["context/tests/.runs/r/TC-0001/shot.png"] },
+        { root, actor: "agent" },
+      );
+      expect(inside).toEqual(ok({ written: 1 }));
+      expect([...(await readFile(join(root, "context/tests/.runs/r/TC-0001/shot.png")))]).toEqual([
+        1, 2, 3,
+      ]);
+      const refused = await registry.invoke(
+        "copier",
+        { paths: ["README.md"] },
+        { root, actor: "agent" },
+      );
+      expect(refused.ok || refused.errors.map((e) => [e.code, e.path])).toEqual([
+        ["write.not_allowed", "README.md"],
+      ]);
+      expect(await exists("README.md")).toBe(false);
+    } finally {
+      await rm(outside, { recursive: true, force: true });
+    }
   });
 
   it("fails even when the operation swallows a refused write", async () => {

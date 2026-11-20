@@ -183,6 +183,23 @@
         }
       },
       "additionalProperties": false
+    },
+    "evidence": {
+      "type": "object",
+      "properties": {
+        "max_file_mb": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "extensions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "additionalProperties": false
     }
   },
   "required": [

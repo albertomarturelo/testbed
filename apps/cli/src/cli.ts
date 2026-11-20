@@ -168,6 +168,7 @@ export async function run(
     const value = await hostValue(field.host as HostInput, {
       root,
       cwd,
+      invoked: environment.cwd,
       host,
       project: globals.project,
       operation: command.operation.name,
@@ -187,7 +188,10 @@ async function hostValue(
   name: HostInput,
   at: {
     root: string | null;
+    /** The directory `--cwd` names (the workspace is found from it). */
     cwd: string;
+    /** The shell's directory: relative paths the user typed resolve against it. */
+    invoked: string;
     host: HostRegistry;
     project: string | undefined;
     operation: string;
@@ -214,6 +218,8 @@ async function hostValue(
     case "branch":
       // None on a detached HEAD: the ticket then comes from --ticket or the default.
       return ok((await gitBranch(at.root ?? at.cwd, at.env)) ?? undefined);
+    case "cwd":
+      return ok(at.invoked);
   }
 }
 

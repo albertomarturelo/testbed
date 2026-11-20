@@ -1,10 +1,11 @@
-import { cp, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { appendFile, cp, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { DEMO_MONOREPO_ROOT } from "../demo.fixture.js";
 import { AGENT_AUTHOR, runCommitMessage } from "../git/trailers.js";
 import { NOTE_MAX } from "../schema/index.js";
+import { sha256Hex } from "./evidence.js";
 import type { Actor } from "./operation.js";
 import { createRegistry } from "./registry.js";
 import { runOperation } from "./run.js";
@@ -20,11 +21,17 @@ registry.register(validateOperation);
 const RUNS = "apps/web/context/tests/.runs";
 
 let root = "";
+/** Where the files to attach are: outside the workspace, like a QA's Downloads. */
+let shots = "";
 beforeEach(async () => {
   root = await mkdtemp(join(tmpdir(), "casefile-run-"));
+  shots = await mkdtemp(join(tmpdir(), "casefile-shots-"));
   await cp(DEMO_MONOREPO_ROOT, root, { recursive: true });
 });
-afterEach(() => rm(root, { recursive: true, force: true }));
+afterEach(async () => {
+  await rm(root, { recursive: true, force: true });
+  await rm(shots, { recursive: true, force: true });
+});
 
 type Recorded = {
   ref: string;
@@ -190,5 +197,184 @@ describe("run refuses, writing nothing", () => {
   it("an unknown or ambiguous case", async () => {
     await refused({ status: "passed", ref: "TC-0099" }, "case.unknown");
     await refused({ status: "passed", ref: "TC-0001", project: undefined }, "case.ambiguous");
+  });
+});
+
+describe("run attaches evidence (ADR run-evidence-files)", () => {
+  const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
+  const shot = async (name: string, bytes: Uint8Array | string = PNG) => {
+    await writeFile(join(shots, name), bytes);
+    return join(shots, name);
+  };
+  const stored = (run: string, bytes: Uint8Array | string, name: string) =>
+    `${RUNS}/${run}/TC-0002/${sha256Hex(typeof bytes === "string" ? new TextEncoder().encode(bytes) : bytes).slice(0, 8)}-${name}`;
+
+  it("copies and hashes a file, keeps a link, and returns both in one commit", async () => {
+    const file = await shot("Shot 1.PNG");
+    const value = await recorded({
+      status: "failed",
+      run: "rc-1",
+      evidence: [file],
+      link: ["https://example.com/bug/1"],
+    });
+    const ref = stored("rc-1", PNG, "shot-1.png");
+    expect(value.event.evidence).toEqual([
+      { kind: "image", ref, sha256: sha256Hex(PNG) },
+      { kind: "link", ref: "https://example.com/bug/1" },
+    ]);
+    expect(new Uint8Array(await readFile(join(root, ref)))).toEqual(PNG);
+    expect(value.commit?.files).toEqual([value.path, ref]);
+    expect(value.next[0]).toContain("commit.files");
+    expect(JSON.parse(await runFile("rc-1"))).toEqual(value.event);
+    expect(await registry.invoke("validate", {}, { root, actor: "human" })).toMatchObject({
+      ok: true,
+    });
+  });
+
+  it("resolves a relative path against the host's cwd", async () => {
+    await shot("console.log", "TypeError: x is undefined\n");
+    const value = await recorded({
+      status: "failed",
+      run: "rc-1",
+      cwd: shots,
+      evidence: ["console.log"],
+    });
+    expect(value.event.evidence).toEqual([
+      expect.objectContaining({
+        kind: "file",
+        ref: stored("rc-1", "TypeError: x is undefined\n", "console.log"),
+      }),
+    ]);
+  });
+
+  it("takes labels through attach, after evidence and link, in order", async () => {
+    const video = await shot("checkout.webm", "webm");
+    const value = await recorded({
+      status: "failed",
+      run: "rc-1",
+      evidence: [await shot("a.png")],
+      link: ["https://example.com/a"],
+      attach: [
+        { url: "https://ci.example/build/9", label: "CI build" },
+        { file: video, label: "The checkout freezing" },
+      ],
+    });
+    expect(value.event.evidence).toEqual([
+      expect.objectContaining({ kind: "image" }),
+      { kind: "link", ref: "https://example.com/a" },
+      { kind: "link", ref: "https://ci.example/build/9", label: "CI build" },
+      {
+        kind: "video",
+        ref: stored("rc-1", "webm", "checkout.webm"),
+        sha256: sha256Hex(new TextEncoder().encode("webm")),
+        label: "The checkout freezing",
+      },
+    ]);
+    expect(value.commit?.files).toHaveLength(3);
+  });
+
+  it("writes the same content under the same name once", async () => {
+    const file = await shot("shot.png");
+    const first = await recorded({ status: "failed", run: "rc-1", evidence: [file, file] });
+    const ref = stored("rc-1", PNG, "shot.png");
+    expect(first.event.evidence).toEqual([
+      expect.objectContaining({ ref }),
+      expect.objectContaining({ ref }),
+    ]);
+    expect(first.commit?.files).toEqual([first.path, ref]);
+    // Executed again, same screenshot: the stored file is reused, not rewritten.
+    const again = await recorded({ status: "blocked", run: "rc-1", evidence: [file] });
+    expect(again.event.evidence).toEqual([expect.objectContaining({ ref })]);
+    expect(again.commit?.files).toEqual([again.path, ref]);
+    expect(await readdir(join(root, RUNS, "rc-1", "TC-0002"))).toEqual([ref.split("/").pop()]);
+  });
+
+  it("writes nothing for a retry with the same evidence", async () => {
+    const input = { status: "failed", run: "rc-1", evidence: [await shot("shot.png")] };
+    const first = await recorded(input);
+    const retry = await recorded(input);
+    expect(retry).toMatchObject({ appended: false });
+    expect(retry.commit).toBeUndefined();
+    expect(await runFile("rc-1")).toBe(`${JSON.stringify(first.event)}\n`);
+  });
+
+  it("lets validate report a stored file deleted or edited afterwards", async () => {
+    const value = await recorded({
+      status: "failed",
+      run: "rc-1",
+      evidence: [await shot("a.png")],
+    });
+    const ref = (value.event.evidence as { ref: string }[])[0]?.ref as string;
+    await writeFile(join(root, ref), "edited");
+    const changed = await registry.invoke("validate", {}, { root, actor: "human" });
+    expect(changed.ok || changed.errors.map((e) => e.code)).toEqual(["evidence.changed"]);
+    await rm(join(root, ref));
+    const missing = await registry.invoke("validate", {}, { root, actor: "human" });
+    expect(missing.ok || missing.errors.map((e) => e.code)).toEqual(["evidence.missing"]);
+  });
+});
+
+describe("run refuses evidence, writing nothing", () => {
+  const refused = async (input: Record<string, unknown>, expected: [string, string][]) => {
+    const before = await readdir(join(root, RUNS));
+    const result = await record({ status: "failed", run: "rc-1", ...input });
+    expect(result.ok || result.errors.map((e) => [e.code, e.field])).toEqual(expected);
+    expect(await readdir(join(root, RUNS))).toEqual(before);
+  };
+
+  it("a file that is not there", async () => {
+    await refused({ evidence: [join(shots, "gone.png")] }, [["evidence.not_found", "evidence.0"]]);
+  });
+
+  it("a type outside the list, and a script type always", async () => {
+    await writeFile(join(shots, "a.svg"), "<svg/>");
+    await writeFile(join(shots, "a.docx"), "x");
+    await refused({ evidence: [join(shots, "a.png"), join(shots, "a.svg")] }, [
+      ["evidence.type", "evidence.1"],
+    ]);
+    await appendFile(join(root, "casefile.yaml"), "evidence:\n  extensions: [docx, svg]\n");
+    await refused({ attach: [{ file: join(shots, "a.svg") }] }, [["evidence.type", "attach.0"]]);
+    await writeFile(join(shots, "a.png"), "png");
+    await refused({ evidence: [join(shots, "a.png")] }, [["evidence.type", "evidence.0"]]);
+  });
+
+  it("a file over evidence.max_file_mb, checked before any other file is written", async () => {
+    await appendFile(join(root, "casefile.yaml"), "evidence:\n  max_file_mb: 0.001\n");
+    await writeFile(join(shots, "small.png"), "x");
+    await writeFile(join(shots, "big.png"), "x".repeat(2000));
+    await refused({ evidence: [join(shots, "small.png"), join(shots, "big.png")] }, [
+      ["evidence.too_large", "evidence.1"],
+    ]);
+  });
+
+  it("more than 20 entries, and a link that is not http(s)", async () => {
+    const links = Array.from({ length: 21 }, (_, i) => `https://example.com/${i}`);
+    await refused({ link: links }, [["evidence.too_many", "link.20"]]);
+    await refused({ link: ["ftp://example.com/x"] }, [["evidence.link", "link.0"]]);
+  });
+
+  it("a stored file with other content under the same name", async () => {
+    await writeFile(join(shots, "a.png"), "png");
+    const ref = `${RUNS}/rc-1/TC-0002/${sha256Hex(new TextEncoder().encode("png")).slice(0, 8)}-a.png`;
+    await recorded({ status: "failed", run: "rc-1", evidence: [join(shots, "a.png")] });
+    await writeFile(join(root, ref), "tampered");
+    const result = await record({
+      status: "passed",
+      run: "rc-1",
+      evidence: [join(shots, "a.png")],
+    });
+    expect(result.ok || result.errors.map((e) => e.code)).toEqual(["evidence.conflict"]);
+    expect(await readFile(join(root, ref), "utf8")).toBe("tampered");
+  });
+
+  it("a label over 120 characters, or an entry with both file and url", async () => {
+    await refused({ attach: [{ url: "https://example.com", label: "x".repeat(121) }] }, [
+      ["operation.invalid_input", "attach.0.label"],
+    ]);
+    const both = await record({
+      status: "failed",
+      attach: [{ file: "a.png", url: "https://x.y" }],
+    });
+    expect(both.ok || both.errors[0]?.code).toBe("operation.invalid_input");
   });
 });

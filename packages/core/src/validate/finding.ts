@@ -52,6 +52,12 @@ export const FINDING_CODES = {
     description: "`commit.ticket_default` in `casefile.yaml` is not one token a subject can carry",
     hint: "letters, digits and ._#/- only, e.g. `NO-TICKET`",
   },
+  "config.evidence_extension": {
+    severity: "error",
+    description:
+      "`evidence.extensions` in `casefile.yaml` lists a type a browser runs as script (svg, htm, html, xhtml, xml, js, mjs)",
+    hint: "remove it: `run` refuses those files even when listed (ADR run-evidence-files §4)",
+  },
   "yaml.invalid": {
     severity: "error",
     description: "A YAML file or case frontmatter does not parse",
@@ -129,6 +135,18 @@ export const FINDING_CODES = {
     severity: "error",
     description: "A run event's `case_id` is not a case of its project",
     hint: "run files are append-only: restore the case, or record the correction as a new event",
+  },
+  "evidence.missing": {
+    severity: "error",
+    description:
+      "A run event names a stored evidence file under `.runs/<run-id>/` that is not there",
+    hint: "restore the file from Git history; run files are append-only, so record the result again to attach it anew",
+  },
+  "evidence.changed": {
+    severity: "error",
+    description:
+      "A stored evidence file under `.runs/<run-id>/` no longer matches the `sha256` its run event names",
+    hint: "restore the file from Git history: evidence is never edited; record the result again to attach another file",
   },
   "policy.invalid_scope": {
     severity: "error",

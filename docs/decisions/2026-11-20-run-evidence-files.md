@@ -3,9 +3,10 @@
 ## Status
 
 Accepted — 2026-11-20 (#201). Amends [run-event-note](2026-10-17-run-event-note.md)
-§5 (casefile now reads and copies the files a `run` attaches; ingest keeps
-references) and [write-ownership](2026-10-15-write-ownership.md) (`run` writes
-evidence directories under `.runs/`).
+§5 (casefile reads and copies the files a `run` attaches; ingest keeps refs) and
+[write-ownership](2026-10-15-write-ownership.md) (`run` writes under `.runs/`).
+§5 amended by #203: the labelled form is `attach` (JSON); `--evidence`/`--link`
+take no label; relative paths resolve from the host's `cwd` input.
 
 ## Context
 

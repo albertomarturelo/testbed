@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { fail, ok } from "../errors.js";
+import { hashStoredEvidence } from "../load/evidence.js";
 import { normalizeProjectPath, pathContains } from "../load/paths.js";
 import { loadWorkspace } from "../load/workspace.js";
 import { validateWorkspace } from "../validate/validate.js";
@@ -49,6 +50,7 @@ export const validateOperation = defineOperation({
       workspace,
       toolchain,
       extensionLayers: extensionLayers(extensions),
+      evidence: await hashStoredEvidence(workspace),
     });
     let projects = workspace.projects;
 

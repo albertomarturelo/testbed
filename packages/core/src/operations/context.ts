@@ -1,5 +1,5 @@
 import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
-import { dirname, join, posix } from "node:path";
+import { dirname, join, posix, resolve } from "node:path";
 import { matchesGlob } from "./glob.js";
 import type { Actor, OperationContext } from "./operation.js";
 
@@ -92,6 +92,21 @@ export function createContext(
       const target = join(root, guard(path, false));
       await mkdir(dirname(target), { recursive: true });
       await writeFile(target, text);
+    },
+    async readBytes(absolutePath) {
+      try {
+        // A relative path is taken from the root, never from the process's directory.
+        return new Uint8Array(await readFile(resolve(root, absolutePath)));
+      } catch (error) {
+        const code = (error as NodeJS.ErrnoException).code;
+        if (code === "ENOENT" || code === "EISDIR") return null;
+        throw error;
+      }
+    },
+    async writeBytes(path, bytes) {
+      const target = join(root, guard(path, false));
+      await mkdir(dirname(target), { recursive: true });
+      await writeFile(target, bytes);
     },
     async removeFile(path) {
       await rm(join(root, guard(path, false)), { force: true });

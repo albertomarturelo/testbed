@@ -731,4 +731,58 @@ describe("casefile run: the executor is the identity the host fills", () => {
     });
     expect(line).not.toHaveProperty("automation_ref");
   });
+
+  it("repeats --evidence and --link, takes --attach as JSON, and resolves files from the shell's directory", async () => {
+    const shell = join(tmp, "downloads");
+    await mkdir(shell);
+    await writeFile(join(shell, "a.png"), "png-a");
+    await writeFile(join(shell, "b.log"), "log-b");
+    const argv = [
+      "run",
+      "TC-0001",
+      "--status",
+      "failed",
+      "--run",
+      "rc-1",
+      "--evidence",
+      "a.png",
+      "--evidence",
+      "b.log",
+      "--link",
+      "https://example.com/bug/1",
+      "--link",
+      "https://example.com/bug/2",
+      "--attach",
+      JSON.stringify([{ url: "https://ci.example/9", label: "CI build" }]),
+      "--cwd",
+      join(tmp, "apps/web"),
+      "--json",
+    ];
+    // The process runs in `downloads/`; `--cwd` only finds the workspace.
+    const result = await cli(argv, git, shell);
+    const { value } = JSON.parse(result.stdout);
+    expect(value.event.evidence.map((e: { kind: string }) => e.kind)).toEqual([
+      "image",
+      "file",
+      "link",
+      "link",
+      "link",
+    ]);
+    expect(value.event.evidence[4]).toEqual({
+      kind: "link",
+      ref: "https://ci.example/9",
+      label: "CI build",
+    });
+    expect(value.commit.files).toHaveLength(3);
+    const ref = value.event.evidence[0].ref as string;
+    expect(ref).toMatch(/^apps\/web\/context\/tests\/\.runs\/rc-1\/TC-0001\/[0-9a-f]{8}-a\.png$/);
+    expect(await readFile(join(tmp, ref), "utf8")).toBe("png-a");
+  });
+
+  it("never takes cwd as a flag: it is the host's", async () => {
+    const result = await cli(["run", "--help", "--cwd", join(tmp, "apps/web")], git);
+    expect(result.stdout).toMatch(/--evidence <value>\s+\(repeatable\)/);
+    expect(result.stdout).toMatch(/--attach <value>\s+\(JSON\)/);
+    expect(result.stdout).not.toContain("--cwd <");
+  });
 });

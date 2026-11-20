@@ -1,0 +1,17 @@
+[
+  {
+    "code": "config.evidence_extension",
+    "path": "casefile.yaml",
+    "field": "evidence.extensions.1"
+  },
+  {
+    "code": "config.evidence_extension",
+    "path": "casefile.yaml",
+    "field": "evidence.extensions.3"
+  },
+  {
+    "code": "workspace.no_projects",
+    "path": "casefile.yaml",
+    "field": "projects"
+  }
+]

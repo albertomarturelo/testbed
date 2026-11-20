@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { DEMO_MONOREPO_ROOT, DEMO_ROOT } from "../demo.fixture.js";
+import { hashStoredEvidence } from "../load/evidence.js";
 import { loadWorkspace } from "../load/workspace.js";
 import { builtinOperations } from "../operations/builtins.js";
 import { loadToolchain, type Toolchain } from "../operations/extensions.js";
@@ -25,7 +26,7 @@ const located = (findings: Finding[]): Expected[] =>
 const validateAt = async (root: string) => {
   const workspace = await loadWorkspace(root);
   const toolchain = await loadToolchain(root, workspace.config?.extensions ?? []);
-  return validateWorkspace({ workspace, toolchain });
+  return validateWorkspace({ workspace, toolchain, evidence: await hashStoredEvidence(workspace) });
 };
 
 const put = async (root: string, path: string, text: string) => {
@@ -72,6 +73,13 @@ describe("validateWorkspace on broken workspaces", async () => {
         expect(f.message).not.toBe("");
       }
     }
+  });
+
+  it("checks stored evidence only when the adapter hashed it", async () => {
+    const root = join(BROKEN, "run-evidence");
+    const workspace = await loadWorkspace(root);
+    const toolchain = await loadToolchain(root, []);
+    expect(validateWorkspace({ workspace, toolchain })).toEqual([]);
   });
 
   it("reports toolchain.unpinned as a warning, so the setup loop can exit 0", async () => {

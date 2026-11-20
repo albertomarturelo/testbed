@@ -10,11 +10,17 @@ import {
   pathContains,
   TESTS_DIR,
 } from "../load/paths.js";
+import { isCheckedEvidence, isScriptExtension } from "../operations/evidence.js";
 import { CASEFILE_PACKAGE, TOOLCHAIN_DIR, type Toolchain } from "../operations/extensions.js";
 import { NPM_INSTALL, notInstalled, TOOLCHAIN_PACKAGE } from "../operations/toolchain.js";
 import { queryCases } from "../query/evaluate.js";
 import { commonsChain, resolveCase, workspaceLayer } from "../resolve/resolve.js";
-import { type CommitConfig, ExactVersion, eventMilestone } from "../schema/index.js";
+import {
+  type CommitConfig,
+  type EvidenceConfig,
+  ExactVersion,
+  eventMilestone,
+} from "../schema/index.js";
 import { type Finding, finding, fromError } from "./finding.js";
 import type { Level } from "./validate.js";
 
@@ -49,13 +55,28 @@ function commitFindings(commit: CommitConfig | undefined): Finding[] {
   return found;
 }
 
+/** The `evidence` section (ADR run-evidence-files §4): script types are refused even when listed. */
+function evidenceConfigFindings(evidence: EvidenceConfig | undefined): Finding[] {
+  return (evidence?.extensions ?? []).flatMap((extension, index) =>
+    isScriptExtension(extension)
+      ? [
+          finding("config.evidence_extension", {
+            path: CONFIG_FILE,
+            field: `evidence.extensions.${index}`,
+            message: `'${extension}' is a type a browser runs as script; run refuses it even when listed`,
+          }),
+        ]
+      : [],
+  );
+}
+
 /** `casefile.yaml` and the projects it lists. */
 export const workspaceLevel: Level = {
   name: "workspace",
   workspace({ workspace: { config, errors } }) {
     // Without a config the loader stopped: its errors are all about casefile.yaml.
     if (config === null) return errors.map(fromError);
-    const found = commitFindings(config.commit);
+    const found = [...commitFindings(config.commit), ...evidenceConfigFindings(config.evidence)];
     if (config.projects.length > 0) return found;
     return [
       finding("workspace.no_projects", {
@@ -144,12 +165,13 @@ export const schemaLevel: Level = {
 /**
  * Rules across the files of one project: each case's `feature` mirrors its
  * folder, ids are unique, label keys are declared in `_properties.yaml`, and
- * each run event names a case of the project, gate scopes parse and each
- * dashboard's widgets are ones `dashboard save` would accept.
+ * each run event names a case of the project and its stored evidence files are
+ * there unchanged, gate scopes parse and each dashboard's widgets are ones
+ * `dashboard save` would accept.
  */
 export const crossFileLevel: Level = {
   name: "cross-file",
-  project({ loaded }, { workspace: { config } }) {
+  project({ loaded }, { workspace: { config }, evidence: hashes }) {
     if (loaded === undefined) return [];
     const found: Finding[] = [];
     const testsDir = posix.join(loaded.path, TESTS_DIR);
@@ -219,6 +241,32 @@ export const crossFileLevel: Level = {
           message: `run '${event.run_id}' records ${event.case_id}, which is not a case of project '${loaded.name}'`,
         }),
       );
+    }
+    // Stored evidence is checked only when the adapter hashed it (ADR run-evidence-files §9).
+    for (const { path, line, event } of loaded.runs) {
+      for (const [index, entry] of (event.evidence ?? []).entries()) {
+        if (hashes === undefined || !isCheckedEvidence(entry, loaded.path)) continue;
+        const actual = hashes.get(entry.ref);
+        if (actual === undefined || actual === entry.sha256) continue;
+        found.push(
+          actual === null
+            ? finding("evidence.missing", {
+                path,
+                line,
+                field: `evidence.${index}.ref`,
+                message: `run '${event.run_id}' attaches ${entry.ref} to ${event.case_id}, which is not there`,
+              })
+            : finding("evidence.changed", {
+                path,
+                line,
+                field: `evidence.${index}.sha256`,
+                message:
+                  entry.sha256 === undefined
+                    ? `run '${event.run_id}' attaches ${entry.ref} to ${event.case_id} without its sha256`
+                    : `${entry.ref} no longer matches the sha256 run '${event.run_id}' recorded for ${event.case_id}`,
+              }),
+        );
+      }
     }
     // One warning per run file and milestone, at its first line: old free-text
     // releases are expected, so this never blocks (ADR milestones-group-executions).

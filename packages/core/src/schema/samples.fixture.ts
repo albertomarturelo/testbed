@@ -158,6 +158,21 @@ export const samples: Record<FileSchemaName, { valid: Sample[]; invalid: Sample[
           triage: { kind: "defect", by: "ana@example.com", ref: "PROJ-99", expires: "2026-11-01" },
         },
       },
+      {
+        name: "evidence run attached, with labels",
+        value: {
+          ...runEvent,
+          evidence: [
+            {
+              kind: "image",
+              ref: "context/tests/.runs/2026-10-15-smoke-web/TC-0001/5891b5b5-shot.png",
+              sha256: "5".repeat(64),
+              label: "The error banner",
+            },
+            { kind: "link", ref: "https://example.com/bug/1", label: "PROJ-99" },
+          ],
+        },
+      },
     ],
     invalid: [
       { name: "executor without kind", value: { ...runEvent, executor: "ana@example.com" } },
@@ -173,6 +188,14 @@ export const samples: Record<FileSchemaName, { valid: Sample[]; invalid: Sample[
       {
         name: "short sha256",
         value: { ...runEvent, evidence: [{ kind: "log", ref: "x", sha256: "abc" }] },
+      },
+      {
+        name: "evidence label over 120 characters",
+        value: { ...runEvent, evidence: [{ kind: "link", ref: "x", label: "x".repeat(121) }] },
+      },
+      {
+        name: "empty evidence label",
+        value: { ...runEvent, evidence: [{ kind: "link", ref: "x", label: "" }] },
       },
       {
         name: "unknown triage kind",
@@ -404,6 +427,14 @@ export const samples: Record<FileSchemaName, { valid: Sample[]; invalid: Sample[
           commons: { labels: { owner_team: "platform" }, preconditions: ["VPN is up"] },
         },
       },
+      {
+        name: "evidence limits",
+        value: {
+          version: 1,
+          projects: [],
+          evidence: { max_file_mb: 2.5, extensions: ["png", "csv"] },
+        },
+      },
     ],
     invalid: [
       { name: "missing version", value: { projects: [] } },
@@ -421,6 +452,14 @@ export const samples: Record<FileSchemaName, { valid: Sample[]; invalid: Sample[
       {
         name: "unknown key in commons",
         value: { version: 1, projects: [], commons: { owner: "x" } },
+      },
+      {
+        name: "evidence max_file_mb zero",
+        value: { version: 1, projects: [], evidence: { max_file_mb: 0 } },
+      },
+      {
+        name: "unknown key in evidence",
+        value: { version: 1, projects: [], evidence: { max_files: 3 } },
       },
     ],
   },

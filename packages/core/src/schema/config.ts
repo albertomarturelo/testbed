@@ -30,8 +30,20 @@ export const CommitConfig = z.strictObject({
 });
 
 /**
+ * What `run` accepts as evidence files (ADR run-evidence-files §4). Structural
+ * only: the validator flags script types in `extensions`.
+ */
+export const EvidenceConfig = z.strictObject({
+  /** Largest file, in MB (default 10). */
+  max_file_mb: z.number().positive().optional(),
+  /** Allowed extensions, without the dot; replaces the default list. */
+  extensions: z.array(z.string().min(1)).optional(),
+});
+
+/**
  * `casefile.yaml` at the workspace root: lists the projects, the extensions
- * (ADR extension-model), the workspace-level commons and the commit shape.
+ * (ADR extension-model), the workspace-level commons, the commit shape and the
+ * evidence limits.
  * `projects` may be empty right after `init`; the validator requires at least one.
  */
 export const Config = z.strictObject({
@@ -40,8 +52,10 @@ export const Config = z.strictObject({
   extensions: z.array(PackageName).optional(),
   commons: CommonFile.optional(),
   commit: CommitConfig.optional(),
+  evidence: EvidenceConfig.optional(),
 });
 
 export type ProjectEntry = z.infer<typeof ProjectEntry>;
 export type Config = z.infer<typeof Config>;
 export type CommitConfig = z.infer<typeof CommitConfig>;
+export type EvidenceConfig = z.infer<typeof EvidenceConfig>;
