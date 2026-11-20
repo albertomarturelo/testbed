@@ -332,7 +332,8 @@ titled `chore(release): v<x.y.z>`. This README is the npm page of
 `@casefile/cli` and npm keeps it per version, so the same PR updates the
 install section and the Today / Next table when the release changes them. After it merges, the maintainer tags that
 commit `v<x.y.z>` on `main` and pushes the tag; the Release workflow checks,
-packs, smoke-tests and publishes them with provenance, and attaches the
+packs, smoke-tests and publishes them with provenance through npm trusted
+publishing (OIDC, no npm token in the repository), and attaches the
 toolchain tarball and its checksum to the GitHub release. Running the workflow
 by hand is a dry run.
 
