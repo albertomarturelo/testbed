@@ -62,6 +62,37 @@ to port 4321.
   identity, or `CASEFILE_USER_EMAIL` / `CASEFILE_USER_NAME` when set (ADR
   identity-override) — and answers `commit.sha`. Requests naming a host other
   than localhost are refused (DNS rebinding).
+- Evidence (ADR [run-evidence-files](https://github.com/albertomarturelo/testbed/blob/main/docs/decisions/2026-11-20-run-evidence-files.md)
+  §6–7). "Record a result" takes files dropped on it, picked, or pasted with
+  Ctrl/Cmd+V (an image copied to the clipboard; text pasted into a field stays
+  text), and links, each with an
+  optional label. Each file goes up at once as `POST /api/evidence`: the raw
+  bytes as the body, the name URI-encoded in `X-Casefile-Filename`, behind the
+  same guard as a write. The server applies `casefile.yaml`'s `evidence` limits
+  (size, extensions, never a script type), stages the file under the OS temp
+  directory (never the repository) and answers
+  `{ upload, name, size, kind }`. Past the size limit it stops reading,
+  answers 413 and closes the connection; a body the client cuts off leaves
+  nothing staged. Removing a file from the form sends
+  `DELETE /api/evidence/<upload>` (same guard, idempotent). The page then sends `run` with
+  `attach: [{ upload, label? } | { url, label? }]`; the server swaps each
+  upload for its staged file before core copies it into
+  `.runs/<run>/<case>/`. The page can never name a path on the machine
+  (`ui.local_file`). An upload goes once a result names it, after an hour, or
+  when the server stops (Ctrl-C included: the host removes them before it
+  exits); a result core refuses keeps its uploads, so it can be
+  sent again. The commit stages `run`'s evidence files with `git add -f`: they
+  are committed even when the repository ignores e.g. `*.log`.
+- `GET /api/evidence?ref=<workspace-relative path>` serves a stored evidence
+  file read-only, open like every read: only a `ref` some run event names as a
+  file `run` stored inside a `.runs/<run-id>/` directory, with an allowed,
+  non-script extension, a regular file reached without a symlink. It reads
+  only that ref's run file (`.runs/<run-id>.jsonl`), not the workspace. It answers
+  with `Content-Type` from the extension, `X-Content-Type-Options: nosniff`,
+  `Cache-Control: no-store`, and `Content-Disposition: attachment` except for
+  images and videos. The run history shows images as thumbnails that open full
+  size, videos, files to download and links that open in a new tab; the
+  milestone page and its printable evidence link each case's evidence too.
 - `src/client/` — React + Tailwind CSS + [shadcn/ui](https://ui.shadcn.com/),
   built by Vite into `dist/client`. Views live in the URL hash
   (`#/cases?project=web&feature=login`, `#/case/web/TC-0001`, `#/query`,
@@ -76,7 +107,11 @@ Host errors (the operation's own errors come back unchanged, with status 200):
 | `ui.commit_failed` | 500 | the files are written but git could not commit them; the message carries git's stderr |
 | `ui.unknown_operation` | 404 | no operation has that name |
 | `ui.not_found` | 404 | not `POST /api/operations/<name>` |
-| `ui.invalid_input` | 400 | the body is not a JSON object, or is over 64 KiB |
+| `ui.invalid_input` | 400 | the body is not a JSON object, or is over 64 KiB; an upload without `X-Casefile-Filename` |
+| `ui.local_file` | 400 | `run` from the page names a file on the machine (`evidence`, `attach[].file`) |
+| `ui.upload_unknown` | 400 | `run` names an upload that does not exist, expired, or went with an earlier result |
+| `evidence.too_large`, `evidence.type` | 413, 400 | an upload over `evidence.max_file_mb`, or of a type the workspace does not allow |
+| `ui.evidence_not_found` | 404 | `GET /api/evidence` for a `ref` no run event names as a stored file, or that is not served |
 | `ui.forbidden_host` | 403 | the `Host` header is not localhost |
 | `ui.internal` | 500 | a bug: please report it |
 

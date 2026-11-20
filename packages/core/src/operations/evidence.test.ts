@@ -6,6 +6,7 @@ import {
   evidenceEntryProblems,
   evidenceKind,
   evidenceLimits,
+  evidenceRunFile,
   extensionOf,
   isCheckedEvidence,
   isScriptExtension,
@@ -162,6 +163,17 @@ describe("where stored files live", () => {
         false,
       ]);
     }
+  });
+
+  it("finds the run file whose events name a stored ref", () => {
+    expect(evidenceRunFile("apps/web/context/tests/.runs/rc-1/TC-0002/x.png", "apps/web")).toBe(
+      "apps/web/context/tests/.runs/rc-1.jsonl",
+    );
+    expect(evidenceRunFile("context/tests/.runs/rc-1/x.png", ".")).toBe(
+      "context/tests/.runs/rc-1.jsonl",
+    );
+    expect(evidenceRunFile("context/tests/.runs/rc-1/../../x.png", ".")).toBeNull();
+    expect(evidenceRunFile("apps/api/context/tests/.runs/rc-1/x.png", "apps/web")).toBeNull();
   });
 
   it("checks stored files only, never links or ingest attachments", () => {

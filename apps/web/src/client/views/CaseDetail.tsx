@@ -10,6 +10,7 @@ import {
   type Reviewed,
 } from "@/api";
 import { ErrorList } from "@/components/ErrorList";
+import { EvidenceList } from "@/components/Evidence";
 import { Markdown } from "@/components/Markdown";
 import { AutomationBadge, RunBadge } from "@/components/StatusBadge";
 import {
@@ -635,15 +636,7 @@ function RunsCard({
                   </section>
                 )}
                 {(run.evidence ?? []).length === 0 ? null : (
-                  <ul className="flex flex-col gap-0.5 text-xs">
-                    {(run.evidence ?? []).map((item, j) => (
-                      // biome-ignore lint/suspicious/noArrayIndexKey: evidence keeps report order
-                      <li key={j} className="flex flex-wrap gap-x-2">
-                        <span className="text-muted-foreground">{item.kind}</span>
-                        <span className="break-all font-mono">{item.ref}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  <EvidenceList evidence={run.evidence ?? []} />
                 )}
               </li>
             ))}

@@ -13,6 +13,7 @@ import {
   type Result,
   ticketFromBranch,
 } from "@casefile/core";
+import { serveEvidence, swapUploads, UploadStage } from "./evidence.js";
 import { commitAsHuman, type ReturnedCommit } from "./git.js";
 
 export type UiServerOptions = {
@@ -24,10 +25,13 @@ export type UiServerOptions = {
   identity: Identity | null;
   /** The environment git runs with (tests isolate it). */
   env?: NodeJS.ProcessEnv;
+  /** The clock uploads expire by (tests move it). */
+  now?: () => number;
 };
 
 const API_PREFIX = "/api/operations/";
 const SESSION_PATH = "/api/session";
+const EVIDENCE_PATH = "/api/evidence";
 
 /** The header a writing request carries the session token in (never a URL). */
 export const TOKEN_HEADER = "x-casefile-token";
@@ -45,8 +49,15 @@ const CONTENT_TYPES: Readonly<Record<string, string>> = {
   ".json": "application/json; charset=utf-8",
 };
 
+/**
+ * The started server, and a synchronous way to remove the uploads it staged:
+ * a host stopping on a signal calls it before exiting, since the process may
+ * be killed before `close` runs.
+ */
+export type UiServer = Server & { clearUploads(): void };
+
 /** What one started server knows beyond its options. */
-type Session = UiServerOptions & { token: string };
+type Session = UiServerOptions & { token: string; stage: UploadStage };
 
 /**
  * The local UI's host (ADR local-ui-stack): serves the built client and runs
@@ -55,16 +66,28 @@ type Session = UiServerOptions & { token: string };
  * a write needs the page's own origin and the token `GET /api/session` hands
  * it, and its commit is then run as the human (ADR
  * human-writes-through-operations §2–3). The caller binds it to 127.0.0.1;
- * requests naming another host are refused (DNS rebinding).
+ * requests naming another host are refused (DNS rebinding). Evidence files go
+ * up through `POST /api/evidence`, are dropped by `DELETE /api/evidence/<upload>`
+ * and served by `GET /api/evidence?ref=` (ADR run-evidence-files §6–7);
+ * uploads still staged go when it closes, or with `clearUploads()`.
  */
-export function createUiServer(options: UiServerOptions): Server {
-  const session: Session = { ...options, token: randomBytes(32).toString("base64url") };
-  return createServer((request, response) => {
+export function createUiServer(options: UiServerOptions): UiServer {
+  const stage = new UploadStage(options.now);
+  const session: Session = { ...options, token: randomBytes(32).toString("base64url"), stage };
+  const server = createServer((request, response) => {
     handle(request, response, session).catch((error: unknown) => {
       const message = error instanceof Error ? error.message : String(error);
-      send(response, 500, fail({ code: "ui.internal", message }));
+      if (response.headersSent) response.destroy();
+      else send(response, 500, fail({ code: "ui.internal", message }));
     });
   });
+  // Expired uploads go even when nobody uploads or records again.
+  const sweeper = setInterval(() => stage.sweep(), 10 * 60 * 1000).unref();
+  server.on("close", () => {
+    clearInterval(sweeper);
+    stage.clear();
+  });
+  return Object.assign(server, { clearUploads: () => stage.clear() });
 }
 
 async function handle(
@@ -83,6 +106,10 @@ async function handle(
       return;
     }
     send(response, 200, { ok: true, value: await sessionView(session) });
+    return;
+  }
+  if (url.pathname === EVIDENCE_PATH || url.pathname.startsWith(`${EVIDENCE_PATH}/`)) {
+    await evidence(request, response, url, session);
     return;
   }
   if (url.pathname.startsWith("/api/")) {
@@ -125,6 +152,49 @@ async function sessionView(session: Session) {
             ...(identity.name === undefined ? {} : { name: identity.name }),
           },
   };
+}
+
+/**
+ * `GET /api/evidence?ref=` serves a stored evidence file, open like every
+ * read. `POST /api/evidence` stages an upload and `DELETE
+ * /api/evidence/<upload>` drops one (idempotent): writes, so the page's origin
+ * and token (ADR run-evidence-files §6–7).
+ */
+async function evidence(
+  request: IncomingMessage,
+  response: ServerResponse,
+  url: URL,
+  session: Session,
+): Promise<void> {
+  const upload = url.pathname.slice(EVIDENCE_PATH.length + 1);
+  const allowed = upload === "" ? ["GET", "POST"] : ["DELETE"];
+  if (!allowed.includes(request.method ?? "") || upload.includes("/")) {
+    response.writeHead(405, { allow: allowed.join(", ") }).end();
+    return;
+  }
+  if (request.method === "GET") {
+    const missing = await serveEvidence(response, url, session.root);
+    if (missing !== null) send(response, 404, missing);
+    return;
+  }
+  if (!isAllowedWrite(request, session.token)) {
+    const message =
+      "uploads write files: only the UI's own page may send or drop one, with the session token";
+    send(response, 403, fail(error("ui.forbidden", message)));
+    return;
+  }
+  if (request.method === "DELETE") {
+    await session.stage.remove([upload]);
+    send(response, 200, { ok: true, value: { upload } });
+    return;
+  }
+  const received = await session.stage.receive(request, session.root);
+  if (received.close) {
+    // The rest of the body is not read: answer, then drop the connection.
+    response.setHeader("connection", "close");
+    response.on("finish", () => request.destroy());
+  }
+  send(response, received.status, received.result);
 }
 
 async function api(
@@ -176,6 +246,11 @@ async function api(
       ),
     ];
   }
+  // The page names its uploads; the server swaps in the files it staged.
+  const swapped = name === "run" ? swapUploads(input, session.stage) : null;
+  if (swapped !== null && !swapped.ok) return [400, swapped];
+  const uploads = swapped?.value.uploads ?? [];
+  if (swapped !== null) Object.assign(input, swapped.value.input);
   const branch = fields.some((f) => f.host === "branch")
     ? ((await gitBranch(root, session.env)) ?? undefined)
     : undefined;
@@ -184,8 +259,24 @@ async function api(
     if (value !== undefined) input[field.name] = value;
   }
   const outcome = await host.registry.invoke(name, input, { root, actor: "human" });
+  // Recorded: core copied the files into the repository. A refused result
+  // keeps its uploads, so the QA can correct it and send it again.
+  if (outcome.ok) await session.stage.remove(uploads);
   if (!writes || !outcome.ok) return [200, outcome];
-  return commitIfReturned(outcome.value, session);
+  return commitIfReturned(
+    outcome.value,
+    session,
+    name === "run" ? evidenceRefs(outcome.value) : [],
+  );
+}
+
+/** The files `run`'s event names as evidence: staged with `git add -f`, the host may ignore `*.log`. */
+function evidenceRefs(value: unknown): string[] {
+  const evidence = (value as { event?: { evidence?: unknown } } | null)?.event?.evidence;
+  if (!Array.isArray(evidence)) return [];
+  return evidence.flatMap((e) =>
+    e !== null && typeof e === "object" && typeof e.ref === "string" ? [e.ref as string] : [],
+  );
 }
 
 /** The values the viewer fills in for the human (ADR identity-override §3–4). */
@@ -231,14 +322,23 @@ function sameSecret(a: string, b: string): boolean {
 /**
  * A writing operation returns `commit` (ADR agent-runs-the-commit); the server
  * runs it for the human and adds the sha. Without one, nothing was written.
+ * Of its files, those in `force` are staged even when the host repository
+ * ignores them (`run`'s evidence files).
  */
 async function commitIfReturned(
   value: unknown,
   session: Session,
+  force: readonly string[],
 ): Promise<[number, Result<unknown>]> {
   const commit = returnedCommit(value);
   if (commit === null) return [200, { ok: true, value }];
-  const made = await commitAsHuman(session.root, commit, session.identity, session.env);
+  const forced = commit.files.filter((file) => force.includes(file));
+  const made = await commitAsHuman(
+    session.root,
+    { ...commit, force: forced },
+    session.identity,
+    session.env,
+  );
   if (!made.ok) return [500, made];
   const output = value as Record<string, unknown>;
   return [200, { ok: true, value: { ...output, commit: { ...commit, sha: made.value.sha } } }];
@@ -255,7 +355,8 @@ function returnedCommit(value: unknown): ReturnedCommit | null {
 /**
  * Whether a request names a path on this machine (`run`'s `evidence`, or a
  * `file` in `attach`). The page never may: core would copy any file the server
- * can read into the repository. Uploads (#204) are swapped in by the server.
+ * can read into the repository. Uploads (#204) are swapped in by the server
+ * after this check.
  */
 function namesLocalFile(input: Record<string, unknown>): boolean {
   if (input.evidence !== undefined) return true;

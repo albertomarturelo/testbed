@@ -60,6 +60,19 @@ const server = createUiServer({ root, clientDir: CLIENT_DIR, identity });
 server.on("error", (error: NodeJS.ErrnoException) => {
   fatal(error.code === "EADDRINUSE" ? `port ${port} is in use: pass --port <n>` : error.message);
 });
+// Ctrl-C removes the uploads it staged first, synchronously (ADR
+// run-evidence-files §6), then closes. `casefile ui` forwards the terminal's
+// SIGINT, so it may come twice: the listener stays, and a repeat is harmless.
+let stopping = false;
+const stop = () => {
+  server.clearUploads();
+  if (stopping) return;
+  stopping = true;
+  server.close(() => process.exit(0));
+  server.closeAllConnections();
+};
+process.on("SIGINT", stop);
+process.on("SIGTERM", stop);
 server.listen(port, "127.0.0.1", () => {
   const address = server.address();
   const actual = typeof address === "object" && address !== null ? address.port : port;

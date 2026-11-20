@@ -115,12 +115,22 @@ export type CaseRun = {
   /** What run files from before `0.2.0` call the milestone. */
   release?: string;
   duration_ms?: number;
-  evidence?: { kind: string; ref: string; sha256?: string }[];
+  evidence?: Evidence[];
   automation_ref?: string;
   /** Why the run ended as it did: a failure message, at most 2000 characters. */
   note?: string;
   path: string;
 };
+
+/**
+ * A file or link attached to a result (ADR run-evidence-files §3): `image`,
+ * `video` and `file` are stored in the repository and served by
+ * `evidenceUrl`; `link` is a URL; ingest's `attachment` is a reference only.
+ */
+export type Evidence = { kind: string; ref: string; sha256?: string; label?: string };
+
+/** What `POST /api/evidence` answers: the id `run` names the staged file by. */
+export type Uploaded = { upload: string; name: string; size: number; kind: string };
 
 /** A case's run events, newest first. */
 export type CaseRuns = { ref: string; runs: CaseRun[] };
@@ -342,6 +352,47 @@ export function session(): Promise<Session | null> {
       return value;
     });
   return sessionOnce;
+}
+
+/** Where the viewer serves a stored evidence file (`GET /api/evidence`, ADR run-evidence-files §7). */
+export function evidenceUrl(ref: string): string {
+  return `/api/evidence?ref=${encodeURIComponent(ref)}`;
+}
+
+/**
+ * Stages one evidence file for `run` (ADR run-evidence-files §6): the raw
+ * bytes as the body, the name URI-encoded in a header. A write: it carries the
+ * session token.
+ */
+export async function uploadEvidence(file: File): Promise<Result<Uploaded>> {
+  try {
+    const token = (await session())?.token;
+    const response = await fetch("/api/evidence", {
+      method: "POST",
+      headers: {
+        "x-casefile-filename": encodeURIComponent(file.name),
+        ...(token && { [TOKEN_HEADER]: token }),
+      },
+      body: file,
+    });
+    return (await response.json()) as Result<Uploaded>;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return { ok: false, errors: [{ code: "ui.unreachable", message: `no answer: ${message}` }] };
+  }
+}
+
+/** Drops a staged upload the page no longer sends (idempotent); the answer does not matter. */
+export async function discardUpload(upload: string): Promise<void> {
+  try {
+    const token = (await session())?.token;
+    await fetch(`/api/evidence/${encodeURIComponent(upload)}`, {
+      method: "DELETE",
+      headers: token ? { [TOKEN_HEADER]: token } : {},
+    });
+  } catch {
+    // Unreachable: the upload expires within the hour anyway.
+  }
 }
 
 export async function call<T>(name: string, input: object = {}): Promise<Result<T>> {

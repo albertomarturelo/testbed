@@ -1,13 +1,22 @@
 import { spawn } from "node:child_process";
 import { fail, type Identity, type Result } from "@casefile/core";
 
-/** The commit a writing operation returned: its message and the files to stage. */
-export type ReturnedCommit = { message: string; files: readonly string[] };
+/**
+ * The commit a writing operation returned: its message and the files to stage;
+ * `force` names those of them staged even when the host repository ignores them.
+ */
+export type ReturnedCommit = {
+  message: string;
+  files: readonly string[];
+  force?: readonly string[];
+};
 
 /**
  * Runs the commit as the human (ADR human-writes-through-operations §2):
  * `git add -- <files>`, then `git commit -F - -- <files>`, so nothing else the
- * human had staged lands in it (ADR agent-runs-the-commit §2). The author is
+ * human had staged lands in it (ADR agent-runs-the-commit §2). The files in
+ * `force` are added with `git add -f`: `run`'s evidence files belong in the
+ * commit even when the host ignores e.g. `*.log` (#204). The author is
  * git's own identity, unless casefile resolved another one: then `-c user.*`
  * names it (ADR identity-override §4). Answers the new commit's sha.
  */
@@ -27,8 +36,15 @@ export async function commitAsHuman(
           "-c",
           `user.email=${identity.email}`,
         ];
-  const added = await git(root, env, "add", ["add", "--", ...files]);
-  if (!added.ok) return added;
+  const force = new Set(commit.force ?? []);
+  for (const [flags, paths] of [
+    [[], files.filter((f) => !force.has(f))],
+    [["-f"], files.filter((f) => force.has(f))],
+  ] as const) {
+    if (paths.length === 0) continue;
+    const added = await git(root, env, "add", ["add", ...flags, "--", ...paths]);
+    if (!added.ok) return added;
+  }
   const committed = await git(
     root,
     env,

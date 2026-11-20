@@ -448,6 +448,48 @@ describe("EvidencePrint", () => {
     expect(print).toHaveBeenCalledOnce();
   });
 
+  it("links each case's evidence through the viewer, with image thumbnails (#204)", async () => {
+    const stored = "apps/web/context/tests/.runs/manual-2026-11-20/TC-0007";
+    const base = doc();
+    answers["milestone-report"] = () => ({
+      ok: true as const,
+      value: {
+        project: "web",
+        slug: "web-1.2.0",
+        state: "open",
+        path: "p",
+        evidence: "",
+        report: {
+          ...base,
+          cases: [
+            {
+              ...base.cases[0],
+              evidence: [
+                `${stored}/1a2b3c4d-shot.png`,
+                `${stored}/0e0f0a0b-console.log`,
+                "https://bugs.example.com/1",
+                "ci/search.log",
+              ],
+            },
+          ],
+        },
+        next: [],
+      },
+    });
+    render(<EvidencePrint project="web" slug="web-1.2.0" version={0} />);
+    const served = (name: string) => `/api/evidence?ref=${encodeURIComponent(`${stored}/${name}`)}`;
+    const shot = await screen.findByRole("link", { name: `shot.png ${stored}/1a2b3c4d-shot.png` });
+    expect(shot.getAttribute("href")).toBe(served("1a2b3c4d-shot.png"));
+    expect(within(shot).getByRole("img").getAttribute("src")).toBe(served("1a2b3c4d-shot.png"));
+    expect(
+      screen.getByRole("link", { name: `${stored}/0e0f0a0b-console.log` }).getAttribute("href"),
+    ).toBe(served("0e0f0a0b-console.log"));
+    const bug = screen.getByRole("link", { name: "https://bugs.example.com/1" });
+    expect(bug.getAttribute("rel")).toBe("noopener noreferrer");
+    // A reference the viewer does not serve stays text.
+    expect(screen.getByText("ci/search.log").closest("a")).toBeNull();
+  });
+
   describe("ends a closed milestone with the commit that froze it (#208)", () => {
     const closedReport = (commit: unknown) => ({
       ok: true as const,

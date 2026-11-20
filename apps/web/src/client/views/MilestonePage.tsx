@@ -10,6 +10,7 @@ import {
   type Result,
 } from "@/api";
 import { ErrorList } from "@/components/ErrorList";
+import { EvidenceRef } from "@/components/Evidence";
 import { RunBadge } from "@/components/StatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -448,9 +449,7 @@ export function EvidenceSections({
                         <div className="flex flex-col gap-0.5 [overflow-wrap:anywhere]">
                           {c.note === null ? null : <span>{c.note}</span>}
                           {c.evidence.map((ref) => (
-                            <span key={ref} className="font-mono text-muted-foreground">
-                              {ref}
-                            </span>
+                            <EvidenceRef key={ref} value={ref} />
                           ))}
                         </div>
                       )}
