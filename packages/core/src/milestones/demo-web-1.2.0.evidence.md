@@ -26,13 +26,24 @@
 
 ## Cases
 
-| Case | Title | Priority | Result | Executor | Date | Build | Note | Evidence |
-|---|---|---|---|---|---|---|---|---|
-| TC-0001 | Sign in with valid credentials | P0 | passed | ci:github-actions | 2026-10-14T07:00:00Z | web-1.2.0+101 | — | — |
-| TC-0002 | Lock the account after five failed sign-in attempts | P2 | failed | human:qa@acme.example | 2026-10-14T10:20:00Z | web-1.2.0+101 | triage known_issue ACME-310 until 2026-11-01 | — |
-| TC-0007 | Search the catalog by keyword | P1 | failed | ci:github-actions | 2026-10-14T07:02:00Z | web-1.2.0+101 | — | ci/artifacts/search.log |
-| TC-0003 | Pay with a saved card | P1 | passed | human:qa@acme.example | 2026-10-14T10:00:00Z | web-1.2.0+101 | — | — |
-| TC-0004 | Refund a captured payment | P1 | passed | ci:github-actions | 2026-10-14T07:01:00Z | web-1.2.0+101 | — | — |
+| Case | Title | Priority | Result | Attempts | Executor | Date | Build | Note | Evidence |
+|---|---|---|---|---|---|---|---|---|---|
+| TC-0001 | Sign in with valid credentials | P0 | passed | 1 | ci:github-actions | 2026-10-14T07:00:00Z | web-1.2.0+101 | — | — |
+| TC-0002 | Lock the account after five failed sign-in attempts | P2 | failed | 1 (1 failed) | human:qa@acme.example | 2026-10-14T10:20:00Z | web-1.2.0+101 | triage known_issue ACME-310 until 2026-11-01 | — |
+| TC-0007 | Search the catalog by keyword | P1 | failed | 1 (1 failed) | ci:github-actions | 2026-10-14T07:02:00Z | web-1.2.0+101 | — | ci/artifacts/search.log |
+| TC-0003 | Pay with a saved card | P1 | passed | 1 | human:qa@acme.example | 2026-10-14T10:00:00Z | web-1.2.0+101 | — | — |
+| TC-0004 | Refund a captured payment | P1 | passed | 1 | ci:github-actions | 2026-10-14T07:01:00Z | web-1.2.0+101 | — | — |
+
+## Requirements
+
+| Requirement | Cases | Verdict |
+|---|---|---|
+| ACME-101#AC-1 | TC-0001 | passed |
+| ACME-101#AC-3 | TC-0002 | failed |
+| ACME-202#AC-1 | TC-0003 | passed |
+| ACME-202#AC-4 | TC-0004 | passed |
+
+Cases that name no requirement: TC-0007.
 
 ## Not executed
 

@@ -176,8 +176,27 @@ export type EvidenceDocument = {
     build: string | null;
     note: string | null;
     evidence: string[];
+    /** Executions in the milestone and how many failed; `null` in evidence frozen before #208. */
+    attempts: { total: number; failed: number } | null;
   }[];
+  /** One row per `acceptance_ref` of the in-scope cases; `null` in evidence frozen before #208. */
+  requirements:
+    | { ref: string; cases: string[]; verdict: "passed" | "failed" | "blocked" | "not run" }[]
+    | null;
+  /** In-scope cases that name no requirement; `null` in evidence frozen before #208. */
+  unlinked: string[] | null;
   note: string | null;
+};
+
+/** The commit that last wrote a closed milestone's evidence, as Git reports it (#208). */
+export type EvidenceCommit = {
+  sha: string;
+  author: string;
+  at: string;
+  signature: "verified" | "unverified" | "bad" | "none";
+  signer: string | null;
+  /** The file differs from that commit. */
+  modified: boolean;
 };
 
 /** What `milestone-report` answers. */
@@ -192,6 +211,8 @@ export type MilestoneReport = {
   report?: EvidenceDocument;
   /** Open only. */
   red_gates?: string[];
+  /** Closed only: `null` outside Git or while the close is not committed. */
+  commit?: EvidenceCommit | null;
   next: string[];
 };
 

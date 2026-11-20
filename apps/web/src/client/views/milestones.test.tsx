@@ -78,6 +78,7 @@ const doc = (over: Partial<EvidenceDocument> = {}): EvidenceDocument => ({
       build: "web-1.2.0+101",
       note: "no results",
       evidence: ["ci/search.log"],
+      attempts: { total: 3, failed: 2 },
     },
     {
       id: "TC-0003",
@@ -89,8 +90,14 @@ const doc = (over: Partial<EvidenceDocument> = {}): EvidenceDocument => ({
       build: null,
       note: null,
       evidence: [],
+      attempts: { total: 0, failed: 0 },
     },
   ],
+  requirements: [
+    { ref: "ACME-310#AC-1", cases: ["TC-0007"], verdict: "failed" },
+    { ref: "ACME-202#AC-1", cases: ["TC-0003"], verdict: "not run" },
+  ],
+  unlinked: [],
   note: null,
   ...over,
 });
@@ -308,17 +315,59 @@ describe("MilestonePage", () => {
     expect(screen.queryByRole("button", { name: "Close milestone" })).toBeNull();
   });
 
-  it("shows a frozen file core can no longer read as it is", async () => {
+  it("shows retries and the requirements each case verifies (#208)", async () => {
+    answers["milestone-report"] = () => report({ report: doc({ unlinked: ["TC-0009"] }) });
+    render(<MilestonePage project="web" slug="web-1.2.0" version={0} />);
+    const cases = await screen.findByRole("region", { name: "Cases" });
+    // A failure before the latest result stays visible.
+    expect(within(cases).getByText("3 attempts, 2 failed")).toBeTruthy();
+    const requirements = screen.getByRole("region", { name: "Requirements" });
+    const rows = within(requirements)
+      .getAllByRole("row")
+      .map((r) => r.textContent);
+    expect(rows).toEqual([
+      "RequirementCasesVerdict",
+      "ACME-310#AC-1TC-0007failed",
+      "ACME-202#AC-1TC-0003not run",
+    ]);
+    expect(within(requirements).getByRole("link", { name: "TC-0007" }).getAttribute("href")).toBe(
+      "#/case/web/TC-0007",
+    );
+    expect(requirements.textContent).toContain("Cases that name no requirement: TC-0009");
+  });
+
+  it("shows evidence frozen before #208 without attempts or requirements", async () => {
+    const old = doc({ requirements: null, unlinked: null });
+    old.cases = old.cases.map((c) => ({ ...c, attempts: null }));
+    answers["milestone-report"] = () => report({ report: old });
+    render(<MilestonePage project="web" slug="web-1.2.0" version={0} />);
+    expect(await screen.findByRole("region", { name: "Cases" })).toBeTruthy();
+    expect(screen.queryByRole("region", { name: "Requirements" })).toBeNull();
+    expect(screen.queryByText(/attempts/)).toBeNull();
+  });
+
+  it("shows a frozen file core can no longer read as it is, and that no commit vouches for it", async () => {
     answers["milestone-report"] = () =>
       report({
         state: "closed",
         report: undefined,
         red_gates: undefined,
         evidence: "edited by hand",
+        commit: {
+          sha: "0123456789abcdef0123456789abcdef01234567",
+          author: "Lead <lead@acme.example>",
+          at: "2026-11-13T10:05:00Z",
+          signature: "unverified",
+          signer: null,
+          modified: true,
+        },
       });
     render(<MilestonePage project="web" slug="web-1.2.0" version={0} />);
     expect(await screen.findByText("edited by hand")).toBeTruthy();
     expect(screen.getByText("ui.evidence_unreadable", { exact: false })).toBeTruthy();
+    const commit = screen.getByRole("region", { name: "Commit" }).textContent ?? "";
+    expect(commit).toContain("unknown, expired or revoked key, or no key trusted here");
+    expect(commit).toContain("The file differs from that commit");
   });
 
   it("shows why a milestone cannot be read", async () => {
@@ -359,6 +408,77 @@ describe("EvidencePrint", () => {
     );
     await user.click(screen.getByRole("button", { name: "Print or save as PDF" }));
     expect(print).toHaveBeenCalledOnce();
+  });
+
+  describe("ends a closed milestone with the commit that froze it (#208)", () => {
+    const closedReport = (commit: unknown) => ({
+      ok: true as const,
+      value: {
+        project: "web",
+        slug: "web-1.2.0",
+        state: "closed",
+        path: "p",
+        evidence: "",
+        report: doc({ closed: { at: "2026-11-13T10:00:00Z", by: "lead@acme.example" } }),
+        commit,
+        next: [],
+      },
+    });
+    const sha = "0123456789abcdef0123456789abcdef01234567";
+    const signed = {
+      sha,
+      author: "Lead <lead@acme.example>",
+      at: "2026-11-13T10:05:00Z",
+      signature: "verified",
+      signer: "lead@acme.example",
+      modified: false,
+    };
+    const footer = async () =>
+      (await screen.findByRole("region", { name: "Commit" })).textContent ?? "";
+
+    it("names the commit, its author and a verified signature", async () => {
+      answers["milestone-report"] = () => closedReport(signed);
+      render(<EvidencePrint project="web" slug="web-1.2.0" version={0} />);
+      const text = await footer();
+      expect(text).toContain(
+        `Frozen in commit ${sha} by Lead <lead@acme.example>, 2026-11-13 10:05 UTC.`,
+      );
+      expect(text).toContain("Signed by lead@acme.example; Git verified the signature.");
+    });
+
+    it("says when the signature cannot be checked here, and when the file was edited", async () => {
+      answers["milestone-report"] = () =>
+        closedReport({ ...signed, signature: "unverified", modified: true });
+      render(<EvidencePrint project="web" slug="web-1.2.0" version={0} />);
+      const text = await footer();
+      expect(text).toContain("cannot verify the signature");
+      expect(text).toContain("The file differs from that commit");
+    });
+
+    it("says when no commit holds it yet", async () => {
+      answers["milestone-report"] = () => closedReport(null);
+      render(<EvidencePrint project="web" slug="web-1.2.0" version={0} />);
+      expect(await footer()).toContain("No Git commit holds this evidence yet");
+    });
+
+    it("has no footer while the milestone is open", async () => {
+      answers["milestone-report"] = () => ({
+        ok: true as const,
+        value: {
+          project: "web",
+          slug: "web-1.2.0",
+          state: "open",
+          path: "p",
+          evidence: "",
+          report: doc(),
+          red_gates: [],
+          next: [],
+        },
+      });
+      render(<EvidencePrint project="web" slug="web-1.2.0" version={0} />);
+      expect(await screen.findByRole("heading", { name: "Web 1.2.0" })).toBeTruthy();
+      expect(screen.queryByRole("region", { name: "Commit" })).toBeNull();
+    });
   });
 });
 

@@ -162,8 +162,22 @@ export const EvidenceDocumentOutput = z.strictObject({
       build: z.string().nullable(),
       note: z.string().nullable(),
       evidence: z.array(z.string()),
+      /** Executions in the milestone and how many failed; `null` in evidence frozen before #208. */
+      attempts: z.strictObject({ total: z.number().int(), failed: z.number().int() }).nullable(),
     }),
   ),
+  /** One row per `acceptance_ref` of the in-scope cases; `null` in evidence frozen before #208. */
+  requirements: z
+    .array(
+      z.strictObject({
+        ref: z.string(),
+        cases: z.array(z.string()),
+        verdict: z.enum(["passed", "failed", "blocked", "not run"]),
+      }),
+    )
+    .nullable(),
+  /** In-scope cases that name no requirement; `null` in evidence frozen before #208. */
+  unlinked: z.array(z.string()).nullable(),
   note: z.string().nullable(),
 });
 

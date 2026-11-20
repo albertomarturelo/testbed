@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -195,6 +196,35 @@ describe("milestone close (ADR milestones-group-executions §2, §4, §5)", () =
     if (!edited.ok) throw new Error(JSON.stringify(edited.errors));
     expect(edited.value).toMatchObject({ evidence: "edited by hand\n" });
     expect(edited.value).not.toHaveProperty("report");
+  });
+
+  it("names the commit that froze the evidence, once the close is committed (#208)", async () => {
+    const env = { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_NOSYSTEM: "1" };
+    const git = (...args: string[]) =>
+      execFileSync("git", args, { cwd: root, env, encoding: "utf8" }).trim();
+    git("init", "-q");
+    git("config", "user.name", "Lead");
+    git("config", "user.email", "lead@acme.example");
+    git("add", "-A");
+    git("commit", "-q", "-m", "demo");
+
+    const closed = await close({ note: NOTE }, "human");
+    if (!closed.ok) throw new Error(JSON.stringify(closed.errors));
+    // Written, not committed yet: no commit vouches for it.
+    const before = await report();
+    expect(before.ok && (before.value as { commit: unknown }).commit).toBeNull();
+
+    const { commit } = closed.value as Closed;
+    git("add", "--", ...commit.files);
+    git("commit", "-q", "-m", commit.message, "--", ...commit.files);
+    const after = await report();
+    if (!after.ok) throw new Error(JSON.stringify(after.errors));
+    expect((after.value as { commit: unknown }).commit).toMatchObject({
+      sha: git("rev-parse", "HEAD"),
+      author: "Lead <lead@acme.example>",
+      signature: "none",
+      modified: false,
+    });
   });
 
   it("reports a closed milestone whose evidence file is gone", async () => {

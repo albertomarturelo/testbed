@@ -3,6 +3,7 @@ import { type FormEvent, useEffect, useId, useState } from "react";
 import {
   type CasefileError,
   call,
+  type EvidenceCommit,
   type EvidenceDocument,
   type MilestoneClosed,
   type MilestoneReport,
@@ -147,7 +148,7 @@ export function MilestonePage({
       {document === undefined ? (
         <FrozenText report={report} />
       ) : (
-        <EvidenceSections document={document} links />
+        <EvidenceSections document={document} commit={report.commit} links />
       )}
     </article>
   );
@@ -163,10 +164,14 @@ function BackLink({ project }: { project: string }) {
   );
 }
 
-/** A frozen file no longer in the shape core writes: shown as it is, never re-generated. */
+/**
+ * A frozen file no longer in the shape core writes: shown as it is, never
+ * re-generated, then the commit that last wrote it: an edit by hand is when it
+ * matters most whether a commit vouches for the file.
+ */
 function FrozenText({ report }: { report: MilestoneReport }) {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-4">
       <ErrorList
         errors={[
           {
@@ -181,6 +186,9 @@ function FrozenText({ report }: { report: MilestoneReport }) {
       <pre className="overflow-x-auto whitespace-pre-wrap rounded-md border p-4 text-xs">
         {report.evidence}
       </pre>
+      {report.state !== "closed" || report.commit === undefined ? null : (
+        <CommitFooter commit={report.commit} />
+      )}
     </div>
   );
 }
@@ -231,7 +239,7 @@ export function EvidencePrint({
       ) : document_ === undefined ? (
         <FrozenText report={result.value} />
       ) : (
-        <EvidenceSections document={document_} />
+        <EvidenceSections document={document_} commit={result.value.commit} />
       )}
     </article>
   );
@@ -239,18 +247,33 @@ export function EvidencePrint({
 
 /**
  * The evidence, in the order of its file: the milestone, totals, gates, cases,
- * the cases not executed and the close note. On paper, the cases and what was
+ * requirements, the cases not executed and the close note; for a closed
+ * milestone, the commit that froze it last. On paper, the cases and what was
  * not executed each start a page; rows never split.
  */
 export function EvidenceSections({
   document,
+  commit,
   links = false,
 }: {
   document: EvidenceDocument;
+  /** Closed only: the commit that last wrote the file (`null`: none); absent while open. */
+  commit?: EvidenceCommit | null;
   /** Case ids link to the case (on screen); on paper they are plain text. */
   links?: boolean;
 }) {
   const d = document;
+  const caseId = (id: string) =>
+    links ? (
+      <a
+        className="hover:underline"
+        href={formatRoute({ view: "case", ref: `${d.project}/${id}` })}
+      >
+        {id}
+      </a>
+    ) : (
+      id
+    );
   const missing = d.cases.filter((c) => c.result === null);
   const stamp = (s: { at: string; by: string } | null, none: string) =>
     s === null ? none : `${utc(s.at)} by ${s.by}`;
@@ -383,11 +406,18 @@ export function EvidenceSections({
                     </TableCell>
                     <TableCell>{c.priority}</TableCell>
                     <TableCell>
-                      {c.result === null ? (
-                        <span className="text-muted-foreground text-xs">not run</span>
-                      ) : (
-                        <RunBadge status={c.result} />
-                      )}
+                      <div className="flex flex-col items-start gap-0.5">
+                        {c.result === null ? (
+                          <span className="text-muted-foreground text-xs">not run</span>
+                        ) : (
+                          <RunBadge status={c.result} />
+                        )}
+                        {c.attempts == null || c.attempts.total < 2 ? null : (
+                          <span className="text-muted-foreground text-xs tabular-nums">
+                            {attemptsText(c.attempts)}
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="hidden whitespace-normal text-xs @3xl:table-cell print:table-cell">
                       {c.executor === null && c.at === null ? (
@@ -426,6 +456,67 @@ export function EvidenceSections({
         )}
       </EvidenceSection>
 
+      {d.requirements == null ? null : (
+        <EvidenceSection title="Requirements">
+          {d.requirements.length === 0 ? (
+            <p className="text-muted-foreground text-sm">
+              No case in scope names a requirement (<code>acceptance_ref</code>).
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Requirement</TableHead>
+                  <TableHead>Cases</TableHead>
+                  <TableHead>Verdict</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {d.requirements.map((r) => (
+                  <TableRow key={r.ref} className="break-inside-avoid align-top">
+                    <TableCell className="font-mono text-xs [overflow-wrap:anywhere]">
+                      {r.ref}
+                    </TableCell>
+                    <TableCell className="whitespace-normal font-mono text-xs">
+                      {r.cases.map((id, i) => (
+                        <span key={id}>
+                          {i > 0 ? ", " : null}
+                          {caseId(id)}
+                        </span>
+                      ))}
+                    </TableCell>
+                    <TableCell>
+                      {r.verdict === "not run" ? (
+                        <span className="text-muted-foreground text-xs">not run</span>
+                      ) : (
+                        <RunBadge status={r.verdict} />
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+          {(d.unlinked ?? []).length > 0 ? (
+            <p className="text-sm">
+              Cases that name no requirement:{" "}
+              <span className="font-mono text-xs">
+                {(d.unlinked ?? []).map((id, i) => (
+                  <span key={id}>
+                    {i > 0 ? ", " : null}
+                    {caseId(id)}
+                  </span>
+                ))}
+              </span>
+            </p>
+          ) : d.requirements.length > 0 ? (
+            <p className="text-muted-foreground text-sm">
+              Every case in scope names a requirement.
+            </p>
+          ) : null}
+        </EvidenceSection>
+      )}
+
       <EvidenceSection title="Not executed" newPage={missing.length > 0}>
         {missing.length === 0 ? (
           <p className="text-sm">Every case in scope was executed.</p>
@@ -457,7 +548,59 @@ export function EvidenceSections({
           <p className="whitespace-pre-wrap text-sm">{d.note}</p>
         </EvidenceSection>
       )}
+
+      {d.closed === null || commit === undefined ? null : <CommitFooter commit={commit} />}
     </div>
+  );
+}
+
+/** `3 attempts, 1 failed`: a pass after failures stays visible (#208). */
+function attemptsText(attempts: { total: number; failed: number }): string {
+  return `${attempts.total} attempts${attempts.failed === 0 ? "" : `, ${attempts.failed} failed`}`;
+}
+
+const SIGNATURE: Record<EvidenceCommit["signature"], (signer: string | null) => string> = {
+  verified: (signer) => `Signed by ${signer ?? "a trusted key"}; Git verified the signature.`,
+  unverified: (signer) =>
+    `Signed${signer === null ? "" : ` by ${signer}`}, but the Git that printed this cannot verify the signature (unknown, expired or revoked key, or no key trusted here).`,
+  bad: () => "The signature is BAD: the commit does not match it.",
+  none: () => "The commit is not signed.",
+};
+
+/**
+ * Which commit froze the evidence and whether it is signed, as Git reports them
+ * where the viewer runs (ADR milestones-group-executions §6, #208). Read every
+ * time, never stored in the file.
+ */
+function CommitFooter({ commit }: { commit: EvidenceCommit | null }) {
+  return (
+    <section
+      aria-label="Commit"
+      className="flex flex-col gap-1 break-inside-avoid border-t pt-4 text-muted-foreground text-xs"
+    >
+      {commit === null ? (
+        <p>
+          No Git commit holds this evidence yet: the close is not committed, so nothing vouches for
+          the file.
+        </p>
+      ) : (
+        <>
+          <p>
+            Frozen in commit{" "}
+            <span className="font-mono [overflow-wrap:anywhere]">{commit.sha}</span> by{" "}
+            {commit.author}, {utc(commit.at)}.
+          </p>
+          <p className={cn(commit.signature === "bad" && "font-semibold text-destructive")}>
+            {SIGNATURE[commit.signature](commit.signer)}
+          </p>
+          {commit.modified ? (
+            <p className="font-semibold text-destructive">
+              The file differs from that commit: the commit does not vouch for what is shown.
+            </p>
+          ) : null}
+        </>
+      )}
+    </section>
   );
 }
 

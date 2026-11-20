@@ -9,6 +9,8 @@ rules are unchanged). Gives `release sign`
 ([git-is-identity](2026-10-15-git-is-identity.md)) its shape: closing a
 milestone. [feature-tree-not-calendar](2026-10-15-feature-tree-not-calendar.md)
 holds: a milestone groups executions, never cases.
+§4 and §6 amended 2026-11-20 (#208): the evidence traces requirements and
+attempts, and the printed page names the commit that froze it.
 
 ## Context
 
@@ -46,12 +48,26 @@ a version.
    build, note, evidence refs) and the cases not executed. Committed, never
    regenerated: a later correction is a new milestone. Red gates do not block
    the close, but need a `note`, written into the evidence.
+   **Amendment (#208):** each case row also says how often the case was
+   executed in the milestone and how many of those failed (`3 (1 failed)`),
+   so a pass after failures shows. A `Requirements` section follows the
+   cases: one row per `acceptance_ref` of the in-scope cases, its cases and a
+   verdict (failed if any failed, else blocked, else not run, else passed),
+   then the in-scope cases that name none. casefile only knows the
+   requirements cases name, so a requirement no case names cannot be listed.
+   Evidence frozen before (no attempts, no `Requirements`) still reads.
 5. **Signed when the repository signs.** Close's commit carries
    `Casefile-Milestone: <slug>`; the human's commit uses their Git signing
    setup (`casefile init` recommends SSH signing), so the evidence shows who
    certified it. casefile never holds a key.
 6. **PDF from the viewer:** a printable evidence page (print stylesheet,
-   "Save as PDF"), no new dependency. A PDF built in CI waits for a real need
+   "Save as PDF"), no new dependency. **Amendment (#208):** for a closed
+   milestone the page ends with the commit that last wrote `evidence.md` and
+   its signature status (`verified`, `unverified`, `bad`, `none`) and signer,
+   as `git log` reports them where the viewer runs. They are read at report
+   time, never written into the file (ADR history-commit-reference): the file
+   cannot name the commit that adds it, and the signature is only as
+   trustworthy as the reader's Git checks it. A PDF built in CI waits for a real need
    and its own ADR. Attaching `evidence.md` to the GitHub Release of
    `release` is a documented CI step (`gh release upload`), not casefile's job.
 7. **Viewer:** a Milestones view (list with progress "N of M executed, X
@@ -74,6 +90,14 @@ a version.
 4. **Evidence on demand only:** a late event would change what was delivered.
 5. **Server-side PDF now:** a rendering dependency before anyone asked for
    PDFs from CI.
+6. **Requirements as their own files (#208):** a list of a release's
+   acceptance criteria would show the ones no case covers, but it duplicates
+   the tracker; the cases' `acceptance_ref` is already the link.
+7. **Store the close commit or a hash in the evidence (#208):** a file cannot
+   name the commit that adds it, and a stored hash would be one more thing to
+   keep true; Git already holds both.
+8. **Every execution as its own row (#208):** a full history makes the
+   evidence long; the run files keep it, and a count shows the retries.
 
 ## Consequences
 
