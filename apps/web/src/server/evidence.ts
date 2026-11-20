@@ -13,9 +13,8 @@ import {
   evidenceLimits,
   extensionOf,
   fail,
+  findNamedEvidence,
   isScriptExtension,
-  loadWorkspace,
-  namedStoredEvidence,
   openRegistry,
   type Result,
   storedEvidenceName,
@@ -34,6 +33,9 @@ export const UPLOAD_TTL_MS = 60 * 60 * 1000;
 /** What `POST /api/evidence` answers. */
 export type Uploaded = { upload: string; name: string; size: number; kind: EvidenceKind };
 
+/** What an upload answers; `close`: the rest of the body is not read, the connection goes. */
+type Received = { status: number; result: Result<Uploaded>; close: boolean };
+
 type Staged = { file: string; name: string; size: number; kind: EvidenceKind; at: number };
 
 /**
@@ -50,51 +52,64 @@ export class UploadStage {
     this.#now = now;
   }
 
-  /** Streams one request body into the stage, applying the workspace's limits. */
-  async receive(request: IncomingMessage, root: string): Promise<[number, Result<Uploaded>]> {
+  /**
+   * Streams one request body into the stage, applying the workspace's limits.
+   * Past the size limit it stops reading: `close` says the server answers and
+   * drops the connection instead of draining the rest. A body the client
+   * aborts leaves nothing behind.
+   */
+  async receive(request: IncomingMessage, root: string): Promise<Received> {
     this.sweep();
     const header = request.headers[FILENAME_HEADER];
     const name = typeof header === "string" ? originalName(header) : null;
     if (name === null) {
-      return [
-        400,
-        fail(
-          invalid(
-            `name the file in the ${FILENAME_HEADER} header, URI-encoded; the body is its bytes`,
-          ),
-        ),
-      ];
+      const message = `name the file in the ${FILENAME_HEADER} header, URI-encoded; the body is its bytes`;
+      return { status: 400, result: fail(invalid(message)), close: false };
     }
     const limits = evidenceLimits((await openRegistry(root)).config?.evidence);
     const problems = evidenceEntryProblems([{ field: "file", file: name }], limits.extensions);
-    if (problems.length > 0) return [400, fail(...problems.map(withoutField))];
+    if (problems.length > 0) {
+      return { status: 400, result: fail(...problems.map(withoutField)), close: false };
+    }
     const declared = Number(request.headers["content-length"]);
     if (Number.isFinite(declared) && declared > limits.maxBytes) {
-      return [413, fail(tooLarge(name, declared, limits.maxBytes))];
+      return { status: 413, result: fail(tooLarge(name, declared, limits.maxBytes)), close: true };
     }
 
     const upload = randomUUID();
     const dir = join(this.#directory(), upload);
     await mkdir(dir);
     const file = join(dir, storedEvidenceName(name));
-    const handle = await open(file, "wx");
     let size = 0;
     try {
-      // Read to the end even past the limit: the page gets the answer, not a reset.
-      for await (const chunk of request) {
-        size += (chunk as Buffer).length;
-        if (size <= limits.maxBytes) await handle.write(chunk as Buffer);
+      const handle = await open(file, "wx");
+      try {
+        // Not `for await`: leaving it early would destroy the request before the answer.
+        const chunks = request[Symbol.asyncIterator]();
+        for (let next = await chunks.next(); !next.done; next = await chunks.next()) {
+          size += (next.value as Buffer).length;
+          if (size > limits.maxBytes) break;
+          await handle.write(next.value as Buffer);
+        }
+      } finally {
+        await handle.close();
       }
-    } finally {
-      await handle.close();
+    } catch (error) {
+      // The client went away mid-body (or the disk failed): no partial upload stays.
+      await rm(dir, { recursive: true, force: true });
+      if (request.destroyed || request.errored !== null) {
+        const message = "the upload was cut off before its end; send the file again";
+        return { status: 400, result: fail(invalid(message)), close: true };
+      }
+      throw error;
     }
     if (size > limits.maxBytes) {
       await rm(dir, { recursive: true, force: true });
-      return [413, fail(tooLarge(name, size, limits.maxBytes))];
+      return { status: 413, result: fail(tooLarge(name, size, limits.maxBytes)), close: true };
     }
     const kind = evidenceKind(extensionOf(name));
     this.#uploads.set(upload, { file, name, size, kind, at: this.#now() });
-    return [200, { ok: true, value: { upload, name, size, kind } }];
+    return { status: 200, result: { ok: true, value: { upload, name, size, kind } }, close: false };
   }
 
   /** The staged file of an upload that has not expired; `null` otherwise. */
@@ -103,7 +118,7 @@ export class UploadStage {
     return this.#uploads.get(upload)?.file ?? null;
   }
 
-  /** Removes uploads, once the `run` naming them is recorded. */
+  /** Removes uploads: the `run` naming them is recorded, or the page dropped them. Unknown ids are ignored. */
   async remove(uploads: readonly string[]): Promise<void> {
     for (const upload of uploads) {
       const staged = this.#uploads.get(upload);
@@ -189,8 +204,10 @@ const MEDIA_TYPES: Readonly<Record<string, string>> = {
  * `GET /api/evidence?ref=<workspace-relative ref>` (ADR run-evidence-files §7):
  * the file, only when a run event names `ref` as a file `run` stored inside a
  * `.runs/<run-id>/` directory, its extension is allowed and never a script
- * type, and the path is a regular file reached without a symlink. Anything
- * else is `ui.evidence_not_found`: the answer does not say which rule failed.
+ * type, and the path is a regular file reached without a symlink. Only the
+ * ref's own run file is read, never the whole workspace: a page of thumbnails
+ * asks once per image. Anything else is `ui.evidence_not_found`: the answer
+ * does not say which rule failed.
  */
 export async function serveEvidence(
   response: ServerResponse,
@@ -204,9 +221,8 @@ export async function serveEvidence(
   });
   const extension = extensionOf(ref);
   if (ref === "" || isScriptExtension(extension)) return missing;
-  const workspace = await loadWorkspace(root);
-  const { extensions } = evidenceLimits(workspace.config?.evidence);
-  if (!extensions.includes(extension) || namedStoredEvidence(workspace, ref) === null) {
+  const named = await findNamedEvidence(root, ref);
+  if (named === null || !evidenceLimits(named.config).extensions.includes(extension)) {
     return missing;
   }
   const file = join(root, ...ref.split("/"));

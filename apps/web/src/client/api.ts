@@ -382,6 +382,19 @@ export async function uploadEvidence(file: File): Promise<Result<Uploaded>> {
   }
 }
 
+/** Drops a staged upload the page no longer sends (idempotent); the answer does not matter. */
+export async function discardUpload(upload: string): Promise<void> {
+  try {
+    const token = (await session())?.token;
+    await fetch(`/api/evidence/${encodeURIComponent(upload)}`, {
+      method: "DELETE",
+      headers: token ? { [TOKEN_HEADER]: token } : {},
+    });
+  } catch {
+    // Unreachable: the upload expires within the hour anyway.
+  }
+}
+
 export async function call<T>(name: string, input: object = {}): Promise<Result<T>> {
   try {
     const token = (await session())?.token;

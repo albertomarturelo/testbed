@@ -49,6 +49,13 @@ const CONTENT_TYPES: Readonly<Record<string, string>> = {
   ".json": "application/json; charset=utf-8",
 };
 
+/**
+ * The started server, and a synchronous way to remove the uploads it staged:
+ * a host stopping on a signal calls it before exiting, since the process may
+ * be killed before `close` runs.
+ */
+export type UiServer = Server & { clearUploads(): void };
+
 /** What one started server knows beyond its options. */
 type Session = UiServerOptions & { token: string; stage: UploadStage };
 
@@ -60,10 +67,11 @@ type Session = UiServerOptions & { token: string; stage: UploadStage };
  * it, and its commit is then run as the human (ADR
  * human-writes-through-operations §2–3). The caller binds it to 127.0.0.1;
  * requests naming another host are refused (DNS rebinding). Evidence files go
- * up through `POST /api/evidence` and are served by `GET /api/evidence?ref=`
- * (ADR run-evidence-files §6–7); uploads still staged go when it closes.
+ * up through `POST /api/evidence`, are dropped by `DELETE /api/evidence/<upload>`
+ * and served by `GET /api/evidence?ref=` (ADR run-evidence-files §6–7);
+ * uploads still staged go when it closes, or with `clearUploads()`.
  */
-export function createUiServer(options: UiServerOptions): Server {
+export function createUiServer(options: UiServerOptions): UiServer {
   const stage = new UploadStage(options.now);
   const session: Session = { ...options, token: randomBytes(32).toString("base64url"), stage };
   const server = createServer((request, response) => {
@@ -79,7 +87,7 @@ export function createUiServer(options: UiServerOptions): Server {
     clearInterval(sweeper);
     stage.clear();
   });
-  return server;
+  return Object.assign(server, { clearUploads: () => stage.clear() });
 }
 
 async function handle(
@@ -100,7 +108,7 @@ async function handle(
     send(response, 200, { ok: true, value: await sessionView(session) });
     return;
   }
-  if (url.pathname === EVIDENCE_PATH) {
+  if (url.pathname === EVIDENCE_PATH || url.pathname.startsWith(`${EVIDENCE_PATH}/`)) {
     await evidence(request, response, url, session);
     return;
   }
@@ -147,8 +155,10 @@ async function sessionView(session: Session) {
 }
 
 /**
- * `GET` serves a stored evidence file, open like every read; `POST` stages an
- * upload, a write: the page's origin and token (ADR run-evidence-files §6–7).
+ * `GET /api/evidence?ref=` serves a stored evidence file, open like every
+ * read. `POST /api/evidence` stages an upload and `DELETE
+ * /api/evidence/<upload>` drops one (idempotent): writes, so the page's origin
+ * and token (ADR run-evidence-files §6–7).
  */
 async function evidence(
   request: IncomingMessage,
@@ -156,30 +166,35 @@ async function evidence(
   url: URL,
   session: Session,
 ): Promise<void> {
+  const upload = url.pathname.slice(EVIDENCE_PATH.length + 1);
+  const allowed = upload === "" ? ["GET", "POST"] : ["DELETE"];
+  if (!allowed.includes(request.method ?? "") || upload.includes("/")) {
+    response.writeHead(405, { allow: allowed.join(", ") }).end();
+    return;
+  }
   if (request.method === "GET") {
     const missing = await serveEvidence(response, url, session.root);
     if (missing !== null) send(response, 404, missing);
     return;
   }
-  if (request.method !== "POST") {
-    response.writeHead(405, { allow: "GET, POST" }).end();
-    return;
-  }
   if (!isAllowedWrite(request, session.token)) {
-    send(
-      response,
-      403,
-      fail(
-        error(
-          "ui.forbidden",
-          "an upload writes files: only the UI's own page may send one, with the session token",
-        ),
-      ),
-    );
+    const message =
+      "uploads write files: only the UI's own page may send or drop one, with the session token";
+    send(response, 403, fail(error("ui.forbidden", message)));
     return;
   }
-  const [status, result] = await session.stage.receive(request, session.root);
-  send(response, status, result);
+  if (request.method === "DELETE") {
+    await session.stage.remove([upload]);
+    send(response, 200, { ok: true, value: { upload } });
+    return;
+  }
+  const received = await session.stage.receive(request, session.root);
+  if (received.close) {
+    // The rest of the body is not read: answer, then drop the connection.
+    response.setHeader("connection", "close");
+    response.on("finish", () => request.destroy());
+  }
+  send(response, received.status, received.result);
 }
 
 async function api(

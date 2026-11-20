@@ -1,6 +1,6 @@
 import { Link2, Paperclip, RotateCw, X } from "lucide-react";
 import { type ClipboardEvent, useId, useRef, useState } from "react";
-import { type CasefileError, uploadEvidence } from "@/api";
+import { type CasefileError, discardUpload, uploadEvidence } from "@/api";
 import { formatSize } from "@/components/Evidence";
 import { Button } from "@/components/ui/button";
 import { FieldDescription, FieldLegend, FieldSet } from "@/components/ui/field";
@@ -67,7 +67,12 @@ export function useEvidenceDraft() {
       const draft = files.find((f) => f.key === key);
       if (draft !== undefined) void send(key, draft.file);
     },
-    removeFile: (key: number) => setFiles((all) => all.filter((f) => f.key !== key)),
+    /** Drops a file; the server drops its upload too, so nothing waits an hour for nobody. */
+    removeFile(key: number) {
+      const upload = files.find((f) => f.key === key)?.upload;
+      setFiles((all) => all.filter((f) => f.key !== key));
+      if (upload != null) void discardUpload(upload);
+    },
     labelFile: (key: number, label: string) => patch(key, { label }),
     addLink(): number {
       const key = next.current++;
@@ -324,7 +329,19 @@ function refusedForGood(errors: readonly CasefileError[]): boolean {
   return errors.some((e) => e.code.startsWith("evidence."));
 }
 
-/** The files a paste carries (an image copied to the clipboard); none for pasted text. */
+/**
+ * The images a paste carries (a screenshot copied to the clipboard). None when
+ * text is pasted into a text field: an app copying both text and an image
+ * (a spreadsheet, a word processor) pastes its text there, as anywhere else.
+ */
 export function pastedFiles(event: ClipboardEvent): File[] {
-  return [...(event.clipboardData?.files ?? [])];
+  const data = event.clipboardData;
+  if (data === null || data === undefined) return [];
+  const target = event.target as HTMLElement;
+  const textField =
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLInputElement ||
+    target.isContentEditable;
+  if (textField && [...(data.types ?? [])].includes("text/plain")) return [];
+  return [...(data.files ?? [])].filter((file) => file.type.startsWith("image/"));
 }

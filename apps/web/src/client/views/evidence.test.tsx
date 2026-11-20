@@ -13,6 +13,8 @@ let answers: Record<string, (input: Record<string, unknown>) => Result<unknown>>
 const calls: { name: string; input: Record<string, unknown> }[] = [];
 /** Each upload: the decoded name the header carried and the token sent. */
 let uploads: { name: string; token: string | undefined }[] = [];
+/** Each upload the page dropped (`DELETE /api/evidence/<id>`), with the token sent. */
+let discarded: { upload: string; token: string | undefined }[] = [];
 /** What an upload answers, by file name; staged by default. */
 let uploadAnswer: (name: string) => Result<unknown>;
 
@@ -22,6 +24,7 @@ const recordedRuns: Record<string, unknown>[] = [];
 beforeEach(() => {
   calls.length = 0;
   uploads = [];
+  discarded = [];
   recordedRuns.length = 0;
   forgetSession();
   uploadAnswer = (name) => ({
@@ -49,7 +52,15 @@ beforeEach(() => {
   };
   vi.stubGlobal(
     "fetch",
-    async (url: string, init?: { body: unknown; headers?: Record<string, string> }) => {
+    async (
+      url: string,
+      init?: { body?: unknown; method?: string; headers?: Record<string, string> },
+    ) => {
+      if (init?.method === "DELETE") {
+        const upload = decodeURIComponent(url.slice("/api/evidence/".length));
+        discarded.push({ upload, token: init.headers?.["x-casefile-token"] });
+        return new Response(JSON.stringify({ ok: true, value: { upload } }));
+      }
       if (url === "/api/evidence") {
         const name = decodeURIComponent(init?.headers?.["x-casefile-filename"] ?? "");
         uploads.push({ name, token: init?.headers?.["x-casefile-token"] });
@@ -176,12 +187,49 @@ describe("Record a result: evidence (#204)", () => {
 
     await user.click(within(form).getByRole("button", { name: "Remove huge.mp4" }));
     expect(within(form).queryByText("huge.mp4")).toBeNull();
+    // A refused file was never staged: nothing to drop on the server.
+    expect(discarded).toEqual([]);
     // Focus goes back to the picker's button, not to the page's start.
     expect(document.activeElement).toBe(within(form).getByRole("button", { name: "Choose files" }));
     await user.click(within(form).getByRole("button", { name: "Record" }));
     expect(runCalls()).toEqual([
       { ref: "web/TC-0001", status: "failed", attach: [{ upload: "id-ok" }] },
     ]);
+  });
+
+  it("drops a removed file's upload on the server, so it is not sent", async () => {
+    const user = userEvent.setup();
+    answers.run = () => ({ ok: false, errors: [{ code: "x", message: "unused" }] });
+    const form = await openForm(user);
+    await user.upload(within(form).getByLabelText("Evidence files"), [png("a.png"), png("b.png")]);
+    const files = within(form).getByRole("list", { name: "Files" });
+    await waitFor(() => expect(within(files).getAllByText("Uploaded")).toHaveLength(2));
+    await user.click(within(form).getByRole("button", { name: "Remove a.png" }));
+    expect(discarded).toEqual([{ upload: "id-1", token: "t" }]);
+    await user.click(within(form).getByRole("button", { name: "Record" }));
+    expect(runCalls()).toEqual([
+      { ref: "web/TC-0001", status: "failed", attach: [{ upload: "id-2" }] },
+    ]);
+  });
+
+  it("leaves text pasted into a field as text, even when the clipboard also holds an image", async () => {
+    const user = userEvent.setup();
+    const form = await openForm(user);
+    const note = within(form).getByLabelText("Note");
+    const both = { types: ["text/plain", "Files"], files: [png("cells.png")] };
+    // `fireEvent` answers false when the handler prevented the browser's paste.
+    expect(fireEvent.paste(note, { clipboardData: both })).toBe(true);
+    // Only images become evidence; a pasted PDF from a file manager does not.
+    const pdf = new File(["%PDF"], "doc.pdf", { type: "application/pdf" });
+    expect(fireEvent.paste(note, { clipboardData: { types: ["Files"], files: [pdf] } })).toBe(true);
+    expect(within(form).queryByRole("list", { name: "Files" })).toBeNull();
+    expect(uploads).toEqual([]);
+    // An image alone, pasted on a button, is taken.
+    const button = within(form).getByRole("button", { name: "Choose files" });
+    expect(
+      fireEvent.paste(button, { clipboardData: { types: ["Files"], files: [png("s.png")] } }),
+    ).toBe(false);
+    expect(await within(form).findByText("s.png")).toBeTruthy();
   });
 
   it("places run's errors under the file or link they name, and uploads an expired file again", async () => {

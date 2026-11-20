@@ -64,24 +64,30 @@ to port 4321.
   than localhost are refused (DNS rebinding).
 - Evidence (ADR [run-evidence-files](https://github.com/albertomarturelo/testbed/blob/main/docs/decisions/2026-11-20-run-evidence-files.md)
   §6–7). "Record a result" takes files dropped on it, picked, or pasted with
-  Ctrl/Cmd+V (an image copied to the clipboard), and links, each with an
+  Ctrl/Cmd+V (an image copied to the clipboard; text pasted into a field stays
+  text), and links, each with an
   optional label. Each file goes up at once as `POST /api/evidence`: the raw
   bytes as the body, the name URI-encoded in `X-Casefile-Filename`, behind the
   same guard as a write. The server applies `casefile.yaml`'s `evidence` limits
   (size, extensions, never a script type), stages the file under the OS temp
   directory (never the repository) and answers
-  `{ upload, name, size, kind }`. The page then sends `run` with
+  `{ upload, name, size, kind }`. Past the size limit it stops reading,
+  answers 413 and closes the connection; a body the client cuts off leaves
+  nothing staged. Removing a file from the form sends
+  `DELETE /api/evidence/<upload>` (same guard, idempotent). The page then sends `run` with
   `attach: [{ upload, label? } | { url, label? }]`; the server swaps each
   upload for its staged file before core copies it into
   `.runs/<run>/<case>/`. The page can never name a path on the machine
   (`ui.local_file`). An upload goes once a result names it, after an hour, or
-  when the server stops; a result core refuses keeps its uploads, so it can be
+  when the server stops (Ctrl-C included: the host removes them before it
+  exits); a result core refuses keeps its uploads, so it can be
   sent again. The commit stages `run`'s evidence files with `git add -f`: they
   are committed even when the repository ignores e.g. `*.log`.
 - `GET /api/evidence?ref=<workspace-relative path>` serves a stored evidence
   file read-only, open like every read: only a `ref` some run event names as a
   file `run` stored inside a `.runs/<run-id>/` directory, with an allowed,
-  non-script extension, a regular file reached without a symlink. It answers
+  non-script extension, a regular file reached without a symlink. It reads
+  only that ref's run file (`.runs/<run-id>.jsonl`), not the workspace. It answers
   with `Content-Type` from the extension, `X-Content-Type-Options: nosniff`,
   `Cache-Control: no-store`, and `Content-Disposition: attachment` except for
   images and videos. The run history shows images as thumbnails that open full

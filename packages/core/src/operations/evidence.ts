@@ -138,6 +138,18 @@ export function isStoredEvidenceRef(ref: string, projectPath: string): boolean {
 }
 
 /**
+ * The run file whose events name a stored `ref`: `.runs/<run-id>/…` belongs to
+ * `.runs/<run-id>.jsonl` of the same project. `null` when `ref` is not stored
+ * under `projectPath` (`isStoredEvidenceRef`).
+ */
+export function evidenceRunFile(ref: string, projectPath: string): string | null {
+  if (!isStoredEvidenceRef(ref, projectPath)) return null;
+  const runs = posix.join(projectPath, TESTS_DIR, ".runs");
+  const run = ref.slice(runs.length + 1).split("/")[0];
+  return `${runs}/${run}.jsonl`;
+}
+
+/**
  * Whether `validate` checks an event's evidence entry: a file `run` stored
  * (`image`, `video`, `file`) inside a `.runs/<run-id>/` directory of the
  * project. Links and ingest's `attachment` references are not checked.

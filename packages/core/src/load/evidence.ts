@@ -1,23 +1,41 @@
 import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
-import { lstat } from "node:fs/promises";
-import { join } from "node:path";
+import { lstat, readFile } from "node:fs/promises";
+import { isAbsolute, join } from "node:path";
 import { pipeline } from "node:stream/promises";
-import { isCheckedEvidence, NOT_A_FILE } from "../operations/evidence.js";
-import type { Evidence } from "../schema/index.js";
+import { evidenceRunFile, isCheckedEvidence, NOT_A_FILE } from "../operations/evidence.js";
+import type { Evidence, EvidenceConfig } from "../schema/index.js";
+import { parseConfigFile, parseRunFile } from "./parse.js";
+import { CONFIG_FILE, normalizeProjectPath } from "./paths.js";
 import type { LoadedWorkspace } from "./workspace.js";
 
 /**
- * The stored evidence entry a run event names under `ref` (ADR run-evidence-files
- * §7): a file `run` stored (`image`, `video`, `file`) inside a `.runs/<run-id>/`
- * directory of the event's own project. `null` when no event does: the viewer
- * serves only what a run event names. Pure: reads nothing.
+ * Filesystem adapter for the viewer's `GET /api/evidence` (ADR run-evidence-files
+ * §7): the entry a run event names under `ref` as a file `run` stored (`image`,
+ * `video`, `file`) inside a `.runs/<run-id>/` directory of the event's own
+ * project, with the workspace's `evidence` config. Reads `casefile.yaml` and
+ * only the run file that would name it, `.runs/<run-id>.jsonl`; `null` when no
+ * event there does. It does not look at the stored file itself.
  */
-export function namedStoredEvidence(workspace: LoadedWorkspace, ref: string): Evidence | null {
-  for (const loaded of workspace.projects) {
-    for (const { event } of loaded.runs) {
+export async function findNamedEvidence(
+  root: string,
+  ref: string,
+): Promise<{ entry: Evidence; config: EvidenceConfig | undefined } | null> {
+  const text = await readFile(join(root, CONFIG_FILE), "utf8").catch(() => null);
+  const config = text === null ? null : parseConfigFile(CONFIG_FILE, text);
+  if (config === null || !config.ok) return null;
+  for (const project of config.value.projects) {
+    const path = normalizeProjectPath(project.path);
+    if (isAbsolute(project.path) || path === ".." || path.startsWith("../")) continue;
+    const runFile = evidenceRunFile(ref, path);
+    if (runFile === null) continue;
+    const runText = await readFile(join(root, runFile), "utf8").catch(() => null);
+    if (runText === null) continue;
+    for (const { event } of parseRunFile(runFile, runText).runs) {
       for (const entry of event.evidence ?? []) {
-        if (entry.ref === ref && isCheckedEvidence(entry, loaded.path)) return entry;
+        if (entry.ref === ref && isCheckedEvidence(entry, path)) {
+          return { entry, config: config.value.evidence };
+        }
       }
     }
   }

@@ -1,4 +1,5 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import {
   access,
   appendFile,
@@ -15,6 +16,7 @@ import { request, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { Identity } from "@casefile/core";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import {
@@ -355,6 +357,34 @@ describe("writes (ADR human-writes-through-operations §2–3)", () => {
       // biome-ignore lint/suspicious/noExplicitAny: assertions narrow the JSON Result
       return { status: response.status, body: (await response.json()) as any };
     };
+    /** A raw upload from the page, chunked (no Content-Length); the caller writes and ends it. */
+    const rawUpload = (name: string) => {
+      const url = new URL(origin);
+      return request({
+        host: url.hostname,
+        port: url.port,
+        path: "/api/evidence",
+        method: "POST",
+        headers: { ...fromPage(), [FILENAME_HEADER]: encodeURIComponent(name) },
+      }).on("error", () => {
+        // The server drops the connection on purpose; the answer, if any, came first.
+      });
+    };
+    /** Every upload directory staged under the OS temp dir, by any server. */
+    const stagedIds = async () => {
+      const ids: string[] = [];
+      for (const dir of await readdir(tmpdir())) {
+        if (!dir.startsWith("casefile-uploads-")) continue;
+        ids.push(...(await readdir(join(tmpdir(), dir)).catch((): string[] => [])));
+      }
+      return ids.sort();
+    };
+    const until = async (check: () => Promise<boolean>) => {
+      for (let i = 0; i < 100 && !(await check()); i++) {
+        await new Promise((done) => setTimeout(done, 20));
+      }
+      expect(await check()).toBe(true);
+    };
     const served = (ref: string) => fetch(`${origin}/api/evidence?ref=${encodeURIComponent(ref)}`);
     /** Whether an upload's directory is still staged under the OS temp dir. */
     const staged = async (id: string) => {
@@ -442,15 +472,30 @@ describe("writes (ADR human-writes-through-operations §2–3)", () => {
       await start(await gitIdentity(root));
       const big = new Uint8Array(2000);
       const tooLarge = { status: 413, body: { errors: [{ code: "evidence.too_large" }] } };
-      // Declared too large up front, and found too large while streaming.
+      // Declared too large up front.
       expect(await upload("big.png", big)).toMatchObject(tooLarge);
-      const stream = new ReadableStream({
-        start(controller) {
-          controller.enqueue(big);
-          controller.close();
+      // Chunked, without a Content-Length, and never ending: the server stops
+      // reading past the limit, answers and drops the connection.
+      const before = await stagedIds();
+      const endless = await new Promise<{ status?: number; connection?: string; body: string }>(
+        (done) => {
+          const sending = rawUpload("big.png");
+          const timer = setInterval(() => sending.write(new Uint8Array(512)), 2);
+          sending.on("response", (response) => {
+            clearInterval(timer);
+            let body = "";
+            response.on("data", (chunk) => {
+              body += chunk;
+            });
+            response.on("end", () =>
+              done({ status: response.statusCode, connection: response.headers.connection, body }),
+            );
+          });
         },
-      });
-      expect(await upload("big.png", stream)).toMatchObject(tooLarge);
+      );
+      expect(endless).toMatchObject({ status: 413, connection: "close" });
+      expect(JSON.parse(endless.body)).toMatchObject(tooLarge.body);
+      expect(await stagedIds()).toEqual(before);
       for (const name of ["x.svg", "page.html", "tool.exe", "README"]) {
         expect(await upload(name, PNG)).toMatchObject({
           status: 400,
@@ -540,27 +585,42 @@ describe("writes (ADR human-writes-through-operations §2–3)", () => {
       expect(download.headers.get("content-disposition")).toMatch(/^attachment; /);
       expect(download.headers.get("x-content-type-options")).toBe("nosniff");
 
-      // A file in .runs/ that no event names, a symlink an event names, traversal.
+      // A file in .runs/ that no event names, a symlinked file and a symlinked
+      // directory events name, traversal. The events sit in each ref's own run
+      // file, the one the server reads: a regular file named there is served.
       const dir = image.slice(0, image.lastIndexOf("/"));
+      const run = dir.split("/").at(-2) as string;
       await writeFile(join(root, dir, "unnamed.png"), PNG);
+      await writeFile(join(root, dir, "named.png"), PNG);
       await symlink(join(root, "casefile.yaml"), join(root, dir, "link.png"));
-      const linked = `${dir}/link.png`;
-      const event = {
-        run_id: "hand",
-        case_id: "TC-0002",
-        status: "failed",
-        executor: "human:dev@acme.example",
-        at: "2026-11-20T10:00:00Z",
-        evidence: [
-          { kind: "image", ref: linked, sha256: "a".repeat(64) },
-          { kind: "file", ref: `${dir}/../../../../../../casefile.yaml`, sha256: "a".repeat(64) },
-        ],
-      };
-      await writeFile(join(root, RUN_FILE, "hand.jsonl"), `${JSON.stringify(event)}\n`);
+      const outside = await mkdtemp(join(tmpdir(), "casefile-outside-"));
+      await writeFile(join(outside, "x.png"), PNG);
+      await mkdir(join(root, RUN_FILE, "linked"));
+      await symlink(outside, join(root, RUN_FILE, "linked", "TC-0002"));
+      const event = (runId: string, refs: string[]) =>
+        `${JSON.stringify({
+          run_id: runId,
+          case_id: "TC-0002",
+          status: "failed",
+          executor: "human:dev@acme.example",
+          at: "2026-11-20T10:00:00Z",
+          evidence: refs.map((ref) => ({ kind: "image", ref, sha256: "a".repeat(64) })),
+        })}\n`;
+      const linkedFile = `${dir}/link.png`;
+      const linkedDir = `${RUN_FILE}/linked/TC-0002/x.png`;
+      const escaping = `${dir}/../../../../../../casefile.yaml`;
+      await appendFile(
+        join(root, RUN_FILE, `${run}.jsonl`),
+        event(run, [`${dir}/named.png`, linkedFile, escaping]),
+      );
+      await writeFile(join(root, RUN_FILE, "linked.jsonl"), event("linked", [linkedDir]));
+      expect((await served(`${dir}/named.png`)).status).toBe(200);
+      expect((await served(image)).status).toBe(200);
       for (const ref of [
         `${dir}/unnamed.png`,
-        linked,
-        `${dir}/../../../../../../casefile.yaml`,
+        linkedFile,
+        linkedDir,
+        escaping,
         "casefile.yaml",
         "apps/web/context/tests/.runs/nope/TC-0002/x.png",
         "",
@@ -571,8 +631,41 @@ describe("writes (ADR human-writes-through-operations §2–3)", () => {
           errors: [{ code: "ui.evidence_not_found" }],
         });
       }
+      await rm(outside, { recursive: true, force: true });
       // Reads need no token; anything but GET and POST is refused.
       expect((await fetch(`${origin}/api/evidence`, { method: "PUT" })).status).toBe(405);
+    });
+
+    it("removes a partial upload the client cuts off", async () => {
+      await repository();
+      await start(await gitIdentity(root));
+      const before = await stagedIds();
+      const sending = rawUpload("shot.png");
+      sending.write(PNG);
+      await until(async () => (await stagedIds()).length > before.length);
+      sending.destroy();
+      await until(async () => (await stagedIds()).length === before.length);
+      expect(await upload("again.png", PNG)).toMatchObject({ status: 200 });
+    });
+
+    it("drops an upload the page removed, behind the write guard, idempotently", async () => {
+      await repository();
+      await start(await gitIdentity(root));
+      const id = (await upload("shot.png", PNG)).body.value.upload;
+      const drop = (headers: Record<string, string>, path = `/api/evidence/${id}`) =>
+        fetch(`${origin}${path}`, { method: "DELETE", headers });
+      expect((await drop({})).status).toBe(403);
+      expect((await drop({ origin })).status).toBe(403);
+      expect(await staged(id)).toBe(true);
+      const dropped = await drop(fromPage());
+      expect(dropped.status).toBe(200);
+      expect(await dropped.json()).toEqual({ ok: true, value: { upload: id } });
+      expect(await staged(id)).toBe(false);
+      expect((await drop(fromPage())).status).toBe(200);
+      expect((await drop(fromPage(), "/api/evidence")).status).toBe(405);
+      expect(await write("run", { ...result, attach: [{ upload: id }] }, fromPage())).toMatchObject(
+        { status: 400, body: { errors: [{ code: "ui.upload_unknown" }] } },
+      );
     });
 
     it("removes staged uploads when the server closes", async () => {
@@ -637,6 +730,65 @@ describe("static files", () => {
     for (const path of ["/..%2f..%2fpackage.json", "/%E0%A4%A"]) {
       const page = await fetch(`${base}${path}`);
       expect(await page.text()).toContain("<title>casefile</title>");
+    }
+  });
+});
+
+/** The built host, as `casefile ui` starts it (CI builds before it tests). */
+const BIN = fileURLToPath(new URL("../../dist/server/bin.js", import.meta.url));
+
+describe.skipIf(!existsSync(BIN))("the built host stopped by Ctrl-C (#204)", () => {
+  it("removes its staged uploads even when SIGINT comes twice, as through `casefile ui`", async () => {
+    const child = spawn(process.execPath, [BIN, "--cwd", DEMO_MONOREPO_ROOT, "--port", "0"], {
+      env: { ...process.env, CASEFILE_USER_EMAIL: "qa@acme.example" },
+      stdio: ["ignore", "pipe", "inherit"],
+    });
+    const exited = new Promise<number | null>((done) => child.on("exit", (code) => done(code)));
+    try {
+      const port = await new Promise<string>((done) => {
+        let out = "";
+        child.stdout.on("data", (chunk) => {
+          out += chunk;
+          const found = /127\.0\.0\.1:(\d+)/.exec(out);
+          if (found?.[1] !== undefined) done(found[1]);
+        });
+      });
+      const host = `http://127.0.0.1:${port}`;
+      const session = (await (await fetch(`${host}/api/session`)).json()) as {
+        value: { token: string };
+      };
+      const uploaded = (await (
+        await fetch(`${host}/api/evidence`, {
+          method: "POST",
+          headers: {
+            origin: host,
+            [TOKEN_HEADER]: session.value.token,
+            [FILENAME_HEADER]: "shot.png",
+          },
+          body: new Uint8Array([1, 2, 3]),
+        })
+      ).json()) as { value: { upload: string } };
+      const dirs = (await readdir(tmpdir())).filter((d) => d.startsWith("casefile-uploads-"));
+      const stage = (
+        await Promise.all(
+          dirs.map(async (d) =>
+            (
+              await readdir(join(tmpdir(), d)).catch((): string[] => [])
+            ).includes(uploaded.value.upload)
+              ? d
+              : null,
+          ),
+        )
+      ).find((d) => d !== null);
+      expect(stage).toBeDefined();
+
+      // The terminal's SIGINT, then the one `casefile ui` forwards.
+      child.kill("SIGINT");
+      child.kill("SIGINT");
+      expect(await exited).toBe(0);
+      expect(existsSync(join(tmpdir(), stage as string))).toBe(false);
+    } finally {
+      child.kill("SIGKILL");
     }
   });
 });

@@ -1,74 +1,79 @@
-import { describe, expect, it } from "vitest";
-import type { Evidence, RunEvent } from "../schema/index.js";
-import { namedStoredEvidence } from "./evidence.js";
-import type { LoadedProject, LoadedWorkspace } from "./workspace.js";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import type { Evidence } from "../schema/index.js";
+import { findNamedEvidence } from "./evidence.js";
 
 const SHA = "a".repeat(64);
+const RUNS = "apps/web/context/tests/.runs";
+const stored = `${RUNS}/r1/TC-0001/aaaaaaaa-shot.png`;
 
-/** A workspace of run events only: all `namedStoredEvidence` reads. */
-function workspace(projects: { path: string; evidence: Evidence[] }[]): LoadedWorkspace {
-  return {
-    root: "/repo",
-    config: null,
-    errors: [],
-    projects: projects.map(
-      ({ path, evidence }, i) =>
-        ({
-          name: `p${i}`,
-          path,
-          runs: [
-            {
-              path: `${path}/context/tests/.runs/r1.jsonl`,
-              line: 1,
-              event: {
-                run_id: "r1",
-                case_id: "TC-0001",
-                status: "failed",
-                executor: "human:qa@acme.example",
-                at: "2026-11-20T10:00:00Z",
-                evidence,
-              } as RunEvent,
-            },
-          ],
-        }) as unknown as LoadedProject,
-    ),
-  };
-}
+let root = "";
 
-describe("namedStoredEvidence (ADR run-evidence-files §7)", () => {
-  const stored = "apps/web/context/tests/.runs/r1/TC-0001/aaaaaaaa-shot.png";
-  const loaded = workspace([
-    {
-      path: "apps/web",
-      evidence: [
-        { kind: "image", ref: stored, sha256: SHA, label: "The banner" },
-        { kind: "link", ref: "https://example.com/bug/1" },
-        { kind: "attachment", ref: "apps/web/context/tests/.runs/r1/TC-0001/trace.zip" },
-        // Names a file of another project's directory: not this project's.
-        { kind: "file", ref: "apps/api/context/tests/.runs/r1/TC-0001/x.log", sha256: SHA },
-      ],
-    },
-    { path: "apps/api", evidence: [] },
-  ]);
+/** One run event of `run`, carrying `evidence`, as a line of `<run>.jsonl`. */
+const line = (run: string, evidence: Evidence[]) =>
+  `${JSON.stringify({
+    run_id: run,
+    case_id: "TC-0001",
+    status: "failed",
+    executor: "human:qa@acme.example",
+    at: "2026-11-20T10:00:00Z",
+    evidence,
+  })}\n`;
 
-  it("answers the entry a run event names, with its kind and label", () => {
-    expect(namedStoredEvidence(loaded, stored)).toEqual({
-      kind: "image",
-      ref: stored,
-      sha256: SHA,
-      label: "The banner",
+beforeAll(async () => {
+  root = await mkdtemp(join(tmpdir(), "casefile-named-evidence-"));
+  await writeFile(
+    join(root, "casefile.yaml"),
+    "version: 1\nprojects:\n  - name: web\n    path: ./apps/web/\n  - name: api\n    path: apps/api\nevidence:\n  max_file_mb: 2\n",
+  );
+  await mkdir(join(root, RUNS), { recursive: true });
+  await mkdir(join(root, "apps/api/context/tests/.runs"), { recursive: true });
+  await writeFile(
+    join(root, RUNS, "r1.jsonl"),
+    line("r1", [
+      { kind: "image", ref: stored, sha256: SHA, label: "The banner" },
+      { kind: "link", ref: "https://example.com/bug/1" },
+      { kind: "attachment", ref: `${RUNS}/r1/TC-0001/trace.zip` },
+      // Names a file in another project's directory: not this project's.
+      { kind: "file", ref: "apps/api/context/tests/.runs/r1/TC-0001/x.log", sha256: SHA },
+    ]),
+  );
+  // Another run file naming r1's ref does not count: only r1.jsonl is read for it.
+  await writeFile(
+    join(root, RUNS, "r2.jsonl"),
+    line("r2", [{ kind: "image", ref: `${RUNS}/r1/TC-0001/other.png`, sha256: SHA }]),
+  );
+});
+
+afterAll(async () => {
+  await rm(root, { recursive: true, force: true });
+});
+
+describe("findNamedEvidence (ADR run-evidence-files §7)", () => {
+  it("answers the entry the ref's own run file names, with the evidence config", async () => {
+    expect(await findNamedEvidence(root, stored)).toEqual({
+      entry: { kind: "image", ref: stored, sha256: SHA, label: "The banner" },
+      config: { max_file_mb: 2 },
     });
   });
 
-  it("answers null for links, ingest references, other projects' paths and unnamed refs", () => {
+  it("answers null for links, ingest references, other projects' paths and unnamed refs", async () => {
     for (const ref of [
       "https://example.com/bug/1",
-      "apps/web/context/tests/.runs/r1/TC-0001/trace.zip",
+      `${RUNS}/r1/TC-0001/trace.zip`,
       "apps/api/context/tests/.runs/r1/TC-0001/x.log",
-      "apps/web/context/tests/.runs/r1/TC-0001/other.png",
-      "apps/web/context/tests/.runs/r1/TC-0001/../../../../../../etc/passwd",
+      `${RUNS}/r1/TC-0001/other.png`,
+      `${RUNS}/nope/TC-0001/x.png`,
+      `${RUNS}/r1/TC-0001/../../../../../../etc/passwd`,
+      "casefile.yaml",
     ]) {
-      expect(namedStoredEvidence(loaded, ref)).toBeNull();
+      expect([ref, await findNamedEvidence(root, ref)]).toEqual([ref, null]);
     }
+  });
+
+  it("answers null outside a workspace", async () => {
+    expect(await findNamedEvidence(join(root, "apps"), stored)).toBeNull();
   });
 });
