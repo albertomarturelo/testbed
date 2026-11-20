@@ -3,7 +3,9 @@
 ## Status
 
 Accepted — 2026-10-17 (#68). Extends [ingester-contract](2026-10-17-ingester-contract.md)
-§1 and §9 and the run-event schema.
+§1 and §9 and the run-event schema. §5 amended by
+[run-evidence-files](2026-11-20-run-evidence-files.md): files attached by `run`
+are copied into the repository; ingest keeps references.
 
 ## Context
 

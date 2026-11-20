@@ -45,3 +45,4 @@
 | [2026-11-12-milestones-group-executions](2026-11-12-milestones-group-executions.md) | Milestones group executions and freeze their evidence | Accepted | 2026-11-12 |
 | [2026-11-13-case-body-markdown](2026-11-13-case-body-markdown.md) | The viewer renders case bodies as Markdown, with markdown-it | Accepted | 2026-11-13 |
 | [2026-11-13-dashboards-as-files](2026-11-13-dashboards-as-files.md) | Dashboards are files the agent writes and the viewer renders | Accepted | 2026-11-13 |
+| [2026-11-20-run-evidence-files](2026-11-20-run-evidence-files.md) | A recorded result carries evidence: files kept in the repository, and links | Accepted | 2026-11-20 |
