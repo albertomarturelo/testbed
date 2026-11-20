@@ -11,6 +11,8 @@ files reach the repository, and CI's identity `casefile-ci`:
 humans write case files through `review`/`cover` and run files through `run`.
 `context/dashboards/*.yaml` (agent or human, via `dashboard save`/`remove`):
 [dashboards-as-files](2026-11-13-dashboards-as-files.md).
+Evidence files under `.runs/<run-id>/` (agent or human, via `run`):
+[run-evidence-files](2026-11-20-run-evidence-files.md).
 
 ## Context
 
@@ -28,6 +30,7 @@ results into `context/tests/.runs/` and "the system" flips
 | `context/tests/.inbox/<hash>/*.yaml` — create | human | web UI / CLI, committed as the human |
 | `context/tests/.inbox/…` — `status`, `result` | agent | `inbox` operation |
 | `context/tests/.runs/<run-id>.jsonl` — append only | CI (`executor: ci:*`), agent (`executor: agent:*`); human via a `run` intent (`executor: human:*`) | ingesters / `run` operation |
+| `context/tests/.runs/<run-id>/<case-id>/*` — create only | agent or human | `run` operation (ADR run-evidence-files) |
 | `context/dashboards/<slug>.yaml` | agent or human | `dashboard save` / `dashboard remove` (ADR dashboards-as-files) |
 | `context/releases/policy.yaml` | agent, on a human intent | `release` operation |
 | `automation.status` ∈ {`automated`, `flaky`} | **nobody — derived** | resolver, from `.runs` events matching `automation.ref` |
