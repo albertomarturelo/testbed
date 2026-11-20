@@ -8,10 +8,21 @@ export const MilestoneStamp = z.strictObject({
   change: ChangeId,
 });
 
+/** The fields `milestone edit` changes (#210). */
+export const MilestoneEditableField = z.enum(["title", "due", "release", "scope"]);
+
+/** One `milestone edit` (#210): who changed which fields, when, and that commit's change id. */
+export const MilestoneEdit = z.strictObject({
+  ...MilestoneStamp.shape,
+  /** The fields this edit changed (set, replaced or removed). */
+  fields: z.array(MilestoneEditableField).min(1),
+});
+
 /**
  * `context/milestones/<slug>.yaml` (ADR milestones-group-executions §1): a group
  * of executions, like a GitHub milestone. The slug is the file name; run events
- * name it in `milestone`. Closing it (#165) adds `closed` and freezes its evidence.
+ * name it in `milestone`. Editing it while open (#210) appends to `edited`;
+ * closing it (#165) adds `closed` and freezes its evidence.
  */
 export const Milestone = z.strictObject({
   /** One line: `Web 2.1.0`, `Sprint 23 regression`, `UAT round 1`. */
@@ -26,6 +37,8 @@ export const Milestone = z.strictObject({
   /** The cases it covers, as a query (ADR single-query-dsl); default `state = active`. */
   scope: z.string().min(1).optional(),
   opened: MilestoneStamp.optional(),
+  /** Append-only: one entry per `milestone edit`, oldest first. */
+  edited: z.array(MilestoneEdit).optional(),
   closed: MilestoneStamp.optional(),
 });
 

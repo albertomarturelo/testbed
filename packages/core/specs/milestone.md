@@ -12,11 +12,13 @@ executed in it (ADR milestones-group-executions).
   - `casefile milestone open <slug> --title <title> [--due <YYYY-MM-DD>] [--release <version>] [--scope '<query>'] [--agent <name>] [--ticket <key>] [--project <name>] --json`
   - `casefile milestone list [--open] [--project <name>] [--json]`
   - `casefile milestone report <slug> [--project <name>] [--json]`
+  - `casefile milestone edit <slug> [--title <title>] [--due <YYYY-MM-DD>|""] [--release <version>|""] [--scope '<query>'] [--agent <name>] [--ticket <key>] [--project <name>] --json`
   - `casefile milestone close <slug> [--note <text>] [--agent <name>] [--ticket <key>] [--project <name>] --json`
 
-  (an agent runs `open` and `close` with `CASEFILE_ACTOR=agent`; read `commit` from the `--json` output)
-- **Writes:** `open`: `**/context/milestones/*.yaml` (a new file only); `close`:
-  that file and `**/context/milestones/<slug>/evidence.md`; `list`, `report`: nothing
+  (an agent runs `open`, `edit` and `close` with `CASEFILE_ACTOR=agent`; read `commit` from the `--json` output)
+- **Writes:** `open`: `**/context/milestones/*.yaml` (a new file only); `edit`:
+  that file; `close`: that file and `**/context/milestones/<slug>/evidence.md`;
+  `list`, `report`: nothing
 
 ## The file
 
@@ -30,6 +32,11 @@ opened:
   at: "2026-10-10T09:00:00Z"
   by: qa@acme.example
   change: 3b0e8f4a-6c1d-4f7e-9a52-0d9e2c1b7a44
+edited:
+  - at: "2026-10-12T14:30:00Z"
+    by: qa@acme.example
+    change: 5f1c7d2e-8b4a-4c3f-a9e6-1d0b2c3e4f50
+    fields: [due, scope]
 ```
 
 | Field | Meaning |
@@ -40,6 +47,7 @@ opened:
 | `release` | Optional: the version or Git tag the milestone certifies. |
 | `scope` | Optional query of the cases it covers (`casefile spec query-grammar`); default `state = active`. |
 | `opened` | Who opened it, when, and the change id of that commit. |
+| `edited` | Written by `edit`, one entry per edit, oldest first: who, when, the change id of that commit and the `fields` it changed. Never rewritten. |
 | `closed` | Written by `close`: who closed it, when, and the change id of that commit. |
 
 The slug is the file name: letters, digits and `._-`, starting with a letter or
@@ -59,6 +67,38 @@ not match this shape.
    `commit.agent_trailer` is `false`, `Casefile-Change:`).
 
 Nothing is written when an error is returned.
+
+## edit
+
+Changes an open milestone's `title`, `due`, `release` or `scope`: a mistyped
+scope or a moved date, without opening another milestone and recording its
+results again. Only the given fields change.
+
+1. Finds the project and the milestone (`milestone.unknown`); refuses a
+   closed one (`milestone.closed`): its evidence is frozen, a correction is a
+   new milestone.
+2. Refuses a call that gives none of the four fields (`milestone.edit_empty`),
+   a `scope` that does not parse (`milestone.invalid_scope`, as for `open`) and
+   a `due` that is not a date (`operation.invalid_input`).
+3. **Clearing:** `--due ""` and `--release ""` remove the field. `title` and
+   `scope` cannot be empty; to go back to the default scope, write it:
+   `--scope 'state = active'`.
+4. A field given with the value the file already has is no change. When
+   nothing changes, nothing is written: `changed: []`, `change` and `commit`
+   are `null`, and `next` says so.
+5. Otherwise it sets the changed fields in the file (keeping its comments, in
+   the order `open` writes them), appends `{ at, by, change, fields }` to
+   `edited`, and returns the commit of that one file: subject summary
+   `edit milestone <slug>` (by default `test(web): edit milestone web-1.2.0`)
+   and the trailers of `open`.
+
+Evidence frozen at close shows the milestone as it was then; `edited` in the
+file tells a moved scope from the original plan.
+
+```sh
+casefile milestone edit uat --scope 'feature = login' --due 2026-12-15 --json
+casefile milestone edit uat --due '' --json
+```
 
 ## Naming it in an execution
 
@@ -201,6 +241,20 @@ The job needs `permissions: contents: write`.
   "next": ["Commit both files …", "Attach the evidence to the GitHub release: gh release upload web-1.2.0 context/milestones/web-1.2.0/evidence.md"] }
 ```
 
+`edit`:
+
+```json
+{ "project": "web",
+  "slug": "web-1.2.0",
+  "path": "context/milestones/web-1.2.0.yaml",
+  "changed": ["due", "scope"],
+  "change": "5f1c7d2e-8b4a-4c3f-a9e6-1d0b2c3e4f50",
+  "commit": {
+    "message": "test(web): edit milestone web-1.2.0\n\nRequested-by: qa@acme.example\nCasefile-Change: 5f1c7d2e-8b4a-4c3f-a9e6-1d0b2c3e4f50\n",
+    "files": ["context/milestones/web-1.2.0.yaml"] },
+  "next": ["Commit the file …", "See what it covers now: casefile milestone report web-1.2.0"] }
+```
+
 `report`: `project`, `slug`, `state`, `path` (where the evidence is or will
 be), `evidence` (the Markdown), `report` (the same evidence as data:
 the milestone fields, `totals`, `gates` with `name`, `verdict`, `cases` and
@@ -232,10 +286,12 @@ the end of the evidence page.
 |---|---|
 | `milestone.exists` | the project already has a milestone with that slug |
 | `milestone.invalid_scope` | `scope` does not parse as a query |
-| `milestone.unknown` / `milestone.closed` | (`run`, `ingest`) the named milestone is not declared, or is closed; (`report`, `close`) not declared; (`close`) already closed |
+| `milestone.edit_empty` | (`edit`) none of `--title`, `--due`, `--release`, `--scope` given |
+| `milestone.unknown` / `milestone.closed` | (`run`, `ingest`) the named milestone is not declared, or is closed; (`report`, `edit`, `close`) not declared; (`edit`, `close`) closed |
 | `milestone.red_gates` | (`close`) a gate is red and no `--note` says why it is accepted |
 | `milestone.evidence_missing` | (`report`) the milestone is closed but its evidence file is gone |
 | `milestone.agent_required` / `milestone.agent_not_allowed` | as in `casefile spec cover` |
 | `commit.ticket_*`, `config.commit_*` | the subject template, as in `casefile spec cover` |
 | `project.required` / `project.unknown` | as in `casefile spec cover` |
-| `operation.actor_not_allowed` | `open` or `close` invoked by CI |
+| `operation.invalid_input` | (`edit`) `due` is neither a date nor `""`; an empty `title` or `scope` |
+| `operation.actor_not_allowed` | `open`, `edit` or `close` invoked by CI |

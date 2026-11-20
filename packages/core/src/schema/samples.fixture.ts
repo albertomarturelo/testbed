@@ -358,6 +358,14 @@ export const samples: Record<FileSchemaName, { valid: Sample[]; invalid: Sample[
             by: "qa@example.com",
             change: "11111111-1111-4111-8111-111111111111",
           },
+          edited: [
+            {
+              at: "2026-10-12T10:00:00Z",
+              by: "qa@example.com",
+              change: "33333333-3333-4333-8333-333333333333",
+              fields: ["due", "scope"],
+            },
+          ],
           closed: {
             at: "2026-10-20T17:00:00Z",
             by: "lead@example.com",
@@ -368,6 +376,36 @@ export const samples: Record<FileSchemaName, { valid: Sample[]; invalid: Sample[
     ],
     invalid: [
       { name: "no state", value: { title: "Web 1.2.0" } },
+      {
+        name: "an edit that changed no field",
+        value: {
+          title: "Web 1.2.0",
+          state: "open",
+          edited: [
+            {
+              at: "2026-10-12T10:00:00Z",
+              by: "qa@example.com",
+              change: "33333333-3333-4333-8333-333333333333",
+              fields: [],
+            },
+          ],
+        },
+      },
+      {
+        name: "an edit of a field edit cannot change",
+        value: {
+          title: "Web 1.2.0",
+          state: "open",
+          edited: [
+            {
+              at: "2026-10-12T10:00:00Z",
+              by: "qa@example.com",
+              change: "33333333-3333-4333-8333-333333333333",
+              fields: ["state"],
+            },
+          ],
+        },
+      },
       { name: "unknown state", value: { title: "Web 1.2.0", state: "done" } },
       { name: "title on two lines", value: { title: "Web\n1.2.0", state: "open" } },
       { name: "due not a date", value: { title: "Web 1.2.0", state: "open", due: "next week" } },
