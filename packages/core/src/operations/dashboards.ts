@@ -19,10 +19,3 @@ export function unknownDashboard(project: LoadedProject, slug: string): Casefile
     }`,
   };
 }
-
-/** What `next` says about the commit an operation returned. */
-export function commitHint(asAgent: boolean): string {
-  return asAgent
-    ? "Commit the file with commit.author and commit.message taken from --json output, staging only it (`git add -- <path>`, `git commit -F <message> -- <path>`)"
-    : "Commit the file with commit.message taken from --json output, as yourself, staging only it (`git add -- <path>`, `git commit -F <message> -- <path>`)";
-}

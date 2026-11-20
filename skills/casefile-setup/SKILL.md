@@ -35,7 +35,8 @@ unscoped `casefile` package is a different one.
 5. **Validate** with `casefile validate --json` and fix the findings. At most
    5 rounds. Done means exit 0.
 6. **Commit** as the SPEC's commit step says, with the agent identity and only
-   the setup files. Use `git commit -F <message> -- <paths>`.
+   the setup files. Use `git add -- <paths>`, then
+   `git commit -F <message> -- <paths>`.
 7. **Report and stop.** Tell the human:
    - the projects registered and the commons values you chose
    - the warnings left, and any findings left after 5 rounds

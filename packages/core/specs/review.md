@@ -102,9 +102,11 @@ including moving to the state the case already has, is
 7. **Does not commit.** It returns the commit to make, of that one file:
    - **agent:** `commit.author` is `casefile-agent <casefile-agent@casefile.invalid>`
      and the message carries `Agent:`. `Requested-by:` is the same email as `by`. Commit it as `casefile spec cover` says
-     (`git -c user.name=… -c user.email=… commit -F <message> -- <path>`).
+     (`git add -- <path>`, then
+     `git -c user.name=… -c user.email=… commit -F <message> -- <path>`).
    - **human:** there is no `commit.author` and no `Agent:` trailer. The commit
-     is made with the human's own Git identity (`git commit -F <message> -- <path>`),
+     is made with the human's own Git identity (`git add -- <path>`, then
+     `git commit -F <message> -- <path>`),
      or the one casefile resolved for them (ADR identity-override).
      From the CLI, the human runs it; the viewer runs it for them (ADR
      human-writes-through-operations). `commit.files` is that one path,
@@ -136,7 +138,7 @@ retry with `base` is `review.stale`. Commit the file of the first call instead.
     "author": "casefile-agent <casefile-agent@casefile.invalid>",
     "message": "test(login): edit and approve TC-0003\n\nRequested-by: qa@acme.example\nAgent: claude-code\nCasefile-Change: 5e1c7a2b-8d3f-4a6e-9b0c-2f4d6e8a1c3b\n",
     "files": ["apps/web/context/tests/login/TC-0003.md"] },
-  "next": ["Commit the file with commit.author and commit.message taken from --json output, staging only it (`git commit -F <message> -- <path>`)"] }
+  "next": ["Commit the file as casefile-agent, with commit.message from --json output saved to a file <message>, staging only it: `git add -- apps/web/context/tests/login/TC-0003.md` then `git -c user.name=casefile-agent -c user.email=casefile-agent@casefile.invalid commit -F <message> -- apps/web/context/tests/login/TC-0003.md`"] }
 ```
 
 `changed` lists the fields of `set` whose value changed, in schema order.

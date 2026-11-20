@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { isMap, isScalar, isSeq, parseDocument, YAMLSeq } from "yaml";
 import { z } from "zod";
 import { fail, ok } from "../errors.js";
+import { commitAdvice } from "../git/advice.js";
 import { CommitInput, commitSubject } from "../git/subject.js";
 import { MILESTONES_DIR } from "../load/paths.js";
 import { loadWorkspace } from "../load/workspace.js";
@@ -176,22 +177,21 @@ export const milestoneEditOperation = defineOperation({
     Milestone.parse(document.toJS());
     await context.writeText(path, document.toString({ lineWidth: 0 }));
 
+    const commit = writeCommit(
+      subject.value,
+      { requestedBy: by, inbox: input.inbox, agent, change },
+      [path],
+      asAgent,
+    );
     return ok({
       project: project.name,
       slug: input.slug,
       path,
       changed,
       change,
-      commit: writeCommit(
-        subject.value,
-        { requestedBy: by, inbox: input.inbox, agent, change },
-        [path],
-        asAgent,
-      ),
+      commit,
       next: [
-        asAgent
-          ? "Commit the file with commit.author and commit.message taken from --json output, staging only it (`git commit -F <message> -- <path>`)"
-          : "Commit the file with commit.message taken from --json output, as yourself, staging only it (`git commit -F <message> -- <path>`)",
+        commitAdvice("the file", commit),
         `See what it covers now: casefile milestone report ${input.slug}`,
       ],
     });

@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { posix } from "node:path";
 import { z } from "zod";
 import { type CasefileError, fail, ok } from "../errors.js";
+import { commitAdvice } from "../git/advice.js";
 import { CommitInput, commitSubject } from "../git/subject.js";
 import { nextCaseId } from "../ids.js";
 import { TESTS_DIR } from "../load/paths.js";
@@ -208,26 +209,24 @@ export const coverOperation = defineOperation({
 
     for (const { path, text } of files) await context.writeText(path, text);
     const refs = files.map((f) => f.ref).join(", ");
+    const commit = writeCommit(
+      subject.value,
+      { requestedBy: by, inbox: input.inbox, agent, change },
+      files.map((f) => f.path),
+      asAgent,
+    );
     return ok({
       project: project.name,
       feature: input.feature,
       change,
       created: files.map(({ ref, path }) => ({ ref, path })),
-      commit: writeCommit(
-        subject.value,
-        { requestedBy: by, inbox: input.inbox, agent, change },
-        files.map((f) => f.path),
-        asAgent,
-      ),
-      next: !asAgent
-        ? [
-            `Commit the created files with commit.message taken from --json output, as yourself, staging only them (\`git commit -F <message> -- <paths>\`)`,
-            `Review and approve the drafts: ${refs}`,
-          ]
-        : [
-            `Commit the created files with commit.author and commit.message taken from --json output, staging only them (\`git commit -F <message> -- <paths>\`)`,
-            `Ask the human to review the drafts: ${refs}`,
-          ],
+      commit,
+      next: [
+        commitAdvice(count === 1 ? "the created file" : "the created files", commit),
+        asAgent
+          ? `Ask the human to review the drafts: ${refs}`
+          : `Review and approve the drafts: ${refs}`,
+      ],
     });
   },
 });

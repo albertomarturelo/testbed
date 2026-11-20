@@ -91,7 +91,7 @@ describe("ingest junit", () => {
         files: [`${RUNS}/pw-1.jsonl`],
       },
       next: [
-        "Commit the run file with commit.author and commit.message taken from --json output, staging only it (`git commit -F <message> -- <path>`)",
+        `Commit the run file as casefile-ci, with commit.message from --json output saved to a file <message>, staging only it: \`git add -- ${RUNS}/pw-1.jsonl\` then \`git -c user.name=casefile-ci -c user.email=casefile-ci@casefile.invalid commit -F <message> -- ${RUNS}/pw-1.jsonl\``,
         "Push it; if the push is rejected, reset to the new tip and ingest again, never resolve a conflict (`casefile spec ci`)",
         "5 results match no case's automation.ref: set that ref on the case it verifies (`casefile spec cover`), or leave it unmatched",
       ],

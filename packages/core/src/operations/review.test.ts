@@ -136,7 +136,7 @@ describe("review", () => {
       }),
       files: [`${LOGIN}/TC-0003.md`],
     });
-    expect(value.next[0]).toContain("-- <path>");
+    expect(value.next[0]).toContain(`commit -F <message> -- ${LOGIN}/TC-0003.md`);
     expect(await registry.invoke("validate", {}, { root, actor: "agent" })).toMatchObject({
       ok: true,
     });

@@ -235,7 +235,7 @@ describe("run attaches evidence (ADR run-evidence-files)", () => {
     ]);
     expect(new Uint8Array(await readFile(join(root, ref)))).toEqual(PNG);
     expect(value.commit?.files).toEqual([value.path, ref]);
-    expect(value.next[0]).toContain("commit.files");
+    expect(value.next[0]).toContain(`git add -- ${value.path} ${ref}`);
     expect(JSON.parse(await runFile("rc-1"))).toEqual(value.event);
     expect(await registry.invoke("validate", {}, { root, actor: "human" })).toMatchObject({
       ok: true,

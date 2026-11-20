@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { parseDocument } from "yaml";
 import { z } from "zod";
 import { fail, ok } from "../errors.js";
+import { commitAdvice } from "../git/advice.js";
 import { CommitInput, commitSubject } from "../git/subject.js";
 import { MILESTONES_DIR } from "../load/paths.js";
 import { redGates, renderEvidence } from "../milestones/evidence.js";
@@ -105,6 +106,13 @@ export const milestoneCloseOperation = defineOperation({
     await context.writeText(path, renderEvidence(evidence.value));
     await context.writeText(milestone.value.path, document.toString({ lineWidth: 0 }));
     const release = milestone.value.file.release;
+    const commit = writeCommit(
+      subject.value,
+      { requestedBy: by, inbox: input.inbox, agent, change, milestone: input.slug },
+      [path, milestone.value.path],
+      asAgent,
+    );
+    const advice = commitAdvice("both files", commit);
     return ok({
       project: project.name,
       slug: input.slug,
@@ -112,16 +120,9 @@ export const milestoneCloseOperation = defineOperation({
       path: milestone.value.path,
       change,
       red_gates: red,
-      commit: writeCommit(
-        subject.value,
-        { requestedBy: by, inbox: input.inbox, agent, change, milestone: input.slug },
-        [path, milestone.value.path],
-        asAgent,
-      ),
+      commit,
       next: [
-        asAgent
-          ? "Commit both files with commit.author and commit.message taken from --json output, staging only them (`git commit -F <message> -- <paths>`)"
-          : "Commit both files with commit.message taken from --json output, as yourself, staging only them (`git commit -F <message> -- <paths>`); a repository that signs commits signs this one",
+        asAgent ? advice : `${advice}; a repository that signs commits signs this one`,
         ...(release === undefined
           ? []
           : [`Attach the evidence to the GitHub release: gh release upload ${release} ${path}`]),
