@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { fail, type Identity, type Result } from "@casefile/core";
+import { fail, type Identity, identityCommitter, type Result } from "@casefile/core";
 
 /**
  * The commit a writing operation returned: its message and the files to stage;
@@ -27,15 +27,11 @@ export async function commitAsHuman(
   env: NodeJS.ProcessEnv = process.env,
 ): Promise<Result<{ sha: string }>> {
   const files = [...commit.files];
+  const committer = identityCommitter(identity);
   const as =
-    identity === null || identity.source === "git"
+    committer === undefined
       ? []
-      : [
-          "-c",
-          `user.name=${identity.name ?? identity.email}`,
-          "-c",
-          `user.email=${identity.email}`,
-        ];
+      : ["-c", `user.name=${committer.name}`, "-c", `user.email=${committer.email}`];
   const force = new Set(commit.force ?? []);
   for (const [flags, paths] of [
     [[], files.filter((f) => !force.has(f))],

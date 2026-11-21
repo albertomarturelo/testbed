@@ -29,7 +29,8 @@ export function commitAdvice(what: string, commit: AdvisedCommit): string {
     : files.length === 1
       ? "it"
       : "them";
-  const author = commit.author === undefined ? undefined : /^(.+?) <(.+)>$/.exec(commit.author);
+  // The email is the last `<…>`: a human's name may itself hold ` <` (#215).
+  const author = commit.author === undefined ? undefined : /^(.+) <([^<>]+)>$/.exec(commit.author);
   const as = author ? (author[1] as string) : "yourself";
   const git = author
     ? `git -c user.name=${shellQuote(author[1] as string)} -c user.email=${shellQuote(author[2] as string)}`
