@@ -118,11 +118,14 @@ function ActingAs() {
         identity === null ? "text-destructive" : "text-muted-foreground",
       )}
     >
-      {identity === null ? (
-        <TriangleAlert className="size-4 shrink-0" aria-hidden />
-      ) : (
-        <UserRound className="size-4 shrink-0" aria-hidden />
-      )}
+      {/* Collapsed, the text is hidden: the icon's title still says it. */}
+      <span title={text} className="shrink-0">
+        {identity === null ? (
+          <TriangleAlert className="size-4" aria-hidden />
+        ) : (
+          <UserRound className="size-4" aria-hidden />
+        )}
+      </span>
       <span
         className="min-w-0 group-data-[collapsible=icon]:sr-only"
         title={identity === null ? undefined : SOURCES[identity.source]}
@@ -215,8 +218,7 @@ export function App() {
   const unresolved = projects
     .filter((p) => project === undefined || p.name === project)
     .reduce((sum, p) => sum + p.unresolved, 0);
-  const tab = (view: "cases" | "milestones" | "dashboards" | "query" | "validate") =>
-    formatRoute({ view, project });
+  const tab = (view: ListView) => formatRoute({ view, project });
   // A case page or the new-case form is part of the case list, a milestone of the
   // Milestones view, a dashboard of Dashboards: switching project goes back to the list.
   const listOf = (view: Exclude<Route["view"], "case" | "new">): ListView =>

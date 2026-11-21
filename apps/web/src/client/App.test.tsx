@@ -540,4 +540,19 @@ describe("App: the sidebar (#222)", () => {
     expect(sidebar()?.getAttribute("data-state")).toBe("expanded");
     expect(window.localStorage.getItem(SIDEBAR_OPEN_KEY)).toBe("1");
   });
+
+  it("leaves Ctrl+B to a text field: it moves the caret there on macOS", async () => {
+    window.location.hash = formatRoute({ view: "query", project: "web" });
+    render(<App />);
+    const field = await screen.findByLabelText("Query");
+    const event = new KeyboardEvent("keydown", {
+      key: "b",
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    field.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(false);
+    expect(sidebar()?.getAttribute("data-state")).toBe("expanded");
+  });
 });

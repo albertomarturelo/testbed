@@ -1531,7 +1531,9 @@ describe("App: who the QA acts as", () => {
   it("warns when nobody is configured, before any write", async () => {
     answers.session = () => ({ ok: true, value: { token: "t", identity: null } });
     render(<App />);
-    expect(await screen.findByText(/No identity: set CASEFILE_USER_EMAIL/)).toBeTruthy();
+    const warning = await screen.findByText(/No identity: set CASEFILE_USER_EMAIL/);
+    // Collapsed to icons the text is hidden; the red icon keeps it as its title (#222).
+    expect(warning.previousElementSibling?.getAttribute("title")).toBe(warning.textContent);
   });
 
   it("sends the session token with every call", async () => {
