@@ -1,11 +1,52 @@
-import { Eye, EyeOff, FilePen, Plus, RefreshCw } from "lucide-react";
+import {
+  Check,
+  ChevronsUpDown,
+  Eye,
+  EyeOff,
+  FileCheck2,
+  FilePen,
+  Flag,
+  FolderGit2,
+  LayoutDashboard,
+  ListChecks,
+  type LucideIcon,
+  Plus,
+  RefreshCw,
+  Search,
+  ShieldCheck,
+  TriangleAlert,
+  UserRound,
+} from "lucide-react";
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { type Covered, call, type Overview, type Result, type Session, session } from "@/api";
 import { ErrorList } from "@/components/ErrorList";
 import { compareFeatures, FeatureTree, inFeature } from "@/components/FeatureTree";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarRail,
+  SidebarTrigger,
+  useSidebar,
+} from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useStoredFlag } from "@/lib/stored";
 import { cn } from "@/lib/utils";
@@ -65,20 +106,53 @@ function ActingAs() {
   }, []);
   if (current === undefined) return null;
   const identity = current?.identity ?? null;
-  return identity === null ? (
-    <span className="text-xs text-destructive">
-      No identity: set CASEFILE_USER_EMAIL or git config user.email to write
-    </span>
-  ) : (
-    <span className="text-xs text-muted-foreground" title={SOURCES[identity.source]}>
-      Acting as {identity.name ? `${identity.name} <${identity.email}>` : identity.email}
-    </span>
+  // Collapsed to icons, the icon stays: red while nobody is configured (#222).
+  const text =
+    identity === null
+      ? "No identity: set CASEFILE_USER_EMAIL or git config user.email to write"
+      : `Acting as ${identity.name ? `${identity.name} <${identity.email}>` : identity.email}`;
+  return (
+    <div
+      className={cn(
+        "flex items-start gap-2 p-2 text-xs break-words",
+        identity === null ? "text-destructive" : "text-muted-foreground",
+      )}
+    >
+      {/* Collapsed, the text is hidden: the icon's title still says it. */}
+      <span title={text} className="shrink-0">
+        {identity === null ? (
+          <TriangleAlert className="size-4" aria-hidden />
+        ) : (
+          <UserRound className="size-4" aria-hidden />
+        )}
+      </span>
+      <span
+        className="min-w-0 group-data-[collapsible=icon]:sr-only"
+        title={identity === null ? undefined : SOURCES[identity.source]}
+      >
+        {text}
+      </span>
+    </div>
   );
 }
+
+/** The views the sidebar lists, in its order (#222). */
+const VIEWS = [
+  { view: "dashboards", label: "Dashboards", icon: LayoutDashboard },
+  { view: "cases", label: "Cases", icon: ListChecks },
+  { view: "milestones", label: "Milestones", icon: Flag },
+  { view: "query", label: "Query", icon: Search },
+  { view: "validate", label: "Validate", icon: ShieldCheck },
+] as const satisfies readonly { view: Route["view"]; label: string; icon: LucideIcon }[];
+type ListView = (typeof VIEWS)[number]["view"];
+
+/** Remembers, per viewer, whether the sidebar is expanded or collapsed to icons (#222). */
+export const SIDEBAR_OPEN_KEY = "casefile.sidebar.open";
 
 /** The workspace view (ADR local-ui-stack). Every view reads the files again. */
 export function App() {
   const route = useRoute();
+  const [sidebarOpen, setSidebarOpen] = useStoredFlag(SIDEBAR_OPEN_KEY, true);
   const [overview, setOverview] = useState<Result<Overview> | null>(null);
   const [reload, setReload] = useState(0);
   /** The last case created here: its page names the commit until core derives it (#51). */
@@ -144,13 +218,12 @@ export function App() {
   const unresolved = projects
     .filter((p) => project === undefined || p.name === project)
     .reduce((sum, p) => sum + p.unresolved, 0);
-  const tab = (view: "cases" | "milestones" | "dashboards" | "query" | "validate") =>
-    formatRoute({ view, project });
+  const tab = (view: ListView) => formatRoute({ view, project });
   // A case page or the new-case form is part of the case list, a milestone of the
   // Milestones view, a dashboard of Dashboards: switching project goes back to the list.
-  const listOf = (view: Exclude<Route["view"], "case" | "new">) =>
+  const listOf = (view: Exclude<Route["view"], "case" | "new">): ListView =>
     view === "milestone" ? "milestones" : view === "dashboard" ? "dashboards" : view;
-  const listView =
+  const listView: ListView =
     route.view === "case"
       ? behind?.view === undefined || behind.view === "cases"
         ? "cases"
@@ -166,151 +239,250 @@ export function App() {
     if (ref !== undefined) window.location.hash = formatRoute({ view: "case", ref });
   };
 
-  return (
-    <div className="flex min-h-svh flex-col">
-      <header className="flex flex-wrap items-center gap-4 border-b px-6 py-3 print:hidden">
-        <a href="#/cases" className="font-semibold tracking-tight">
-          casefile
-        </a>
-        {/* One project: there is nothing to switch to, and its count is the list itself. */}
-        {projects.length > 1 ? (
-          <>
-            <Separator orientation="vertical" className="h-5!" />
-            <nav aria-label="Projects" className="flex flex-wrap gap-1 text-sm">
-              <ProjectLink
-                href={formatRoute({
-                  view: listView,
-                  project: undefined,
-                })}
-                active={project === undefined}
-              >
-                All projects
-              </ProjectLink>
-              {projects.map((p) => (
-                <ProjectLink
-                  key={p.name}
-                  href={formatRoute({
-                    view: listView,
-                    project: p.name,
-                  })}
-                  active={project === p.name}
-                >
-                  {p.name} <span className="text-muted-foreground">· {p.cases}</span>
-                </ProjectLink>
-              ))}
-            </nav>
-          </>
-        ) : null}
-        <nav aria-label="Views" className="ml-auto flex gap-1 text-sm">
-          <ProjectLink href={tab("cases")} active={listView === "cases"}>
-            Cases
-          </ProjectLink>
-          <ProjectLink href={tab("milestones")} active={listView === "milestones"}>
-            Milestones
-          </ProjectLink>
-          <ProjectLink href={tab("dashboards")} active={listView === "dashboards"}>
-            Dashboards
-          </ProjectLink>
-          <ProjectLink href={tab("query")} active={route.view === "query"}>
-            Query
-          </ProjectLink>
-          <ProjectLink href={tab("validate")} active={route.view === "validate"}>
-            Validate
-          </ProjectLink>
-        </nav>
-        <ActingAs />
-        <Button variant="outline" size="sm" onClick={refresh} aria-label="Read the files again">
-          <RefreshCw /> Refresh
-        </Button>
-      </header>
+  const scope =
+    project ??
+    (projects.length === 1 ? projects[0]?.name : projects.length > 1 ? "All projects" : undefined);
 
-      <main className="flex flex-1 flex-col gap-4 p-6 print:p-0">
-        {overview === null ? (
-          <Skeleton className="h-64 w-full" />
-        ) : !overview.ok ? (
-          <ErrorList errors={overview.errors} />
-        ) : (
-          <>
-            {unresolved > 0 && list !== undefined ? (
-              <p className="text-muted-foreground text-sm">
-                {unresolved} case {unresolved === 1 ? "file does" : "files do"} not resolve and
-                {unresolved === 1 ? " is" : " are"} not listed:{" "}
-                <a className="underline" href={tab("validate")}>
-                  see Validate
-                </a>
-                .
-              </p>
-            ) : null}
-            {route.view === "new" ? (
-              <NewCase
-                key={`${route.project ?? ""}:${route.feature ?? ""}`}
-                projects={projects.map((p) => p.name)}
-                features={featuresByProject(overview.value)}
-                project={route.project}
-                feature={route.feature}
-                onCreated={onCreated}
-              />
-            ) : route.view === "milestones" ? (
-              <Milestones
-                key={`${project ?? ""}:${reload}`}
-                project={project}
-                projects={projects.map((p) => p.name)}
-              />
-            ) : route.view === "milestone" && route.evidence ? (
-              <EvidencePrint project={route.project} slug={route.slug} version={reload} />
-            ) : milestone !== undefined ? (
-              <MilestonePage
-                key={`${milestone.project}/${milestone.slug}`}
-                project={milestone.project}
-                slug={milestone.slug}
-                version={reload}
-                onWritten={load}
-              />
-            ) : route.view === "dashboards" ? (
-              <Suspense fallback={<Skeleton className="h-40 w-full" />}>
-                <Dashboards
+  return (
+    <SidebarProvider open={sidebarOpen} onOpenChange={setSidebarOpen}>
+      <AppSidebar projects={projects} project={project} listView={listView} />
+      <SidebarInset>
+        <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4 print:hidden">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-1 h-4!" />
+          <p className="min-w-0 truncate text-sm">
+            {scope === undefined ? null : <span className="text-muted-foreground">{scope} › </span>}
+            <span className="font-medium">{VIEWS.find((v) => v.view === listView)?.label}</span>
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="ml-auto"
+            onClick={refresh}
+            aria-label="Read the files again"
+          >
+            <RefreshCw /> Refresh
+          </Button>
+        </header>
+
+        <div className="flex flex-1 flex-col gap-4 p-6 print:p-0">
+          {overview === null ? (
+            <Skeleton className="h-64 w-full" />
+          ) : !overview.ok ? (
+            <ErrorList errors={overview.errors} />
+          ) : (
+            <>
+              {unresolved > 0 && list !== undefined ? (
+                <p className="text-muted-foreground text-sm">
+                  {unresolved} case {unresolved === 1 ? "file does" : "files do"} not resolve and
+                  {unresolved === 1 ? " is" : " are"} not listed:{" "}
+                  <a className="underline" href={tab("validate")}>
+                    see Validate
+                  </a>
+                  .
+                </p>
+              ) : null}
+              {route.view === "new" ? (
+                <NewCase
+                  key={`${route.project ?? ""}:${route.feature ?? ""}`}
+                  projects={projects.map((p) => p.name)}
+                  features={featuresByProject(overview.value)}
+                  project={route.project}
+                  feature={route.feature}
+                  onCreated={onCreated}
+                />
+              ) : route.view === "milestones" ? (
+                <Milestones
+                  key={`${project ?? ""}:${reload}`}
                   project={project}
                   projects={projects.map((p) => p.name)}
-                  version={reload}
                 />
-              </Suspense>
-            ) : dashboard !== undefined ? (
-              <Suspense fallback={<Skeleton className="h-64 w-full" />}>
-                <DashboardPage
-                  key={`${dashboard.project}/${dashboard.slug}`}
-                  project={dashboard.project}
-                  slug={dashboard.slug}
+              ) : route.view === "milestone" && route.evidence ? (
+                <EvidencePrint project={route.project} slug={route.slug} version={reload} />
+              ) : milestone !== undefined ? (
+                <MilestonePage
+                  key={`${milestone.project}/${milestone.slug}`}
+                  project={milestone.project}
+                  slug={milestone.slug}
                   version={reload}
+                  onWritten={load}
                 />
-              </Suspense>
-            ) : route.view === "query" ? (
-              <QueryView key={project ?? ""} project={project} />
-            ) : route.view === "validate" ? (
-              <ValidateView key={reload} project={project} />
-            ) : list !== undefined ? (
-              // The same element for the list and for a case over it: the list is not
-              // mounted again, so it keeps its scroll and what is folded in the tree.
-              <CasesPage
-                overview={overview.value}
-                project={list.project}
-                feature={list.feature}
-                state={list.state}
+              ) : route.view === "dashboards" ? (
+                <Suspense fallback={<Skeleton className="h-40 w-full" />}>
+                  <Dashboards
+                    project={project}
+                    projects={projects.map((p) => p.name)}
+                    version={reload}
+                  />
+                </Suspense>
+              ) : dashboard !== undefined ? (
+                <Suspense fallback={<Skeleton className="h-64 w-full" />}>
+                  <DashboardPage
+                    key={`${dashboard.project}/${dashboard.slug}`}
+                    project={dashboard.project}
+                    slug={dashboard.slug}
+                    version={reload}
+                  />
+                </Suspense>
+              ) : route.view === "query" ? (
+                <QueryView key={project ?? ""} project={project} />
+              ) : route.view === "validate" ? (
+                <ValidateView key={reload} project={project} />
+              ) : list !== undefined ? (
+                // The same element for the list and for a case over it: the list is not
+                // mounted again, so it keeps its scroll and what is folded in the tree.
+                <CasesPage
+                  overview={overview.value}
+                  project={list.project}
+                  feature={list.feature}
+                  state={list.state}
+                />
+              ) : null}
+              <CaseSheet
+                caseRef={route.view === "case" ? route.ref : undefined}
+                reload={reload}
+                created={created}
+                milestone={milestone?.slug}
+                onWritten={milestone === undefined && dashboard === undefined ? load : written}
+                onClose={() => {
+                  if (behind !== undefined) window.location.hash = formatRoute(behind);
+                }}
               />
-            ) : null}
-            <CaseSheet
-              caseRef={route.view === "case" ? route.ref : undefined}
-              reload={reload}
-              created={created}
-              milestone={milestone?.slug}
-              onWritten={milestone === undefined && dashboard === undefined ? load : written}
-              onClose={() => {
-                if (behind !== undefined) window.location.hash = formatRoute(behind);
-              }}
-            />
-          </>
-        )}
-      </main>
-    </div>
+            </>
+          )}
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
+  );
+}
+
+/**
+ * The viewer's navigation (#222): the project switcher when there is more than one
+ * project, the views, and who the QA acts as. Collapses to icons; a narrow screen
+ * opens it as a Sheet. Switching project keeps the list view, as the header did.
+ */
+function AppSidebar(props: {
+  projects: Overview["projects"];
+  project?: string;
+  listView: ListView;
+}) {
+  const { projects, project, listView } = props;
+  const { isMobile, setOpenMobile } = useSidebar();
+  // On a narrow screen the Sheet would stay open over the page it just opened.
+  const followed = () => {
+    if (isMobile) setOpenMobile(false);
+  };
+  return (
+    <Sidebar collapsible="icon">
+      <SidebarHeader>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild size="lg" tooltip="casefile">
+              <a href={formatRoute({ view: "cases" })} onClick={followed}>
+                <span className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                  <FileCheck2 className="size-4" />
+                </span>
+                <span className="font-semibold tracking-tight">casefile</span>
+              </a>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          {/* One project: there is nothing to switch to, and its count is the list itself. */}
+          {projects.length > 1 ? (
+            <SidebarMenuItem>
+              <ProjectSwitcher
+                projects={projects}
+                project={project}
+                listView={listView}
+                onFollow={followed}
+              />
+            </SidebarMenuItem>
+          ) : null}
+        </SidebarMenu>
+      </SidebarHeader>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Views</SidebarGroupLabel>
+          <nav aria-label="Views">
+            <SidebarMenu>
+              {VIEWS.map(({ view, label, icon: Icon }) => (
+                <SidebarMenuItem key={view}>
+                  <SidebarMenuButton asChild isActive={listView === view} tooltip={label}>
+                    <a
+                      href={formatRoute({ view, project })}
+                      aria-current={listView === view ? "page" : undefined}
+                      onClick={followed}
+                    >
+                      <Icon />
+                      <span>{label}</span>
+                    </a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </nav>
+        </SidebarGroup>
+      </SidebarContent>
+      <SidebarFooter>
+        <ActingAs />
+      </SidebarFooter>
+      <SidebarRail />
+    </Sidebar>
+  );
+}
+
+function ProjectSwitcher(props: {
+  projects: Overview["projects"];
+  project?: string;
+  listView: ListView;
+  onFollow: () => void;
+}) {
+  const { projects, project, listView, onFollow } = props;
+  const { isMobile } = useSidebar();
+  const choices = [
+    { name: undefined, label: "All projects", cases: undefined },
+    ...projects.map((p) => ({ name: p.name, label: p.name, cases: p.cases })),
+  ];
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <SidebarMenuButton
+          size="lg"
+          className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+        >
+          <span className="flex aspect-square size-8 items-center justify-center rounded-lg border bg-background">
+            <FolderGit2 className="size-4" />
+          </span>
+          <span className="grid flex-1 text-left leading-tight">
+            <span className="text-muted-foreground text-xs">Project</span>
+            <span className="truncate font-medium">{project ?? "All projects"}</span>
+          </span>
+          <ChevronsUpDown className="ml-auto" />
+        </SidebarMenuButton>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        className="min-w-56"
+        align="start"
+        side={isMobile ? "bottom" : "right"}
+        sideOffset={4}
+      >
+        <DropdownMenuLabel className="text-muted-foreground text-xs">Projects</DropdownMenuLabel>
+        {choices.map((c) => (
+          <DropdownMenuItem key={c.label} asChild>
+            <a
+              href={formatRoute({ view: listView, project: c.name })}
+              aria-current={project === c.name ? "true" : undefined}
+              onClick={onFollow}
+            >
+              <Check className={cn(project === c.name ? "opacity-100" : "opacity-0")} />
+              {c.label}
+              {c.cases === undefined ? null : (
+                <span className="ml-auto text-muted-foreground tabular-nums">{c.cases}</span>
+              )}
+            </a>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -405,19 +577,5 @@ function featuresByProject(overview: Overview): Map<string, string[]> {
   }
   return new Map(
     [...byProject].map(([project, features]) => [project, [...features].sort(compareFeatures)]),
-  );
-}
-
-function ProjectLink(props: { href: string; active: boolean; children: React.ReactNode }) {
-  return (
-    <a
-      href={props.href}
-      className={cn(
-        "rounded-md px-2.5 py-1 hover:bg-accent",
-        props.active && "bg-accent font-medium",
-      )}
-    >
-      {props.children}
-    </a>
   );
 }

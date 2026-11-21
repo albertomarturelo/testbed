@@ -46,3 +46,4 @@
 | [2026-11-13-case-body-markdown](2026-11-13-case-body-markdown.md) | The viewer renders case bodies as Markdown, with markdown-it | Accepted | 2026-11-13 |
 | [2026-11-13-dashboards-as-files](2026-11-13-dashboards-as-files.md) | Dashboards are files the agent writes and the viewer renders | Accepted | 2026-11-13 |
 | [2026-11-20-run-evidence-files](2026-11-20-run-evidence-files.md) | A recorded result carries evidence: files kept in the repository, and links | Accepted | 2026-11-20 |
+| [2026-11-21-readme-screenshots](2026-11-21-readme-screenshots.md) | The README shows the viewer in screenshots a script regenerates | Accepted | 2026-11-21 |

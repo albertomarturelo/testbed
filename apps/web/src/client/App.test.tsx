@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { App, RUN_COLUMNS_KEY } from "@/App";
+import { App, RUN_COLUMNS_KEY, SIDEBAR_OPEN_KEY } from "@/App";
 import type { Overview } from "@/api";
 import { featureTree } from "@/components/FeatureTree";
 import { formatRoute, parseRoute } from "@/route";
@@ -34,6 +34,15 @@ function row(ref: string, feature: string, title: string, automation: string, ru
   };
 }
 
+/** The sidebar's project switcher (#222): a menu, so its projects exist once it is open. */
+const switcher = () => screen.queryByRole("button", { name: /^Project/ });
+async function openProjects() {
+  const trigger = switcher();
+  if (trigger === null) throw new Error("no project switcher");
+  fireEvent.keyDown(trigger, { key: "Enter" });
+  return screen.findByRole("menu");
+}
+
 const calls: { name: string; input: unknown }[] = [];
 let overview: Overview = OVERVIEW;
 
@@ -58,7 +67,7 @@ describe("App", () => {
     render(<App />);
     expect(await screen.findByText("Reject a wrong password")).toBeTruthy();
     expect(screen.getByText("Create an order")).toBeTruthy();
-    expect(screen.getByRole("navigation", { name: "Projects" }).textContent).toContain("web");
+    expect(switcher()?.textContent).toContain("All projects");
     expect(screen.getByText("never ran")).toBeTruthy();
     expect(calls).toEqual([{ name: "overview", input: {} }]);
   });
@@ -169,7 +178,7 @@ describe("App: room for the title (#109)", () => {
   it("shows no project switcher in a one-project workspace", async () => {
     render(<App />);
     expect(await screen.findByText("Sign in")).toBeTruthy();
-    expect(screen.getByRole("navigation", { name: "Projects" })).toBeTruthy();
+    expect(switcher()).not.toBeNull();
     cleanup();
 
     overview = {
@@ -178,7 +187,7 @@ describe("App: room for the title (#109)", () => {
     };
     render(<App />);
     expect(await screen.findByText("Sign in")).toBeTruthy();
-    expect(screen.queryByRole("navigation", { name: "Projects" })).toBeNull();
+    expect(switcher()).toBeNull();
     expect(screen.queryByText("All projects")).toBeNull();
     expect(screen.getByRole("navigation", { name: "Views" })).toBeTruthy();
   });
@@ -228,8 +237,12 @@ describe("App: run columns are optional (#110)", () => {
     const broken = () => {
       throw new Error("blocked");
     };
-    vi.spyOn(window.localStorage, "getItem").mockImplementation(broken);
-    vi.spyOn(window.localStorage, "setItem").mockImplementation(broken);
+    // Restored one by one: vi.restoreAllMocks() leaves a spy on happy-dom's
+    // localStorage in place, and every later test then reads a throwing storage (#222).
+    const spies = [
+      vi.spyOn(window.localStorage, "getItem").mockImplementation(broken),
+      vi.spyOn(window.localStorage, "setItem").mockImplementation(broken),
+    ];
     try {
       render(<App />);
       expect(await screen.findByText("Sign in")).toBeTruthy();
@@ -237,7 +250,7 @@ describe("App: run columns are optional (#110)", () => {
       fireEvent.click(screen.getByRole("button", { name: "Hide automation and runs" }));
       expect(heads()).not.toContain("Automation");
     } finally {
-      vi.restoreAllMocks();
+      for (const spy of spies) spy.mockRestore();
     }
   });
 });
@@ -374,8 +387,10 @@ describe("App: milestones (#166)", () => {
     expect(screen.getByRole("heading", { name: "Web 1.2.0", hidden: true })).toBeTruthy();
     const views = screen.getByRole("navigation", { name: "Views", hidden: true });
     expect(
-      within(views).getByRole("link", { name: "Milestones", hidden: true }).className,
-    ).toContain("font-medium");
+      within(views)
+        .getByRole("link", { name: "Milestones", hidden: true })
+        .getAttribute("aria-current"),
+    ).toBe("page");
     fireEvent.keyDown(sheet, { key: "Escape" });
     await waitFor(() => expect(window.location.hash).toBe("#/milestone/web/web-1.2.0"));
   });
@@ -443,6 +458,13 @@ describe("App: dashboards (#187)", () => {
     window.location.hash = formatRoute({ view: "dashboard", project: "web", slug: "overview" });
     render(<App />);
     const link = await screen.findByRole("link", { name: "TC-0001" });
+    // Switching project from a dashboard goes back to the list of dashboards.
+    const menu = await openProjects();
+    expect(within(menu).getByRole("menuitem", { name: /^api/ }).getAttribute("href")).toBe(
+      "#/dashboards?project=api",
+    );
+    fireEvent.keyDown(menu, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
     window.location.hash = link.getAttribute("href") as string;
     fireEvent(window, new HashChangeEvent("hashchange"));
     const sheet = await screen.findByRole("dialog");
@@ -451,14 +473,86 @@ describe("App: dashboards (#187)", () => {
     expect(screen.getByRole("heading", { name: "Overview", hidden: true })).toBeTruthy();
     const views = screen.getByRole("navigation", { name: "Views", hidden: true });
     expect(
-      within(views).getByRole("link", { name: "Dashboards", hidden: true }).className,
-    ).toContain("font-medium");
-    // Switching project from a dashboard goes back to the list of dashboards.
-    const projects = screen.getByRole("navigation", { name: "Projects", hidden: true });
-    expect(
-      within(projects).getByRole("link", { name: /^api/, hidden: true }).getAttribute("href"),
-    ).toBe("#/dashboards?project=api");
+      within(views)
+        .getByRole("link", { name: "Dashboards", hidden: true })
+        .getAttribute("aria-current"),
+    ).toBe("page");
     fireEvent.keyDown(sheet, { key: "Escape" });
     await waitFor(() => expect(window.location.hash).toBe("#/dashboard/web/overview"));
+  });
+});
+
+describe("App: the sidebar (#222)", () => {
+  const views = () => screen.getByRole("navigation", { name: "Views" });
+  const sidebar = () => document.querySelector('[data-slot="sidebar"]');
+
+  it("lists the views for the selected project and marks the one shown", async () => {
+    window.location.hash = formatRoute({ view: "query", project: "web" });
+    render(<App />);
+    await screen.findByLabelText("Query");
+    const links = within(views()).getAllByRole("link");
+    expect(links.map((a) => [a.textContent, a.getAttribute("href")])).toEqual([
+      ["Dashboards", "#/dashboards?project=web"],
+      ["Cases", "#/cases?project=web"],
+      ["Milestones", "#/milestones?project=web"],
+      ["Query", "#/query?project=web"],
+      ["Validate", "#/validate?project=web"],
+    ]);
+    expect(links.filter((a) => a.getAttribute("aria-current") === "page")).toHaveLength(1);
+    expect(within(views()).getByRole("link", { name: "Query" }).getAttribute("aria-current")).toBe(
+      "page",
+    );
+    // The top bar names the project and the view.
+    expect(screen.getByRole("banner").textContent).toContain("web › Query");
+  });
+
+  it("switches project from a menu that keeps the view and counts each project", async () => {
+    window.location.hash = formatRoute({ view: "cases", project: "web" });
+    render(<App />);
+    expect((await screen.findByRole("button", { name: /^Project/ })).textContent).toContain("web");
+    const menu = await openProjects();
+    const items = within(menu).getAllByRole("menuitem");
+    expect(items.map((a) => [a.textContent, a.getAttribute("href")])).toEqual([
+      ["All projects", "#/cases"],
+      ["web2", "#/cases?project=web"],
+      ["api1", "#/cases?project=api"],
+    ]);
+    expect(items.map((a) => a.getAttribute("aria-current"))).toEqual([null, "true", null]);
+  });
+
+  it("collapses to icons, remembers it, and toggles with Ctrl+B", async () => {
+    const { unmount } = render(<App />);
+    await screen.findByText("Sign in");
+    expect(sidebar()?.getAttribute("data-state")).toBe("expanded");
+    // The top bar's trigger; the rail along the sidebar's edge toggles it too.
+    const trigger = document.querySelector('[data-slot="sidebar-trigger"]');
+    if (trigger === null) throw new Error("no sidebar trigger");
+    fireEvent.click(trigger);
+    expect(sidebar()?.getAttribute("data-state")).toBe("collapsed");
+    expect(sidebar()?.getAttribute("data-collapsible")).toBe("icon");
+    expect(window.localStorage.getItem(SIDEBAR_OPEN_KEY)).toBe("0");
+    unmount();
+
+    render(<App />);
+    await screen.findByText("Sign in");
+    expect(sidebar()?.getAttribute("data-state")).toBe("collapsed");
+    fireEvent.keyDown(window, { key: "b", ctrlKey: true });
+    expect(sidebar()?.getAttribute("data-state")).toBe("expanded");
+    expect(window.localStorage.getItem(SIDEBAR_OPEN_KEY)).toBe("1");
+  });
+
+  it("leaves Ctrl+B to a text field: it moves the caret there on macOS", async () => {
+    window.location.hash = formatRoute({ view: "query", project: "web" });
+    render(<App />);
+    const field = await screen.findByLabelText("Query");
+    const event = new KeyboardEvent("keydown", {
+      key: "b",
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    field.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(false);
+    expect(sidebar()?.getAttribute("data-state")).toBe("expanded");
   });
 });
