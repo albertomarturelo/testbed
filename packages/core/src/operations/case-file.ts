@@ -10,8 +10,14 @@ import type { Actor } from "./operation.js";
  * (ADR human-writes-through-operations): spread into its input.
  */
 export const WriterInput = {
-  /** The person at the keyboard: `git config user.email` in the workspace. */
+  /** The person at the keyboard: the email the host resolves (ADR identity-override). */
   identity: Email.optional().meta({ host: "identity" }),
+  /**
+   * A human's commit author, `Name <email>`, when that identity is not git's
+   * own (`CASEFILE_USER_EMAIL`): `commit.author`, so the advice commits as it
+   * (ADR identity-override §4). Unset: the human commits as git's identity.
+   */
+  author: z.string().min(1).optional().meta({ host: "author" }),
   /** Agent only: the human who asked, when it is not `identity` (an inbox item's author). */
   requestedBy: Email.optional(),
   /**
@@ -28,21 +34,25 @@ export const WriterInput = {
     .meta({ host: "via" }),
 };
 
-type Writer = { identity?: string; requestedBy?: string; agent?: string };
+type Writer = { identity?: string; author?: string; requestedBy?: string; agent?: string };
+
+/** Who writes, as `writeCommit` needs it: the actor, and a human's overriding author. */
+export type CommitWriter = { asAgent: boolean; author?: string };
 
 /**
  * Who a write is by: `requestedBy`, else `identity`. An agent names itself,
  * unless the workspace turned the `Agent:` trailer off (ADR
  * commit-shape-follows-host-repo §5): then a name is optional and never
  * written. A human does neither, so the entry and the commit always name the
- * same person. `asAgent` is the actor, whatever the trailer says.
+ * same person; a human's `author` (an identity other than git's) is kept for
+ * the commit. `asAgent` is the actor, whatever the trailer says.
  */
 export function writtenBy(
   operation: string,
   actor: Actor,
   input: Writer,
   agentTrailer = true,
-): Result<{ by: string; agent?: string; asAgent: boolean }> {
+): Result<{ by: string; agent?: string } & CommitWriter> {
   if (actor === "agent" && agentTrailer && input.agent === undefined) {
     return fail({
       code: `${operation}.agent_required`,
@@ -75,25 +85,33 @@ export function writtenBy(
   }
   const asAgent = actor === "agent";
   const agent = agentTrailer ? input.agent : undefined;
-  return ok(agent === undefined ? { by, asAgent } : { by, agent, asAgent });
+  const author = asAgent ? undefined : input.author;
+  return ok({
+    by,
+    asAgent,
+    ...(agent === undefined ? {} : { agent }),
+    ...(author === undefined ? {} : { author }),
+  });
 }
 
 /**
  * The commit a writing operation returns (ADR agent-runs-the-commit): an agent's
  * is authored by `casefile-agent`, with or without an `Agent:` line; a human
- * commits as themself, so no author. `files` are the workspace-relative paths
- * to stage, and nothing else.
+ * commits as themself: no author with git's identity, the resolved one when it
+ * overrides git's (ADR identity-override §4). `files` are the workspace-relative
+ * paths to stage, and nothing else.
  */
 export function writeCommit(
   subject: string,
   trailers: CommitTrailers,
   files: readonly string[],
-  asAgent: boolean,
+  writer: CommitWriter,
 ): { author?: string; message: string; files: string[] } {
   const message = commitMessage(subject, trailers);
-  return asAgent
-    ? { author: AGENT_AUTHOR, message, files: [...files] }
-    : { message, files: [...files] };
+  const author = writer.asAgent ? AGENT_AUTHOR : writer.author;
+  return author === undefined
+    ? { message, files: [...files] }
+    : { author, message, files: [...files] };
 }
 
 export const WriteCommit = z.strictObject({

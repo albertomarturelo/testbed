@@ -46,6 +46,19 @@ export function resolveIdentity(sources: IdentitySources): Result<Identity | nul
   return ok(null);
 }
 
+/**
+ * The author a human's commit is made as, `Name <email>`, when casefile
+ * resolved an identity other than git's (source `env` or `explicit`): the
+ * viewer commits with it and the CLI's commit advice prints it as
+ * `-c user.name=… -c user.email=…` (ADR identity-override §4). Without a name
+ * the email stands in for it. `undefined` for git's own identity, or none:
+ * the commit then needs no `-c`.
+ */
+export function identityAuthor(identity: Identity | null): string | undefined {
+  if (identity === null || identity.source === "git") return undefined;
+  return `${identity.name ?? identity.email} <${identity.email}>`;
+}
+
 const WHERE: Record<Identity["source"], string> = {
   explicit: "--requested-by",
   env: "CASEFILE_USER_EMAIL",

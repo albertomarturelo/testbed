@@ -4,7 +4,9 @@ import type { Operation } from "./operation.js";
 /**
  * Inputs a host fills in instead of the user (ADR cli-generic-host): the running
  * casefile version, the bundled skill files, the current project, the person at
- * the keyboard (`git config user.email`), where the call came from
+ * the keyboard (`identity`: the email casefile resolves), the author a human's
+ * commit is made as when that identity is not git's (`author`, `Name <email>`;
+ * ADR identity-override §4, #215), where the call came from
  * (`cli:<operation>`, `ui:<operation>`), the checked-out branch (ADR
  * commit-shape-follows-host-repo §3) and the directory the user invoked the
  * host from (`cwd`: the shell's, not `--cwd`; relative paths resolve against
@@ -15,6 +17,7 @@ export const HOST_INPUTS = [
   "skills",
   "project",
   "identity",
+  "author",
   "via",
   "branch",
   "cwd",

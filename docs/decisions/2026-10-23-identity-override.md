@@ -7,6 +7,8 @@ Accepted — 2026-10-23 (#108). Amends [git-is-identity](2026-10-15-git-is-ident
 [human-writes-through-operations](2026-10-19-human-writes-through-operations.md)
 §2 (the viewer commits with the user's git identity, never `-c user.*`).
 [agent-runs-the-commit](2026-10-17-agent-runs-the-commit.md) is unchanged.
+§4 amended by #215: it also covers the CLI's commit advice, through the host
+input `author`.
 
 ## Context
 
@@ -39,7 +41,11 @@ the gap would ship into the human path too.
    (or `explicit`), the server commits with
    `-c user.name=<name> -c user.email=<email>`; when it is `git`, with git's own
    identity and no `-c`. The page shows who the QA is acting as (email and
-   source) wherever it offers a write.
+   source) wherever it offers a write. **Amendment (#215):** the CLI's commit
+   advice does the same: hosts fill the host input `author` (`Name <email>`,
+   from core's `identityAuthor`, the name falling back to the email) when the
+   source is not `git`; a human's `commit.author` is that value and `next`
+   prints `git -c user.name=… -c user.email=… commit …`.
 5. **The identity is visible before writing.** Hosts expose
    `{ email, name, source }`: the CLI as `casefile whoami` (`--json` too), the
    viewer in its header. `source` is what tells a QA that a wrong identity

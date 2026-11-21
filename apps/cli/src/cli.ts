@@ -13,6 +13,7 @@ import {
   type HostInput,
   type HostRegistry,
   type Identity,
+  identityAuthor,
   ok,
   openRegistry,
   projectAt,
@@ -212,6 +213,11 @@ async function hostValue(
       // Unset: the operation that needs it says `identity.missing`.
       const identity = await hostIdentity(at.root ?? at.cwd, at.env);
       return identity.ok ? ok(identity.value?.email) : identity;
+    }
+    case "author": {
+      // Unset with git's own identity: the commit advice then needs no `-c` (#215).
+      const identity = await hostIdentity(at.root ?? at.cwd, at.env);
+      return identity.ok ? ok(identityAuthor(identity.value)) : identity;
     }
     case "via":
       return ok(`cli:${at.operation}`);

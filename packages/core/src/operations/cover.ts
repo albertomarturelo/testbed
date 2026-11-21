@@ -213,7 +213,7 @@ export const coverOperation = defineOperation({
       subject.value,
       { requestedBy: by, inbox: input.inbox, agent, change },
       files.map((f) => f.path),
-      asAgent,
+      writer.value,
     );
     return ok({
       project: project.name,

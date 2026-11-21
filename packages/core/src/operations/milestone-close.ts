@@ -110,7 +110,7 @@ export const milestoneCloseOperation = defineOperation({
       subject.value,
       { requestedBy: by, inbox: input.inbox, agent, change, milestone: input.slug },
       [path, milestone.value.path],
-      asAgent,
+      writer.value,
     );
     const advice = commitAdvice("both files", commit);
     return ok({

@@ -177,6 +177,33 @@ describe("cover", () => {
     });
   });
 
+  it("commits a human as the author the host fills when it overrides git's (ADR identity-override §4)", async () => {
+    const result = await cover(
+      {
+        requestedBy: undefined,
+        agent: undefined,
+        via: "cli:cover",
+        identity: "lead@acme.example",
+        author: "QA O'Lead <lead@acme.example>",
+        cases: [{ title: "Reject an empty email", steps: [step] }],
+      },
+      "human",
+    );
+    if (!result.ok) throw new Error(JSON.stringify(result.errors));
+    const value = result.value as Covered;
+    expect(value.commit.author).toBe("QA O'Lead <lead@acme.example>");
+    expect(value.next[0]).toContain(
+      `as QA O'Lead, with commit.message from --json output saved to a file <message>, staging only it, from the workspace root: \`git add -- ${LOGIN}/TC-0003.md\` then \`git -c user.name='QA O'\\''Lead' -c user.email=lead@acme.example commit -F <message> -- ${LOGIN}/TC-0003.md\``,
+    );
+    // An agent's commit stays casefile-agent's, whatever the host filled.
+    const agent = await covered({
+      identity: "lead@acme.example",
+      author: "QA O'Lead <lead@acme.example>",
+      cases: [{ title: "Reject a blank password", steps: [step] }],
+    });
+    expect(agent.commit.author).toBe("casefile-agent <casefile-agent@casefile.invalid>");
+  });
+
   it("names the identity as the requester when an agent gives no --requested-by", async () => {
     const value = await covered({
       requestedBy: undefined,

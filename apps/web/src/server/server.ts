@@ -7,6 +7,7 @@ import {
   fail,
   gitBranch,
   type Identity,
+  identityAuthor,
   inputFields,
   needsTicket,
   openRegistry,
@@ -291,6 +292,8 @@ function hostValue(
       return branch;
     case "identity":
       return identity?.email;
+    case "author":
+      return identityAuthor(identity);
     case "via":
       return `ui:${operation}`;
     default:

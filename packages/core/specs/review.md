@@ -32,6 +32,7 @@ edits a case file by hand.
 | `to` | `draft`, `in_review`, `active`, `retired`, optional | The state to move to (see Transitions). |
 | `note` | text, optional | Why: written as the `note` of the `history` entries. |
 | `identity` | email | Filled by the host: `CASEFILE_USER_EMAIL` when set, else `git config user.email` in the workspace (ADR identity-override; `casefile whoami` shows it): the person at the keyboard, who asked the agent or edited in the viewer. |
+| `author` | `Name <email>` | Filled by the host only when that identity is not git's own (`CASEFILE_USER_EMAIL`; the name is `CASEFILE_USER_NAME`, else the email): a human's `commit.author` (ADR identity-override §4). Unset with git's identity; ignored for an agent. |
 | `requestedBy` | email, optional | Agent only: the human who asked, when it is not `identity` (an inbox item's author). Refused for a human, so the entry and the commit always name the same person. |
 | `agent` | text | The agent applying it (`claude-code`): the `Agent:` trailer. Required for an agent unless `commit.agent_trailer` is `false` (then optional and not written), refused for a human. |
 | `inbox` | inbox item id, optional | When the request came through `.inbox/`. |
@@ -41,7 +42,7 @@ edits a case file by hand.
 | `ticket` | text, optional | The ticket key, only for a subject template that names `{ticket}` (`casefile spec cover`, *Commit subject*): `--ticket PROJ-123`. |
 | `branch` | text | Filled by the host: the checked-out branch, none on a detached HEAD. `commit.ticket_from_branch` reads the ticket from it. |
 
-`identity` and `via` are host inputs, never flags (ADR cli-generic-host).
+`identity`, `author` and `via` are host inputs, never flags (ADR cli-generic-host).
 
 At least one of `set` and `to` is required.
 
@@ -104,10 +105,12 @@ including moving to the state the case already has, is
      and the message carries `Agent:`. `Requested-by:` is the same email as `by`. Commit it as `casefile spec cover` says
      (from the workspace root, `git add -- <path>`, then
      `git -c user.name=… -c user.email=… commit -F <message> -- <path>`).
-   - **human:** there is no `commit.author` and no `Agent:` trailer. The commit
-     is made with the human's own Git identity (from the workspace root, `git add -- <path>`,
-     then `git commit -F <message> -- <path>`),
-     or the one casefile resolved for them (ADR identity-override).
+   - **human:** there is no `Agent:` trailer. With git's own identity there is
+     no `commit.author` and the commit is made as the human (from the
+     workspace root, `git add -- <path>`, then `git commit -F <message> -- <path>`).
+     When casefile resolved another identity (`CASEFILE_USER_EMAIL`),
+     `commit.author` is that one and the commit is made as it, with
+     `git -c user.name=… -c user.email=…` (ADR identity-override §4).
      From the CLI, the human runs it; the viewer runs it for them (ADR
      human-writes-through-operations). `commit.files` is that one path,
      workspace-relative: the pathspec to stage and commit, and nothing else.
@@ -142,7 +145,8 @@ retry with `base` is `review.stale`. Commit the file of the first call instead.
 ```
 
 `changed` lists the fields of `set` whose value changed, in schema order.
-For a human, `commit` has no `author` and the message no `Agent:` line.
+For a human, the message has no `Agent:` line, and `commit` has an `author`
+only when `CASEFILE_USER_EMAIL` overrides git's identity.
 
 ## Example
 

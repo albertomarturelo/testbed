@@ -39,12 +39,13 @@ report (`casefile spec ingest`), and only those events make a case
 | `run` | file-safe id, optional | The run: names the run file. Default `manual-<date>`, today's UTC date, so a day of manual results shares one file. Pass a test cycle's id (`rc-2.1`) to group them under it. |
 | `agent` | text | The agent recording it (`claude-code`): the executor is `agent:<agent>`. Required for an agent, refused for a human. |
 | `identity` | email | Filled by the host: `CASEFILE_USER_EMAIL` when set, else `git config user.email` in the workspace (ADR identity-override; `casefile whoami` shows it): a human's executor is `human:<identity>`. |
+| `author` | `Name <email>` | Filled by the host only when that identity is not git's own (`CASEFILE_USER_EMAIL`; the name is `CASEFILE_USER_NAME`, else the email): a human's `commit.author` (ADR identity-override §4). Unset with git's identity; ignored for an agent. |
 | `project` | project name | Filled by the host from `--project` or the project containing `--cwd`. |
 | `ticket` | text, optional | The ticket key, only for a subject template that names `{ticket}` (`casefile spec cover`, *Commit subject*): `--ticket PROJ-123`. |
 | `branch` | text | Filled by the host: the checked-out branch, none on a detached HEAD. `commit.ticket_from_branch` reads the ticket from it. |
 | `cwd` | directory | Filled by the host: the directory the user invoked it from (the CLI: the shell's, not `--cwd`). A relative `file` path resolves against it, else against the workspace root. The viewer leaves it unset. |
 
-`identity` and `cwd` are host inputs, never flags (ADR cli-generic-host). There is no
+`identity`, `author` and `cwd` are host inputs, never flags (ADR cli-generic-host). There is no
 `automation_ref` input: an event recorded here never carries one, so it can
 never make a case `automated`.
 
@@ -69,10 +70,12 @@ never make a case `automated`.
      Commit it as `casefile spec cover` says
      (from the workspace root, `git add -- <files>`, then
      `git -c user.name=… -c user.email=… commit -F <message> -- <files>`).
-   - **human:** there is no `commit.author`; the commit is made with the
-     human's own Git identity (from the workspace root, `git add -- <files>`,
-     then `git commit -F <message> -- <files>`), or the one
-     casefile resolved for them (ADR identity-override). From the
+   - **human:** with git's own identity there is no `commit.author` and the
+     commit is made as the human (from the workspace root, `git add -- <files>`,
+     then `git commit -F <message> -- <files>`). When casefile resolved
+     another identity (`CASEFILE_USER_EMAIL`), `commit.author` is that one and
+     the commit is made as it, with `git -c user.name=… -c user.email=…`, so
+     its author is the executor (ADR identity-override §4). From the
      CLI, the human runs it; the viewer runs it for them. `commit.files` is
      the run file and the event's evidence files, workspace-relative: the
      pathspec to stage and commit, and nothing else.
@@ -142,7 +145,8 @@ order: `evidence`, then `link`, then `attach`.
   "next": ["Commit the run file as yourself, with commit.message from --json output saved to a file <message>, staging only it, from the workspace root: `git add -- apps/web/context/tests/.runs/manual-2026-10-21.jsonl` then `git commit -F <message> -- apps/web/context/tests/.runs/manual-2026-10-21.jsonl`"] }
 ```
 
-For an agent, `commit` also has `author`. When `appended` is `false`, there is
+For an agent, `commit` also has `author`; for a human, only when
+`CASEFILE_USER_EMAIL` overrides git's identity. When `appended` is `false`, there is
 no `commit` and `next` says the result was already recorded.
 
 ## Example

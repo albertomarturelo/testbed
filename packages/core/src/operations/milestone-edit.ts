@@ -71,7 +71,7 @@ export const milestoneEditOperation = defineOperation({
     const agentTrailer = workspace.config.commit?.agent_trailer !== false;
     const writer = writtenBy("milestone", context.actor, input, agentTrailer);
     if (!writer.ok) return writer;
-    const { by, agent, asAgent } = writer.value;
+    const { by, agent } = writer.value;
     const selected = requireProject(workspace, input.project);
     if (!selected.ok) return selected;
     const project = selected.value;
@@ -181,7 +181,7 @@ export const milestoneEditOperation = defineOperation({
       subject.value,
       { requestedBy: by, inbox: input.inbox, agent, change },
       [path],
-      asAgent,
+      writer.value,
     );
     return ok({
       project: project.name,
