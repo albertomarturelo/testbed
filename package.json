@@ -14,7 +14,8 @@
     "lint": "biome check . && node scripts/check-boundaries.mjs",
     "format": "biome check --write .",
     "casefile": "node apps/cli/dist/bin.js",
-    "ui": "node apps/web/dist/server/bin.js"
+    "ui": "node apps/web/dist/server/bin.js",
+    "screenshots": "node scripts/screenshots.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",

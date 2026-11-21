@@ -93,6 +93,21 @@ pnpm ui --cwd examples/npm-login
 Then open <http://127.0.0.1:4321>. The [example's README](examples/npm-login/README.md)
 explains every step, what each case shows and the gaps it found.
 
+## The viewer
+
+`casefile ui` opens a local viewer where the QA reads, reviews and records results
+without touching a file. Every write goes through the same operations as the CLI and
+becomes a commit. Shown here on [`examples/demo-repo`](examples/demo-repo/).
+
+![A dashboard: cases by state, active cases per feature, and cases that can be automated but have no test yet](https://raw.githubusercontent.com/albertomarturelo/testbed/main/docs/screenshots/dashboard.png)
+
+| | |
+|---|---|
+| ![The case list: the feature tree with coverage, and each case with its automation and last run](https://raw.githubusercontent.com/albertomarturelo/testbed/main/docs/screenshots/cases.png) | ![A case open in a sheet over the list: preconditions, data, steps and references](https://raw.githubusercontent.com/albertomarturelo/testbed/main/docs/screenshots/case.png) |
+| **Cases** — the feature tree with coverage; each case's automation and last run. | **A case** — read as a document; edit, approve or retire it from here. |
+| ![A milestone: progress, totals and the verdict of each release gate](https://raw.githubusercontent.com/albertomarturelo/testbed/main/docs/screenshots/milestone.png) | ![A query in the casefile DSL and the cases it matches](https://raw.githubusercontent.com/albertomarturelo/testbed/main/docs/screenshots/query.png) |
+| **A milestone** — progress, totals and gate verdicts; its evidence prints as a PDF. | **Query** — the same DSL as the CLI, `casefile query`. |
+
 ## Add casefile to your repository
 
 casefile needs Node 22+ and Git. Your product's `package.json` is never
@@ -344,7 +359,7 @@ The reasons behind each one are in [docs/decisions](docs/decisions/_index.md).
 | Milestones group the executions of a release, a sprint regression or a UAT round; closing one freezes its evidence in `evidence.md`, in a commit that the repository signs when it signs commits ([decided](docs/decisions/2026-11-12-milestones-group-executions.md)); the evidence traces requirements, counts attempts, lists the milestone's edits, and names the commit that froze it with its signature | Fail a CI step on red gates (#171) |
 | casefile's commits follow the repository's conventions: a subject template in `casefile.yaml`, Conventional by default, with a ticket key when the repository asks, and the `Agent:` trailer optional ([decided](docs/decisions/2026-11-12-commit-shape-follows-host-repo.md)) | |
 | Skills `casefile-setup`, `qa-bootstrap` (a project's feature tree and first drafts from its code), `qa-cover` and `qa-review` (change, approve or retire cases from the chat), and `qa-dashboard` (a dashboard from a sentence); `init` says which skills an upgraded repository has stale, how to replace them, and which skill to run next | |
-| Local UI (`casefile ui`, installed with the CLI): projects, feature tree with coverage, cases that read as documents, each case's runs and why they failed; the QA creates a case, edits, approves and retires it, and records a manual result into a milestone, attaching screenshots, files and links as evidence ([decided](docs/decisions/2026-11-20-run-evidence-files.md)), with the case open in a sheet over the list; a Milestones view with progress, open and close, and evidence to print or save as PDF; case bodies rendered as Markdown ([decided](docs/decisions/2026-10-19-human-writes-through-operations.md), [Markdown](docs/decisions/2026-11-13-case-body-markdown.md)) | Live reload (#26) |
+| Local UI (`casefile ui`, installed with the CLI): a sidebar with the project switcher and the views, collapsible to icons; projects, feature tree with coverage, cases that read as documents, each case's runs and why they failed; the QA creates a case, edits, approves and retires it, and records a manual result into a milestone, attaching screenshots, files and links as evidence ([decided](docs/decisions/2026-11-20-run-evidence-files.md)), with the case open in a sheet over the list; a Milestones view with progress, open and close, and evidence to print or save as PDF; case bodies rendered as Markdown ([decided](docs/decisions/2026-10-19-human-writes-through-operations.md), [Markdown](docs/decisions/2026-11-13-case-body-markdown.md)) | Live reload (#26) |
 | `@casefile/cli`, `@casefile/web` (the viewer, [decided](docs/decisions/2026-11-09-casefile-ui-command.md)) and `@casefile/core` on npm, published by CI with provenance ([release process](docs/decisions/2026-10-20-release-process.md)); a toolchain tarball on each GitHub release for networks without the npm registry ([decided](docs/decisions/2026-11-09-release-toolchain-tarball.md)) | |
 | `ingest junit` (Playwright, Surefire), keeping failure messages and attachments; `ingest` returns the commit, and `casefile spec ci` has a GitHub Actions template that records shared-branch runs as `casefile-ci` ([decided](docs/decisions/2026-10-17-ci-commits-run-files.md)); `casefile report` writes a Markdown summary for a job summary or a PR comment | |
 | Dashboards the agent builds from a JSON description and the repository keeps in `context/dashboards/` ([decided](docs/decisions/2026-11-13-dashboards-as-files.md)): `dashboard save`, `list`, `show` (every widget's numbers) and `remove`, the viewer's Dashboards view that draws them, and the skill `qa-dashboard` that builds one on request | |
@@ -365,6 +380,12 @@ pnpm build
 pnpm test
 pnpm lint
 ```
+
+**Screenshots** ([ADR readme-screenshots](docs/decisions/2026-11-21-readme-screenshots.md)):
+`pnpm screenshots`, after `pnpm build`, regenerates `docs/screenshots/` from
+`examples/demo-repo`. It drives the viewer with the Playwright of `examples/npm-login`
+(`npm ci && npx playwright install chromium` there once). A PR that visibly changes a
+captured view commits the new images.
 
 **Releasing** ([ADR release-process](docs/decisions/2026-10-20-release-process.md)):
 `@casefile/core`, `@casefile/cli` and `@casefile/web` share one version. Open a PR with

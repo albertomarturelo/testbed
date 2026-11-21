@@ -72,6 +72,11 @@ Corrections are appended here in the same change that fixes the code.
     workspace never goes there; it goes through core operations. A value that
     belongs to the task at hand rather than the viewer (the commit ticket,
     #158) lives in `sessionStorage` for the tab, guarded the same way.
+    A shadcn component that keeps its own state in a cookie (the sidebar's
+    `sidebar_state`) is controlled from the app with `useStoredFlag` and its
+    cookie write is removed (#222). A test that spies on `window.localStorage`
+    restores each spy with `mockRestore()`: `vi.restoreAllMocks()` leaves
+    happy-dom's storage mocked for every later test (added 2026-11-21, #222).
 16. **Viewer forms are controlled React state over shadcn `Field`,
     `Input`, `Textarea`, `NativeSelect` (#92).** No form library: shadcn's
     `form` brings `react-hook-form`, a state framework ADR local-ui-stack §5
@@ -85,3 +90,10 @@ Corrections are appended here in the same change that fixes the code.
     `placeErrors(errors, prefix)` with the prefix the operation names the case
     with (`set` for `review`, `cases.0` for `cover`); a new case form reuses it
     rather than copying fields (#94).
+17. **The README's screenshots are regenerated, never taken by hand (added
+    2026-11-21, #223).** A PR that visibly changes a view in `scripts/screenshots.mjs`
+    (the sidebar, a dashboard, the case list or Sheet, Query, a milestone) runs
+    `pnpm build && pnpm screenshots` and commits the PNGs that changed in
+    `docs/screenshots/`; a new view the README should show gets a line in the
+    script. The README links them by absolute `raw.githubusercontent.com` URL so
+    they render on npm too. See ADR readme-screenshots.
