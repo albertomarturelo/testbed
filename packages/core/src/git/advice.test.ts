@@ -29,6 +29,14 @@ describe("commitAdvice (ADR agent-runs-the-commit §2)", () => {
     );
   });
 
+  it("takes the email from the last <…>, whatever the human's name holds (#215)", () => {
+    expect(
+      commitAdvice("the file", { author: "QA <lead> <qa@acme.example>", files: ["f"] }),
+    ).toContain(
+      "`git -c user.name='QA <lead>' -c user.email=qa@acme.example commit -F <message> -- f`",
+    );
+  });
+
   it("names up to three files, quoting what the shell would split, and <files> past that", () => {
     expect(commitAdvice("x", { files: ["a b.png", "it's.png", "c"] })).toContain(
       "`git add -- 'a b.png' 'it'\\''s.png' c`",

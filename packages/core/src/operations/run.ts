@@ -56,6 +56,7 @@ const RunInput = z.strictObject({
   /** The run file `.runs/<run>.jsonl`; default `manual-<UTC date>`. */
   run: FileSafeId.optional(),
   identity: WriterInput.identity,
+  author: WriterInput.author,
   agent: WriterInput.agent,
   ...CommitInput,
   project: z.string().min(1).optional().meta({ host: "project" }),
@@ -204,7 +205,9 @@ export const runOperation = defineOperation({
     const message = runCommitMessage(subject.value, { run, executor });
     const files = [path, ...attached.value.files];
     const what = files.length > 1 ? "the run file and its evidence files" : "the run file";
-    const commit = agent ? { author: AGENT_AUTHOR, message, files } : { message, files };
+    // A human commits as the resolved identity when it overrides git's (ADR identity-override §4).
+    const author = agent ? AGENT_AUTHOR : input.author;
+    const commit = author === undefined ? { message, files } : { author, message, files };
     return ok({
       ref,
       run,

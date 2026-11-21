@@ -4,7 +4,9 @@
 
 Accepted — 2026-10-17 (#11); output rules extended by #45; host inputs
 `identity` and `via` added by #84; a `markdown` output prints as-is by #115;
-host input `cwd` added by #203 (the directory the CLI was invoked from). Amends the `project add <name> <path>` form of
+host input `cwd` added by #203 (the directory the CLI was invoked from);
+host input `author` added by #215 (a human's commit author when the identity
+is not git's). Amends the `project add <name> <path>` form of
 [agent-driven-setup](2026-10-15-agent-driven-setup.md) and the interactive
 skill prompt of `init`'s SPEC.
 
@@ -33,16 +35,21 @@ the bundled skills), and the actor (human, agent, CI) is invisible to a process.
    **Amendment:** `project add <name> <path>` becomes
    `project add <name> --path <path>`.
 3. **Host inputs:** a field the host supplies declares it with Zod metadata,
-   `.meta({ host: "version" | "skills" | "project" | "identity" | "via" | "cwd" })`, and
-   is never a flag.
+   `.meta({ host: "version" | "skills" | "project" | "identity" | "author" | "via" | "branch" | "cwd" })`,
+   and is never a flag.
    `version` is the running casefile, `skills` the bundled skill files,
    `project` the `--project` value or the project containing `--cwd`
    (ADR [workspace-and-projects](2026-10-15-workspace-and-projects.md) §6),
    `identity` the email the host resolves: `CASEFILE_USER_EMAIL`, else the
    `git config user.email` Git resolves in the workspace (ADR
    [identity-override](2026-10-23-identity-override.md); left unset when there is none; an operation that needs it fails with
-   `identity.missing`), `via` where the call came from, `cli:<operation>`
-   (the viewer: `ui:<operation>`), and `cwd` the directory the user invoked
+   `identity.missing`), `author` that identity as `Name <email>` only when
+   its source is not git (`CASEFILE_USER_EMAIL`; the name falls back to the
+   email), so a human's commit advice commits as it (ADR identity-override
+   §4; #215), `via` where the call came from, `cli:<operation>`
+   (the viewer: `ui:<operation>`), `branch` the checked-out branch (ADR
+   [commit-shape-follows-host-repo](2026-11-12-commit-shape-follows-host-repo.md)
+   §3), and `cwd` the directory the user invoked
    the CLI from (the shell's, not `--cwd`: relative paths resolve against it;
    #203). Every host fills the ones an operation it
    invokes declares

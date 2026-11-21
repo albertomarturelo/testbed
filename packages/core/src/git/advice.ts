@@ -1,4 +1,4 @@
-/** The commit a writing operation returns: its author, when not the human, and the files to stage. */
+/** The commit a writing operation returns: its author, when not git's own identity, and the files to stage. */
 type AdvisedCommit = { author?: string; files: readonly string[] };
 
 /** Up to this many files are named in the advice; past it, `<files>` stands for `commit.files`. */
@@ -15,9 +15,10 @@ const LISTED = 3;
  * are named, shell-quoted when they need it, so the commands can be run as
  * printed once `<message>` is a file holding `commit.message`. More would make
  * a line nobody reads: then `<files>` stands for the paths of `commit.files`,
- * each quoted as its own argument. A commit with an author (an agent's,
- * CI's) runs as that identity through `git -c user.name=… -c user.email=…`;
- * one without is the human's own.
+ * each quoted as its own argument. A commit with an author (an agent's, CI's,
+ * or a human's whose identity is not git's: ADR identity-override §4) runs as
+ * that identity through `git -c user.name=… -c user.email=…`; one without is
+ * the human's own git identity.
  */
 export function commitAdvice(what: string, commit: AdvisedCommit): string {
   const { files } = commit;
@@ -28,7 +29,8 @@ export function commitAdvice(what: string, commit: AdvisedCommit): string {
     : files.length === 1
       ? "it"
       : "them";
-  const author = commit.author === undefined ? undefined : /^(.+?) <(.+)>$/.exec(commit.author);
+  // The email is the last `<…>`: a human's name may itself hold ` <` (#215).
+  const author = commit.author === undefined ? undefined : /^(.+) <([^<>]+)>$/.exec(commit.author);
   const as = author ? (author[1] as string) : "yourself";
   const git = author
     ? `git -c user.name=${shellQuote(author[1] as string)} -c user.email=${shellQuote(author[2] as string)}`

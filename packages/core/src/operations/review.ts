@@ -157,7 +157,7 @@ export const reviewOperation = defineOperation({
     const agentTrailer = workspace.config.commit?.agent_trailer !== false;
     const writer = writtenBy("review", context.actor, input, agentTrailer);
     if (!writer.ok) return writer;
-    const { by, agent, asAgent } = writer.value;
+    const { by, agent } = writer.value;
 
     const last = stored.history.at(-1);
     if (input.base !== undefined && input.base !== last?.change) {
@@ -310,7 +310,7 @@ export const reviewOperation = defineOperation({
       subject.value,
       { requestedBy: by, inbox: input.inbox, agent, change },
       [loaded.path],
-      asAgent,
+      writer.value,
     );
     return ok({
       ref: `${project.name}/${stored.id}`,

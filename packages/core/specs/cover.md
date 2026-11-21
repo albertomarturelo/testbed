@@ -40,6 +40,7 @@ from the viewer (ADR human-writes-through-operations).
 | `feature` | feature path (`login`, `checkout/payments`) | Where the cases go: `<project>/context/tests/<feature>/`. Created if absent. |
 | `cases` | `ProposedCase[]`, 1 or more | The cases to write, in the order their ids are assigned. |
 | `identity` | email | Filled by the host: `CASEFILE_USER_EMAIL` when set, else `git config user.email` in the workspace (ADR identity-override; `casefile whoami` shows it): the person at the keyboard. |
+| `author` | `Name <email>` | Filled by the host only when that identity is not git's own (`CASEFILE_USER_EMAIL`; the name is `CASEFILE_USER_NAME`, else the email): a human's `commit.author`, so the commit names the person the file names (ADR identity-override §4). Unset with git's identity; ignored for an agent. |
 | `requestedBy` | email, optional | Agent only: the human who asked, when it is not `identity` (an inbox item's author). Refused for a human. |
 | `agent` | text | The agent that proposes them (`claude-code`, `codex`): the `Agent:` trailer. Required for an agent unless `commit.agent_trailer` is `false` (then optional and not written), refused for a human. |
 | `inbox` | inbox item id | When the request came through `.inbox/`: written as `history[].inbox` and the `Inbox-Id:` trailer. |
@@ -48,7 +49,7 @@ from the viewer (ADR human-writes-through-operations).
 | `ticket` | text, optional | The ticket key, only for a subject template that names `{ticket}` (`casefile spec cover`, *Commit subject*): `--ticket PROJ-123`. |
 | `branch` | text | Filled by the host: the checked-out branch, none on a detached HEAD. `commit.ticket_from_branch` reads the ticket from it. |
 
-`identity` and `via` are host inputs, never flags (ADR cli-generic-host). The
+`identity`, `author` and `via` are host inputs, never flags (ADR cli-generic-host). The
 case is by `requestedBy` when given, else `identity`: that email is
 `history[].by` and the `Requested-by:` trailer. An agent passes `--requested-by`
 only when the request is someone else's (an inbox item's author); otherwise the
@@ -111,10 +112,13 @@ creates it. Changing, approving or retiring it is a review
    commit (ADR history-commit-reference). ADR agent-runs-the-commit explains
    why the agent runs it.
 
-   A human's commit has no `commit.author` and no `Agent:` trailer: it is
-   made with their own Git identity (from the workspace root, `git add -- <created paths>`,
-   then `git commit -F <message> -- <created paths>`),
-   or the one casefile resolved for them (ADR identity-override).
+   A human's commit has no `Agent:` trailer. With git's own identity it has
+   no `commit.author` and is made as the human (from the workspace root,
+   `git add -- <created paths>`, then `git commit -F <message> -- <created paths>`).
+   When casefile resolved another identity (`CASEFILE_USER_EMAIL`),
+   `commit.author` is that one, `Name <email>`, and the commit is made as it,
+   `git -c user.name=… -c user.email=… commit …` like an agent's, so its
+   author is the `Requested-by:` (ADR identity-override §4).
    From the CLI, the human runs it; the viewer runs it for them (ADR
    human-writes-through-operations). `commit.files` lists the created paths,
    workspace-relative: the pathspec to stage and commit, and nothing else.
@@ -175,8 +179,10 @@ first call instead.
            "Ask the human to review the drafts: web/TC-0003, web/TC-0004"] }
 ```
 
-For a human, `commit` has no `author`, the message no `Agent:` line, and `next`
-says to commit as yourself and review the drafts.
+For a human, the message has no `Agent:` line and `next` says to review the
+drafts. With git's own identity, `commit` has no `author` and `next` says to
+commit as yourself; with `CASEFILE_USER_EMAIL`, `commit.author` is that
+identity and `next` commits as it, with `-c user.name=… -c user.email=…`.
 
 ## Example
 

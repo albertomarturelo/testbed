@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { gitUserEmail, resolveIdentity } from "./identity.js";
+import { gitUserEmail, identityAuthor, resolveIdentity } from "./identity.js";
 
 /** No global or system config: only the repository's own counts. */
 const isolated = { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_NOSYSTEM: "1" };
@@ -71,5 +71,26 @@ describe("resolveIdentity (ADR identity-override)", () => {
         },
       ],
     });
+  });
+});
+
+describe("identityAuthor (ADR identity-override §4)", () => {
+  it("names the resolved identity when it overrides git's, the email standing in for a missing name", () => {
+    expect(identityAuthor({ email: "qa@acme.example", name: "QA Lead", source: "env" })).toBe(
+      "QA Lead <qa@acme.example>",
+    );
+    expect(identityAuthor({ email: "qa@acme.example", source: "env" })).toBe(
+      "qa@acme.example <qa@acme.example>",
+    );
+    expect(identityAuthor({ email: "qa@acme.example", source: "explicit" })).toBe(
+      "qa@acme.example <qa@acme.example>",
+    );
+  });
+
+  it("is undefined for git's own identity, or none: the commit needs no -c", () => {
+    expect(
+      identityAuthor({ email: "dev@acme.example", name: "Dev", source: "git" }),
+    ).toBeUndefined();
+    expect(identityAuthor(null)).toBeUndefined();
   });
 });

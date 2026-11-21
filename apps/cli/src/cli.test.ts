@@ -630,6 +630,70 @@ describe("identity: CASEFILE_USER_EMAIL before git config (ADR identity-override
     execFileSync("git", ["init", "-q"], { cwd: tmp, env: git });
   });
 
+  /**
+   * Runs the `next` advice's two commands as printed, from the workspace root,
+   * with `<message>` a file holding `commit.message`; answers the new commit's
+   * author as `name <email>`.
+   */
+  const follow = async (value: { commit: { message: string }; next: string[] }) => {
+    const message = join(tmp, ".git", "casefile-message");
+    await writeFile(message, value.commit.message);
+    const commands = [...(value.next[0] as string).matchAll(/`([^`]+)`/g)].map((m) =>
+      (m[1] as string).replaceAll("<message>", message),
+    );
+    expect(commands).toHaveLength(2);
+    for (const command of commands) execFileSync("sh", ["-c", command], { cwd: tmp, env: git });
+    return execFileSync("git", ["log", "-1", "--format=%an <%ae>"], {
+      cwd: tmp,
+      env: git,
+      encoding: "utf8",
+    }).trim();
+  };
+
+  describe("commit advice for a human (#215)", () => {
+    beforeEach(() => {
+      execFileSync("git", ["config", "user.email", "dev@acme.example"], { cwd: tmp, env: git });
+      execFileSync("git", ["config", "user.name", "Dev"], { cwd: tmp, env: git });
+    });
+
+    it("commits as CASEFILE_USER_EMAIL and _NAME, quoted, so the commit names who the file names", async () => {
+      const result = await inTmp(review, {
+        CASEFILE_USER_EMAIL: "qa@acme.example",
+        CASEFILE_USER_NAME: "QA O'Lead",
+      });
+      const { value } = JSON.parse(result.stdout);
+      expect(value.commit.author).toBe("QA O'Lead <qa@acme.example>");
+      expect(value.next[0]).toContain(
+        "`git -c user.name='QA O'\\''Lead' -c user.email=qa@acme.example commit -F <message> -- apps/web/context/tests/login/TC-0001.md`",
+      );
+      expect(await follow(value)).toBe("QA O'Lead <qa@acme.example>");
+      const file = await readFile(join(tmp, "apps/web/context/tests/login/TC-0001.md"), "utf8");
+      expect(file).toContain("by: qa@acme.example\n");
+    });
+
+    it("names the email when CASEFILE_USER_NAME is unset, as the viewer does; the run's executor matches", async () => {
+      const result = await inTmp(
+        ["run", "TC-0002", "--status", "passed", "--cwd", "apps/web", "--json"],
+        { CASEFILE_USER_EMAIL: "qa@acme.example" },
+      );
+      const { value } = JSON.parse(result.stdout);
+      expect(value.event.executor).toBe("human:qa@acme.example");
+      expect(value.commit.author).toBe("qa@acme.example <qa@acme.example>");
+      expect(await follow(value)).toBe("qa@acme.example <qa@acme.example>");
+    });
+
+    it("stays a bare `git commit` with git's own identity", async () => {
+      const result = await inTmp(review, {});
+      const { value } = JSON.parse(result.stdout);
+      expect(value.commit.author).toBeUndefined();
+      expect(value.next[0]).toContain(" as yourself, ");
+      expect(value.next[0]).toContain(
+        "`git commit -F <message> -- apps/web/context/tests/login/TC-0001.md`",
+      );
+      expect(await follow(value)).toBe("Dev <dev@acme.example>");
+    });
+  });
+
   it("writes as CASEFILE_USER_EMAIL over git config", async () => {
     execFileSync("git", ["config", "user.email", "dev@acme.example"], { cwd: tmp, env: git });
     const result = await inTmp(review, { CASEFILE_USER_EMAIL: "qa@acme.example" });

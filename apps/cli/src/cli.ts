@@ -13,6 +13,7 @@ import {
   type HostInput,
   type HostRegistry,
   type Identity,
+  identityAuthor,
   ok,
   openRegistry,
   projectAt,
@@ -164,6 +165,12 @@ export async function run(
   const invokeRoot = root ?? (command.operation.root === "cwd" ? cwd : null);
   if (invokeRoot === null) return result(located as Result<never>, json);
 
+  // `identity` and `author` read one resolution: a single `git config` call.
+  let resolved: Promise<Result<Identity | null>> | undefined;
+  const identity = () => {
+    resolved ??= hostIdentity(root ?? cwd, environment.env);
+    return resolved;
+  };
   for (const field of command.hosts) {
     const value = await hostValue(field.host as HostInput, {
       root,
@@ -173,6 +180,7 @@ export async function run(
       project: globals.project,
       operation: command.operation.name,
       env: environment.env,
+      identity,
     });
     if (!value.ok) return result(value, json, input);
     if (value.value !== undefined) input[field.name] = value.value;
@@ -196,6 +204,8 @@ async function hostValue(
     project: string | undefined;
     operation: string;
     env: CliEnvironment["env"];
+    /** The person's identity (ADR identity-override), resolved once per invocation. */
+    identity: () => Promise<Result<Identity | null>>;
   },
 ): Promise<Result<unknown>> {
   switch (name) {
@@ -210,8 +220,13 @@ async function hostValue(
     }
     case "identity": {
       // Unset: the operation that needs it says `identity.missing`.
-      const identity = await hostIdentity(at.root ?? at.cwd, at.env);
+      const identity = await at.identity();
       return identity.ok ? ok(identity.value?.email) : identity;
+    }
+    case "author": {
+      // Unset with git's own identity: the commit advice then needs no `-c` (#215).
+      const identity = await at.identity();
+      return identity.ok ? ok(identityAuthor(identity.value)) : identity;
     }
     case "via":
       return ok(`cli:${at.operation}`);

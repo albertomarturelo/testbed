@@ -301,12 +301,18 @@ describe("writes (ADR human-writes-through-operations §2–3)", () => {
     expect(git(root, "rev-list", "--count", "HEAD")).toBe("3");
   });
 
-  it("commits with -c user.* when CASEFILE_USER_EMAIL overrides git, filling identity and via", async () => {
+  it("commits with -c user.* when CASEFILE_USER_EMAIL overrides git, filling identity and via, never the page's author", async () => {
     await repository();
     await start({ email: "qa@acme.example", name: "QA Lead", source: "env" });
     const { status, body } = await write(
       "review",
-      { ref: "web/TC-0001", to: "retired", identity: "spoof@acme.example", via: "cli:spoof" },
+      {
+        ref: "web/TC-0001",
+        to: "retired",
+        identity: "spoof@acme.example",
+        author: "Spoof <spoof@acme.example>",
+        via: "cli:spoof",
+      },
       fromPage(),
     );
     expect(status).toBe(200);

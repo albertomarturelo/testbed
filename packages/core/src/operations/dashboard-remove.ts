@@ -47,7 +47,7 @@ export const dashboardRemoveOperation = defineOperation({
     const agentTrailer = workspace.config.commit?.agent_trailer !== false;
     const writer = writtenBy("dashboard", context.actor, input, agentTrailer);
     if (!writer.ok) return writer;
-    const { by, agent, asAgent } = writer.value;
+    const { by, agent } = writer.value;
     const selected = requireProject(workspace, input.project);
     if (!selected.ok) return selected;
     const project = selected.value;
@@ -68,7 +68,7 @@ export const dashboardRemoveOperation = defineOperation({
       subject.value,
       { requestedBy: by, inbox: input.inbox, agent, change, dashboard: input.slug },
       [path],
-      asAgent,
+      writer.value,
     );
     await context.removeFile(path);
     return ok({
