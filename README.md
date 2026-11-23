@@ -172,7 +172,7 @@ already installed. Extensions are not in the tarball and still need npm.
 `0.2.0` changed what casefile commits and how executions are grouped:
 
 1. **Pins.** Set `@casefile/cli` and `@casefile/web` to the new version
-   (`0.3.0`) in `.casefile/package.json`, delete `.casefile/node_modules` and
+   (`0.3.1`) in `.casefile/package.json`, delete `.casefile/node_modules` and
    install again (`npm install --prefix .casefile --ignore-scripts`, or unpack
    that version's tarball).
 2. **Commit subjects.** casefile's commits now read like the rest of the
@@ -222,6 +222,14 @@ once one of them uses what follows:
 - **Commit advice** (`next`) now reads `git add -- <files>`, then
   `git commit -F <message> -- <files>`, from the workspace root, so a new file
   commits too.
+
+From `0.3.0` to `0.3.1` only step 1 applies: no skill's text changed and
+nothing is migrated. With `CASEFILE_USER_EMAIL` set to someone other than
+`git config user.email`, a human's commit advice from the CLI now reads
+`git -c user.name=… -c user.email=… commit -F <message> -- <files>`, so the
+commit's author is the QA the files name (`CASEFILE_USER_NAME`, or the email
+when it is unset). The viewer navigates from a left sidebar, collapsible to
+icons (Ctrl/⌘+B), with the project switcher at its top.
 
 ### From source
 
@@ -337,7 +345,8 @@ Every command has `--help`, `--json` for scripts and agents, and a SPEC:
   recomputable from the repo.
 - **Git is identity.** Who changed a case and why comes from commits and
   their trailers, not from accounts. On a shared machine, `CASEFILE_USER_EMAIL`
-  names the QA without touching git config.
+  names the QA without touching git config, and the commit advice commits as
+  that QA (from `0.3.1`).
 - **Cases are written only through core operations**, by the agent or the QA
   from the viewer; Git says who. Nobody hand-edits YAML.
 - **Bring your own agent.** casefile never calls an LLM.
@@ -353,7 +362,7 @@ The reasons behind each one are in [docs/decisions](docs/decisions/_index.md).
 
 ## Today / Next
 
-| Today (`0.3.0`) | Next (ranked by the [authoring loop](docs/decisions/2026-10-19-authoring-loop-first.md)) |
+| Today (`0.3.1`) | Next (ranked by the [authoring loop](docs/decisions/2026-10-19-authoring-loop-first.md)) |
 |---|---|
 | `init`, `project add`, `validate`, `cover`, `review` (edit, approve, retire a case), `run` (record a result by hand, with evidence files and links), `milestone open`, `edit`, `list`, `report` and `close`, `gates`, `overview`, `report` (a Markdown summary), `runs`, `query`, `resolve`, `id next`, `whoami`, `spec` | |
 | Milestones group the executions of a release, a sprint regression or a UAT round; closing one freezes its evidence in `evidence.md`, in a commit that the repository signs when it signs commits ([decided](docs/decisions/2026-11-12-milestones-group-executions.md)); the evidence traces requirements, counts attempts, lists the milestone's edits, and names the commit that froze it with its signature | Fail a CI step on red gates (#171) |
